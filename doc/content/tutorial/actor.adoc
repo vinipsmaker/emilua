@@ -1,0 +1,223 @@
++++
+title = "Threads and the actor model"
++++
+
+:_:
+:cpp: C++
+
+[source,lua]
+----
+-- Instantiates a new lua VM that shares the caller's `asio::io_context`
+spawn_vm(module)
+
+-- Instantiates a new lua VM in a new thread with its own `asio::io_context`
+spawn_vm(module, { inherit_ctx=false })
+
+-- Spawn extra threads to the caller's `asio::io_context`
+spawn_ctx_threads(count)
+
+-- Spawn a new fiber on this lua VM
+spawn(fn)
+----
+
+== Background
+
+Single-thread concurrency is good, but it doesn't allow you to use all resources
+from the computer. You're always limited to 100% of a single CPU. To utilize the
+remaining resources, you need threads.
+
+Many scripting languages don't have good threading support and lua is no
+different in this regards. An easy solution to work around this limitation is to
+spawn a different lua VM for each thread. Indeed, this solution is such a low
+entry-barrier that many adopt
+it{_}footnote:[<https://nodejs.org/dist/latest-v12.x/docs/api/worker_threads.html>].
+The only property the lua VM needs to provide is reentrancy, and this property
+is, in fact, provided:
+
+[quote,  Programming in Lua , '<https://www.lua.org/pil/24.1.html>']
+____
+The Lua library defines no global variables at all. It keeps all its state in
+the dynamic structure `lua_State` and a pointer to this structure is passed as
+an argument to all functions inside Lua. This implementation makes Lua reentrant
+and ready to be used in multithreaded code.
+____
+
+There are already some lua projects that make use of multiple lua VMs to explore
+multi-threading:
+
+* https://github.com/effil/effil
+* https://love2d.org/wiki/love.thread
+
+They use message-passing to communicate among the threads. However, there is one
+question they don't answer: how to re-allocate jobs to keep the work share fair?
+You are required to implement load-balancing on top of this system.
+
+An alternative answer is to allow _more_ lua VMs per each thread so the other
+threads can steal each other's spare VMs when they finish their own jobs. This
+is a form of work-stealing.
+
+Fortunately, Boost.Asio — the execution engine that powers Emilua — already
+implements the heavy work for us in the form of
+strands{_}footnote:[https://www.boost.org/doc/libs/1_70_0/doc/html/boost_asio/overview/core/strands.html].
+If we reserve one exclusive strand for each lua VM, Boost.Asio will perform just
+what I described.
+
+But there is more. The described mechanism is interestingly very similar to
+wikipedia-tier knowledge of the actor model:
+
+[quote,'https://en.wikipedia.org/wiki/Actor_model']
+____
+The *actor model* in computer science is a mathematical model of concurrent
+computation that treats "actors" as the universal primitives of concurrent
+computation. In response to a message that it receives, an actor can: make local
+decisions, create more actors, send more messages, and determine how to respond
+to the next message received. Actors may modify their own private state, but can
+only affect each other indirectly through messaging (obviating lock-based
+synchronization).
+____
+
+Indeed, this resemblance was also noted by Christopher M. Kohlhoff himself who
+wrote a small example on how to implement a minimal actor system based on
+strands{_}footnote:[<https://github.com/chriskohlhoff/executors/blob/master/src/examples/executor/actor.cpp>].
+
+Also what we lack to have a proper actor model on our mechanism is
+wikipedia-tier knowledge:
+
+[quote, '<https://en.wikipedia.org/wiki/Actor_model>']
+____
+So, the ability of Actors to create new Actors with which they can exchange
+communications, along with the ability to include the addresses of other Actors
+in messages, gives Actors the ability to create and participate in arbitrarily
+variable topological relationships with one another, much as the objects in
+Simula and other object-oriented languages may also be relationally composed
+into variable topologies of message-exchanging objects.
+____
+
+The remaining gap to have a full actor system is so small that Emilua walks this
+small extra step so you can use decades of patterns discovered for the actor
+model here. The line we deliberately decide to *not* cross and use cases we are
+*not* targeting are:
+
+* Emilua is _not_ a distributed actor model. It only scales transparently to
+  other threads in the same process.
+* Emilua does _not_ target high availability like Erlang's.
+
+I've seen one lua library implementing the actor
+pattern{_}footnote:[<https://github.com/xfguo/luactor>], but it didn't scale to
+multiple threads. And it makes less sense to use the actor pattern to protect
+against concurrency issues when all you have is one thread (in our approach, we
+use fibers).
+
+There is another runtime very similar to what we propose here co-created by
+Roberto Ierusalimschy
+himself{_}footnote:[<http://www.inf.puc-rio.br/~roberto/docs/ry08-05.pdf>], but
+it lacks support for the actor model.
+
+There is also another lua library that does implement a distributed actor model
+if you're interested: <https://github.com/lefcha/concurrentlua>.
+
+== Introduction
+
+A program written for the Emilua runtime may use multiple fibers per lua VM
+(extra lua VMs can be spawned). Each lua VM represents an actor. It is safe to
+access global variables within each VM — this is the private state of the actor
+and actors can only affect each other through messaging.
+
+An execution engine is used to coordinate all events. Therefore, a lua VM is
+always implicitly running on top of some execution engine context. But multiple
+contexts can coexist in the same app.
+
+[source,lua]
+----
+spawn_vm(module)
+----
+
+An execution context can serve multiple actors. Call `spawn_vm()` to spawn a new
+actor on the current context. `module` will be the entry point for the actor and
+it'll execute with `_CONTEXT='worker'` (this `_CONTEXT` is not propagated to
+imported submodules within the actor).
+
+TIP: `'.'` is also a valid module to use when you spawn actors.
+
+[source,lua]
+----
+spawn_ctx_threads(count)
+----
+
+An execution context can make use of extra threads. Call `spawn_ctx_threads()`
+to spawn extra threads for the current execution context.
+
+[NOTE]
+--
+It doesn't make sense to have more context threads than actors as some threads
+will always be idle in this scenario.
+
+No safety-belts will prevent you from running such inefficient layout.
+--
+
+With just these two functions, you already can have a system making use of
+multiple threads performing work-stealing. Just spawn more actors than threads
+and you're done.
+
+[source,lua]
+----
+spawn_vm(module, { inherit_ctx=false })
+----
+
+But there is more. You can spawn new execution contexts in extra threads. The
+function `spawn_vm()` has one extra parameter, where you can pass flags to
+customize the VM resources. One of these flags is `inherit_ctx`. When
+`inherit_ctx=false` is present, a new thread with a new execution context will
+be created to run the actor. Aside from scheduling strategies and performance,
+the new actor will be no different from other actors sharing the parent's
+context (i.e. after the actor is instantiated, there is no way to tell it is
+running in its own context).
+
+You may use this function to implement a layout _without_ work-stealing and
+revert back to the load-balancing approach (e.g. one context per thread and one
+actor per context). To make this idiom a little more efficient, you may pass a
+`concurrency_hint`{_}footnote:[<https://www.boost.org/doc/libs/1_69_0/doc/html/boost_asio/overview/core/concurrency_hint.html>]
+flag on context creation:
+
+[source,lua]
+----
+for _ = 1, 3 do
+    spawn_vm(
+        'worker',
+        {
+            inherit_ctx=false,
+            concurrency_hint=1
+        }
+    )
+end
+----
+
+There is also a planned `bare_vm=true` flag to allow a VM w/o a backing
+execution engine, but this feature is still in the design phase. It is hoped
+that it'll ease integration with foreign event loops such as Qt's, GTK's and
+EFL's.
+
+== Communication
+
+Every actor can import `inbox` which is a rx-channel that can be used to receive
+messages from other actors addressed to it.
+
+When you call `spawn_vm()`, a tx-channel is returned that can be used to send
+messages to the spawned actor.
+
+You can send the address of other actors (or self) by sending the channel as a
+message. A clone of the tx-channel will be made and sent over.
+
+This simple foundation is enough to:
+
+[quote, '<https://en.wikipedia.org/wiki/Actor_model>']
+____
+[...] gives Actors the ability to create and participate in arbitrarily variable
+topological relationships with one another [...]
+____
+
+Functions:
+
+* `chan:send(msg)`
+* `chan:recv()`
+* `chan:close()`
