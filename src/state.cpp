@@ -9,33 +9,7 @@ namespace fs = std::filesystem;
 
 namespace emilua {
 
-static int sleep_for(lua_State* L)
-{
-    // TODO: handle this_fiber.disable_interruption state
-    lua_Integer msecs = luaL_checkinteger(L, 1);
-
-    auto vm_ctx = get_vm_context(L).shared_from_this();
-    auto current_fiber = vm_ctx->current_fiber();
-
-    auto t = std::make_shared<asio::steady_timer>(vm_ctx->strand().context());
-    t->expires_after(std::chrono::milliseconds(msecs));
-    t->async_wait(asio::bind_executor(
-        vm_ctx->strand_using_defer(),
-        [vm_ctx,current_fiber,t](const boost::system::error_code &ec) {
-            if (!vm_ctx->valid())
-                return;
-
-            // TODO: fiber interruption
-
-            vm_ctx->fiber_prologue(current_fiber);
-            push(current_fiber, ec);
-            int res = lua_resume(current_fiber, 1);
-            vm_ctx->fiber_epilogue(res);
-        }
-    ));
-
-    return lua_yield(L, 0);
-}
+int push_sleep_for(lua_State* L);
 
 static int println(lua_State* L)
 {
@@ -46,31 +20,11 @@ static int println(lua_State* L)
 
 static int require(lua_State* L)
 {
-    auto& vm_ctx = get_vm_context(L);
     luaL_checktype(L, 1, LUA_TSTRING);
     auto module = tostringview(L, 1);
     if (module == "sleep_for") {
-        int res = luaL_loadstring(
-            L,
-            "local error, native = ...\n"
-            "return function(...)\n"
-            "local e, v = native(...)\n"
-            "if e then\n"
-            "error(e)\n"
-            "else\n"
-            "return v\n"
-            "end\n"
-            "end\n"
-        );
-        assert(res != LUA_ERRSYNTAX);
-        if (res == LUA_ERRMEM) {
-            vm_ctx.notify_errmem();
-            return lua_yield(L, 0);
-        }
-        assert(res == 0);
-        lua_pushcfunction(L, lua_error);
-        lua_pushcfunction(L, sleep_for);
-        lua_call(L, 2, 1);
+        lua_pushcfunction(L, push_sleep_for);
+        lua_call(L, 0, 1);
         return 1;
     } else if (module == "println") {
         lua_pushcfunction(L, println);
