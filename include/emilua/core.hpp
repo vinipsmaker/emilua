@@ -235,6 +235,7 @@ enum class errc {
     failed_to_load_module,
     only_main_fiber_may_import,
     bad_root_context,
+    bad_index,
 };
 
 const std::error_category& category();

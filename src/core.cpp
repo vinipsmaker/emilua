@@ -228,6 +228,8 @@ std::string category_impl::message(int value) const noexcept
         return "You can only import modules from the main fiber.";
     case static_cast<int>(errc::bad_root_context):
         return "Bad root context.";
+    case static_cast<int>(errc::bad_index):
+        return "Requested key wasn't found in the table/userdata.";
     default:
         return "";
     }
