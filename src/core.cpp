@@ -224,7 +224,7 @@ std::string category_impl::message(int value) const noexcept
     case static_cast<int>(errc::failed_to_load_module):
         return "Error when opening/loading module file (maybe invalid lua"
             " syntax).";
-    case static_cast<int>(errc::only_main_fiber_can_import):
+    case static_cast<int>(errc::only_main_fiber_may_import):
         return "You can only import modules from the main fiber.";
     case static_cast<int>(errc::bad_root_context):
         return "Bad root context.";
