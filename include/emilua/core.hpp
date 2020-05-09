@@ -109,6 +109,12 @@ public:
     vm_context(boost::asio::io_context::strand strand);
     ~vm_context();
 
+    vm_context(const vm_context&) = delete;
+    vm_context(vm_context&&) = delete;
+
+    vm_context& operator=(const vm_context&) = delete;
+    vm_context& operator=(vm_context&&) = delete;
+
     const boost::asio::io_context::strand& strand()
     {
         return strand_;
