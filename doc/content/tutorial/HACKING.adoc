@@ -261,10 +261,10 @@ However some rules are needed to make this work:
 
 If the tx-channels are not closed, they will prevent execution contexts that are
 no longer necessary from being destroyed. But that's the best we can do. We
-could periodically call the GC to free unused channels, but so could lua code
-and there's nothing left for us to do on the {cpp} side. A good practice for lua
-code would be to add the following chunk at the beginning of the fiber who's
-gonna process the actor messages:
+could periodically call the GC to free unused channels, but so will lua code
+anyway and there's nothing left for us to do on the {cpp} side. A good practice
+for lua code would be to add the following chunk at the beginning of the fiber
+who's gonna process the actor messages:
 
 [source,lua]
 ----
@@ -276,6 +276,9 @@ Extra rules for channels management:
 * As an extra safety measure, if the main fiber finishes and `inbox` wasn't
   imported, the runtime closes it.
 * Channels (tx and rx) also get closed when the VM is terminated.
+* Channels must only upgrade their weak references to `vm_context` once they
+  migrated to the target strand. Otherwise, they would prevent the VM from
+  auto-closing (and hairy problems would follow).
 
 == The exception mechanism
 
@@ -723,6 +726,16 @@ Always keep in mind:
 * If you enable your IO object to be sent over channels, it'll also be able to
   migrate to a different `asio::io_context` and you must take care to keep a
   work guard to the original `asio::io_context`.
+* Pending operations must hold a strong reference to `vm_context` and a work
+  guard — directly or indirectly — to `vm_context.strand()`.
+* IO objects (channels included) by themselves must not hold any strong
+  references to their own `vm_context` (this cycle would prevent auto-closing
+  the VM and associated channels). Operation initiation is the perfect time to
+  upgrade _weak_ references (if any) to strong ones.
+* Pending operations must not trust `L` from the initiating operation to decide
+  which fiber to wake-up later on. They must resort — at initiation time — to
+  the `vm_context` API. Check the simple `sleep_for()` implementation for a code
+  template.
 
 == Final note
 
