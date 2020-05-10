@@ -13,5 +13,6 @@
 extern "C" {
 #include <lauxlib.h>
 #include <luajit.h>
+#include <lualib.h>
 #include <lua.h>
 }

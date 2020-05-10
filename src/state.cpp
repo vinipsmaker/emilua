@@ -251,6 +251,9 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
     lua_pushcfunction(L, require);
     lua_setglobal(L, "require");
 
+    lua_pushcfunction(L, luaopen_base);
+    lua_call(L, 0, 0);
+
     std::optional<std::reference_wrapper<std::string>> module_source;
     {
         auto& service = asio::use_service<emilua::service>(strand.context());
