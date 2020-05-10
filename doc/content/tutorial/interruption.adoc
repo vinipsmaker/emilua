@@ -275,9 +275,9 @@ Any of the interruption points can serve for the fiber to act on the
 interruption request. Another possible point where these mechanisms would be
 triggered is the `sock:write()` suspending function.
 
-NOTE: `this_fiber.uncaught_handler()` isn't called when the exception is
-`fiber_interrupted` so you don't really have to care about trapping interruption
-exceptions. You're free to just let the stack fully unwind.
+NOTE: The uncaught-hook isn't called when the exception is `fiber_interrupted`
+so you don't really have to care about trapping interruption exceptions. You're
+free to just let the stack fully unwind.
 
 [WARNING]
 --
@@ -404,7 +404,27 @@ local child_fib = spawn(function()
 end)
 ----
 
-If a cleanup handler throws an error, the error is ignored.
+[NOTE]
+--
+A hairy situation happens when a cleanup handler itself throws an error. The
+reason why the default uncaught-hook doesn't terminate the VM when secondary
+fibers fail is that cleanup handlers are trusted to keep the program
+invariants. Once a cleanup handler fails we can no longer hold this assumption.
+
+The fiber will immediately suspend until the error for the current cleanup
+handler is taken care of. On ``join()``ed fibers, the fiber handle will remain
+joinable so you can further resume the action of the remaining cleanup
+handlers. On ``detach()``ed fibers, the VM is terminated (there's no way to
+recover from this error without context, and conceptually by the time uncaught
+hooks are executed, the context was already lost).
+
+For the common case, you shouldn't try to `join()` the fiber a second time
+trying to prevent VM termination on cleanup errors. Just let the handle be GC'ed
+to terminate the VM. Proper recovery in these cases is pretty tricky and your
+best bet is to change the code and fix the error in the cleanup handler. If you
+need some sort of protection against one complex module that will fail now and
+then, run it in a separate actor.
+--
 
 If you want to call the last registered cleanup handler and pop it from the
 list, just call `scope_cleanup_pop()`. `scope_cleanup_pop()` receives an
@@ -429,13 +449,10 @@ yourself. The standard lua's `pcall()` is also modified to act as a scope which
 is a lot of convenience for you.
 
 When you call `scope_cleanup_pop()` yourself, errors raised from the cleanup
-handler are also swallowed and not propagated up. The thing is: you should not
-write errors in the cleanup or error handlers. Bugs are unavoidable but writing
-error handlers for error handlers for error handlers for error handlers in an
-infinite cascade won't do us any good.
+handler propagate through.
 
 IMPORTANT: Given `pcall()` is also an interruption point, examples written
-inside *WARNING* blocks from the previous section had bugs related to
+enclosed in *WARNING* blocks from the previous section had bugs related to
 maintaining invariants and the `scope()` family is the safest way to register
 cleanup handlers.
 

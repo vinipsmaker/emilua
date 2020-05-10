@@ -575,16 +575,23 @@ coroutine.running = ...
 
 == Dead fibers
 
-When a fiber errors, the `uncaught_handler` registered at
-`this_fiber.uncaught_handler` will be called. The default handler only prints a
-warning on stderr or calls `os.exit(-1)` if the error originates from the main
-fiber.
+When an exception escapes the fiber stack, the hook registered with
+`sys.set_uncaught_hook()` is called. The default hook prints the stack trace to
+`stderr` and additionally terminates the VM if the exception escaped from the
+main fiber. If the custom hook itself fails, the default hook is then called
+anyway.
+
+Scope handlers are properly popped and called after the hook returns control of
+the thread to the runtime.
+
+The hook is only called for detached fibers. Therefore, a different behaviour
+can be chosen for each ``join()``ed fiber. Also, if the fiber isn't explicitly
+``detach()``ed, the hook action will be deferred until some GC round.
 
 There isn't a `pcall` block around the whole program. `lua_resume` is enough and
 it has the nice property of not unwinding the stack so it can be examined from
-the error handler. A new lua thread is created to execute
-`this_fiber.uncaught_handler` while it has the chance to examine the unchanged
-error'ed call stack.
+the error handler. A new lua thread is created to execute the uncaught-hook
+while it has the chance to examine the unchanged error'ed call stack.
 
 == Functions that receive a lua callback
 
@@ -703,8 +710,8 @@ maxmcode=40960  -- in KB
 
 == Open questions
 
-* Describe the behaviour for `os.exit()` when called from other VMs. Should it
-  call the cancellator for every active operation? Should it exit the
+* Describe the behaviour for `sys.exit()` (for main and secondary VMs). Should
+  it call the cancellator for every active operation? Should it exit the
   application?
 * We do print to `stderr`. Shouldn't we provide an embedded logger module
   already?
