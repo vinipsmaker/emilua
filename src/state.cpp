@@ -1,6 +1,7 @@
 #include <new>
 
 #include <emilua/detail/core.hpp>
+#include <emilua/fiber.hpp>
 #include <emilua/state.hpp>
 
 using namespace std::string_view_literals;
@@ -205,7 +206,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
     {
         lua_createtable(L, /*narr=*/0, /*nrec=*/0);
 
-        lua_pushlightuserdata(L, &detail::fiber_list_key);
+        lua_pushlightuserdata(L, &fiber_list_key);
         lua_pushvalue(L, -2);
         lua_rawset(L, LUA_REGISTRYINDEX);
 
@@ -215,13 +216,13 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
         lua_createtable(L, /*narr=*/1, /*nrec=*/0);
         push(L, entry_point);
         lua_rawseti(L, -2, 1);
-        lua_rawseti(L, -2, detail::FiberDataIndex::STACK);
+        lua_rawseti(L, -2, FiberDataIndex::STACK);
 
         lua_pushboolean(L, 0);
-        lua_rawseti(L, -2, detail::FiberDataIndex::LEAF);
+        lua_rawseti(L, -2, FiberDataIndex::LEAF);
 
         lua_pushinteger(L, lua_context);
-        lua_rawseti(L, -2, detail::FiberDataIndex::CONTEXT);
+        lua_rawseti(L, -2, FiberDataIndex::CONTEXT);
 
         lua_rawset(L, -3);
         lua_pop(L, 1);
@@ -253,6 +254,13 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
 
     lua_pushcfunction(L, luaopen_base);
     lua_call(L, 0, 0);
+
+    lua_pushlightuserdata(L, &raw_unpack_key);
+    lua_pushliteral(L, "unpack");
+    lua_rawget(L, LUA_GLOBALSINDEX);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    init_fiber_module(L);
 
     std::optional<std::reference_wrapper<std::string>> module_source;
     {

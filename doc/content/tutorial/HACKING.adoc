@@ -105,6 +105,18 @@ Besides the common practices to create custom objects through userdata, Emilua
 * Hide the metatable. By doing that, user code is prevented from changing the
   metatable (the metatable is just an usual table after all) that native code
   relies on.
+* Assume `lua_setmetatable()` is an indivisible operation for userdata (i.e. if
+  it fails, it doesn't set a metatable nor any `__gc` metamethod). This
+  assumption is important to simplify object management by getting away with all
+  pre-initialization tricks teached on Roberto's manuals and associated
+  complexities.
+* Assume `lua_setmetatable()` reports errors through exceptions (i.e. it always
+  returns `1`). This is a superset of the previous point and it is _guaranteed_
+  by the
+  VMfootnote:[<http://lua-users.org/lists/lua-l/2007-10/msg00600.html>]. We
+  don't really care as much about this point, but as _it is_ guaranteed, the
+  assumption described in the previous point (which we _do_ care about) is
+  covered as well.
 
 == {cpp} async operations
 
@@ -676,6 +688,16 @@ New actors should inherit generic customization points for the GC (e.g. step
 count and period) and the JIT. They should also inherit allocator settings, but
 they must *not* be prevented from creating new actors with higher allocation
 quotas (unless of course the global pool is already at its limit).
+
+== Lua 5.2/LuaJIT extensions
+
+We use some C functions found only on Lua 5.2+ and/or LuaJIT:
+
+* `luaL_traceback()`
+* `luaopen_bit()`
+* `luaopen_jit()`
+* `luaopen_ffi()`
+* `LUAJIT_VERSION_SYM()`
 
 == 2GB addressing limit
 

@@ -19,10 +19,14 @@ bytecode_gen = generator(
 
 incdir = include_directories([
     '3rd/CLI11/include',
+    '3rd/fmt/include',
     'include'
 ])
 
 src = [
+    '3rd/fmt/src/format.cc',
+
+    'src/fiber.cpp',
     'src/timer.cpp',
     'src/state.cpp',
     'src/core.cpp',
@@ -31,6 +35,7 @@ src = [
 
 bytecode_src = bytecode_gen.process(
     'bytecode/sleep_for.lua',
+    'bytecode/fiber.lua',
 )
 
 executable(

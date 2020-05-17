@@ -1,6 +1,11 @@
 #pragma once
 
+#include <boost/core/ignore_unused.hpp>
 #include <boost/asio/io_context.hpp>
+
+#include <boost/outcome/basic_result.hpp>
+#include <boost/outcome/policy/all_narrow.hpp>
+#include <boost/outcome/policy/terminate.hpp>
 
 #include <system_error>
 #include <string_view>
@@ -15,6 +20,22 @@ extern "C" {
 }
 
 namespace emilua {
+
+using namespace std::literals::string_view_literals;
+namespace outcome = BOOST_OUTCOME_V2_NAMESPACE;
+
+extern bool stdout_has_color;
+extern char raw_unpack_key;
+
+template<class T, class EC = std::error_code>
+using result = outcome::basic_result<
+    T, EC,
+#ifdef NDEBUG
+    outcome::policy::all_narrow
+#else
+    outcome::policy::terminate
+#endif // defined(NDEBUG)
+>;
 
 namespace detail {
 template<class Executor>
@@ -167,6 +188,9 @@ inline void push(lua_State* L, std::errc ec)
 {
     return push(L, make_error_code(ec));
 }
+
+// gets value from top of the stack
+result<std::string, std::bad_alloc> errobj_to_string(lua_State* L);
 
 inline void push(lua_State* L, std::string_view str)
 {

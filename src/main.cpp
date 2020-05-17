@@ -11,6 +11,10 @@ namespace asio = boost::asio;
 int main(int argc, char *argv[])
 {
     LUAJIT_VERSION_SYM();
+
+    // TODO: add detection
+    emilua::stdout_has_color = true;
+
     CLI::App app{"Emilua: Execution engine for luaJIT"};
 
     std::string filename;

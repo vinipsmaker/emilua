@@ -1,13 +1,22 @@
+#include <cstdio>
 #include <new>
 
+#include <boost/hana/maximum.hpp>
+#include <boost/hana/tuple.hpp>
+#include <boost/hana/plus.hpp>
+
 #include <emilua/detail/core.hpp>
+#include <emilua/fiber.hpp>
 
 namespace asio = boost::asio;
+namespace hana = boost::hana;
 
 namespace emilua {
 
+bool stdout_has_color;
+char raw_unpack_key;
+
 namespace detail {
-char fiber_list_key;
 char context_key;
 char error_code_key;
 char error_category_key;
@@ -61,30 +70,97 @@ void vm_context::fiber_epilogue(int resume_result)
         // Nothing to do. Fiber is awakened by the completion handler.
         break;
     case 0: //< finished without errors
-        // TODO:
-        // join algorithm
-        rawgetp(current_fiber_, LUA_REGISTRYINDEX, &detail::fiber_list_key);
+    case LUA_ERRRUN: { //< a runtime error
+        constexpr int extra = /*common path=*/3 +
+            /*code branches=*/hana::maximum(hana::tuple_c<int, 2, 1, 2>);
+        if (!lua_checkstack(current_fiber_, extra)) {
+            close();
+            return;
+        }
+
+        rawgetp(current_fiber_, LUA_REGISTRYINDEX, &fiber_list_key);
 
         lua_pushthread(current_fiber_);
         lua_rawget(current_fiber_, -2);
-        lua_rawgeti(current_fiber_, -1, detail::FiberDataIndex::CONTEXT);
-        if (lua_type(current_fiber_, -1) == LUA_TNIL) {
-            lua_pop(current_fiber_, 2);
+        lua_rawgeti(current_fiber_, -1, FiberDataIndex::JOINER);
+        int joiner_type = lua_type(current_fiber_, -1);
+        if (joiner_type == LUA_TBOOLEAN) {
+            // Detached
+            assert(lua_toboolean(current_fiber_, -1) == 0);
+
+            if (resume_result == LUA_ERRRUN) {
+                luaL_traceback(current_fiber_, current_fiber_, nullptr, 1);
+                lua_pushvalue(current_fiber_, -5);
+                result<std::string, std::bad_alloc> err_str =
+                    errobj_to_string(current_fiber_);
+                if (!err_str) {
+                    close();
+                    return;
+                }
+                print_panic(current_fiber_, /*is_main=*/false,
+                            err_str.assume_value(),
+                            tostringview(current_fiber_, -2));
+                lua_pop(current_fiber_, 2);
+            }
+
             lua_pushthread(current_fiber_);
             lua_pushnil(current_fiber_);
-            lua_rawset(current_fiber_, -3);
-        } else {
-            lua_pop(current_fiber_, 2);
-        }
+            lua_rawset(current_fiber_, -5);
+            // TODO (?): force a full GC round on `L()` now
+        } else if (joiner_type == LUA_TTHREAD) {
+            // Joined
+            lua_State* joiner = lua_tothread(current_fiber_, -1);
 
-        lua_pop(current_fiber_, 1);
+            lua_pushinteger(
+                current_fiber_,
+                (resume_result == 0)
+                ? FiberStatus::FINISHED_SUCCESSFULLY
+                : FiberStatus::FINISHED_WITH_ERROR);
+            lua_rawseti(current_fiber_, -3, FiberDataIndex::STATUS);
+
+            lua_pop(current_fiber_, 3);
+
+            int nret = (resume_result == 0) ? lua_gettop(current_fiber_) : 1;
+            if (!lua_checkstack(joiner, nret + 1)) {
+                close();
+                return;
+            }
+            lua_pushboolean(joiner, resume_result == 0);
+            lua_xmove(current_fiber_, joiner, nret);
+
+            fiber_prologue(joiner);
+            int res = lua_resume(joiner, nret + 1);
+            // I'm assuming the compiler will eliminate this tail recursive call
+            // or else we may experience stack overflow on really really long
+            // join()-chains. Still better than the round-trip of post
+            // semantics.
+            return fiber_epilogue(res);
+        } else {
+            // Handle still alive
+            if (resume_result == LUA_ERRRUN && L() == current_fiber_) {
+                // TODO: call uncaught-hook
+                luaL_traceback(L(), L(), nullptr, 1);
+                lua_pushvalue(L(), -5);
+                result<std::string, std::bad_alloc> err_str =
+                    errobj_to_string(L());
+                if (!err_str)
+                    err_str = outcome::success();
+                print_panic(L(), /*is_main=*/true, err_str.assume_value(),
+                            tostringview(L(), -2));
+                close();
+                return;
+            } else {
+                lua_pushinteger(
+                    current_fiber_,
+                    (resume_result == 0)
+                    ? FiberStatus::FINISHED_SUCCESSFULLY
+                    : FiberStatus::FINISHED_WITH_ERROR);
+                lua_rawseti(current_fiber_, -3, FiberDataIndex::STATUS);
+                lua_pop(current_fiber_, 3);
+            }
+        }
         break;
-    case LUA_ERRRUN: //< a runtime error
-        // TODO:
-        // errored, call handler as in detail::on_fiber_resumed()
-        // join algorithm
-        throw std::runtime_error{"UNIMPLEMENTED"};
-        break;
+    }
     case LUA_ERRMEM: //< memory allocation error
         close();
         break;
@@ -132,6 +208,48 @@ void push(lua_State* L, const std::error_code& ec)
 
     rawgetp(L, LUA_REGISTRYINDEX, &detail::error_code_key);
     lua_setmetatable(L, -2);
+}
+
+result<std::string, std::bad_alloc> errobj_to_string(lua_State* L)
+{
+    if (!lua_checkstack(L, 4))
+        return std::bad_alloc{};
+
+    std::string ret;
+
+    switch (lua_type(L, -1)) {
+    case LUA_TSTRING:
+        ret = tostringview(L, -1);
+        break;
+    case LUA_TTABLE: {
+        int ev;
+        std::error_category* cat;
+        lua_pushliteral(L, "val");
+        lua_rawget(L, -2);
+        if (lua_type(L, -1) != LUA_TNUMBER) {
+            lua_pop(L, 1);
+            break;
+        }
+        ev = lua_tointeger(L, -1);
+        lua_pushliteral(L, "cat");
+        lua_rawget(L, -3);
+        if (lua_type(L, -1) != LUA_TUSERDATA || !lua_getmetatable(L, -1)) {
+            lua_pop(L, 2);
+            break;
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &detail::error_category_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            lua_pop(L, 4);
+            break;
+        }
+        cat = *reinterpret_cast<std::error_category**>(lua_touserdata(L, -3));
+        ret = cat->message(ev);
+        lua_pop(L, 4);
+        break;
+    }
+    }
+
+    return std::move(ret);
 }
 
 class lua_category_impl: public std::error_category
