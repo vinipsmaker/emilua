@@ -1,6 +1,7 @@
 #include <cstdio>
 
 #include <emilua/fiber.hpp>
+#include <emilua/dispatch_table.hpp>
 
 #include <fmt/format.h>
 
@@ -197,29 +198,61 @@ static int fiber_interrupt(lua_State*)
 
 static int fiber_meta_index(lua_State* L)
 {
-    auto key = tostringview(L, 2);
-    if (key == "joinable") {
-        auto handle = reinterpret_cast<fiber_handle*>(lua_touserdata(L, 1));
-        assert(handle);
-        lua_pushboolean(L, handle->fiber != nullptr);
-        return 1;
-    } else if (key == "join") {
-        rawgetp(L, LUA_REGISTRYINDEX, &fiber_join_key);
-        return 1;
-    } else if (key == "detach") {
-        lua_pushcfunction(L, fiber_detach);
-        return 1;
-    } else if (key == "interrupt") {
-        lua_pushcfunction(L, fiber_interrupt);
-        return 1;
-    } else if (key == "interruption_caught") {
-        // TODO
-    }
-    push(L, errc::bad_index);
-    lua_pushliteral(L, "index");
-    lua_pushvalue(L, 2);
-    lua_rawset(L, -3);
-    return lua_error(L);
+    return dispatch_table::dispatch(
+        hana::make_tuple(
+            hana::make_pair(
+                BOOST_HANA_STRING("join"),
+                [](lua_State* L) -> int {
+                    rawgetp(L, LUA_REGISTRYINDEX, &fiber_join_key);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("detach"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, fiber_detach);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("interrupt"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, fiber_interrupt);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("interruption_caught"),
+                [](lua_State* L) -> int {
+                    // TODO
+                    push(L, errc::bad_index);
+                    lua_pushliteral(L, "index");
+                    lua_pushvalue(L, 2);
+                    lua_rawset(L, -3);
+                    return lua_error(L);
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("joinable"),
+                [](lua_State* L) -> int {
+                    auto handle = reinterpret_cast<fiber_handle*>(
+                        lua_touserdata(L, 1));
+                    assert(handle);
+                    lua_pushboolean(L, handle->fiber != nullptr);
+                    return 1;
+                }
+            )
+        ),
+        [](std::string_view /*key*/, lua_State* L) -> int {
+            push(L, errc::bad_index);
+            lua_pushliteral(L, "index");
+            lua_pushvalue(L, 2);
+            lua_rawset(L, -3);
+            return lua_error(L);
+        },
+        tostringview(L, 2),
+        L
+    );
 }
 
 static int fiber_meta_gc(lua_State* L)
