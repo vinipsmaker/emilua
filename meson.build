@@ -1,5 +1,13 @@
 project('emilua', 'cpp', default_options : ['cpp_std=c++17'])
 
+conf = configuration_data()
+conf.set10('ENABLE_COLOR', not get_option('disable_color'))
+configure_file(
+    input : 'config.h.in',
+    output : 'config.h',
+    configuration : conf,
+)
+
 luajit = dependency('luajit', version : '>=2.0.5')
 boost = dependency(
     'boost',
@@ -16,6 +24,12 @@ bytecode_gen = generator(
     output: '@BASENAME@.cpp',
     arguments: ['--', '@INPUT@', '@OUTPUT@']
 )
+
+if get_option('disable_color')
+    curses = dependency('', required : false)
+else
+    curses = dependency('curses', required : true)
+endif
 
 incdir = include_directories([
     '3rd/CLI11/include',
@@ -43,6 +57,6 @@ executable(
     src,
     bytecode_src,
     cpp_pch : 'pch/pchheader.hpp',
-    dependencies : [boost, luajit],
+    dependencies : [boost, luajit, curses],
     include_directories : incdir
 )
