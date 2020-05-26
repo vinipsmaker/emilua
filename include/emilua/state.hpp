@@ -19,4 +19,3 @@ std::shared_ptr<vm_context> make_vm(boost::asio::io_context& ioctx,
                                     ContextType lua_context);
 
 } // namespace emilua
-
