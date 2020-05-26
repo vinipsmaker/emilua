@@ -1,3 +1,5 @@
+#pragma once
+
 #include <emilua/core.hpp>
 
 #include <boost/asio/io_context.hpp>
