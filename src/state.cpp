@@ -179,19 +179,19 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
                 lua_pushliteral(L, "val");
                 lua_rawget(L, 1);
                 if (lua_type(L, -1) != LUA_TNUMBER) {
-                    push(L, std::errc::argument_out_of_domain);
+                    push(L, std::errc::invalid_argument);
                     return lua_error(L);
                 }
                 int val = lua_tonumber(L, -1);
                 lua_pushliteral(L, "cat");
                 lua_rawget(L, 1);
                 if (!lua_getmetatable(L, -1)) {
-                    push(L, std::errc::argument_out_of_domain);
+                    push(L, std::errc::invalid_argument);
                     return lua_error(L);
                 }
                 rawgetp(L, LUA_REGISTRYINDEX, &detail::error_category_key);
                 if (!lua_rawequal(L, -1, -2)) {
-                    push(L, std::errc::argument_out_of_domain);
+                    push(L, std::errc::invalid_argument);
                     return lua_error(L);
                 }
                 auto cat = reinterpret_cast<std::error_category**>(

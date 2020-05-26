@@ -37,7 +37,7 @@ static int fiber_join(lua_State* L)
     auto& vm_ctx = get_vm_context(L);
     auto handle = reinterpret_cast<fiber_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::argument_out_of_domain);
+        push(L, std::errc::invalid_argument);
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
@@ -45,7 +45,7 @@ static int fiber_join(lua_State* L)
     }
     rawgetp(L, LUA_REGISTRYINDEX, &fiber_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::argument_out_of_domain);
+        push(L, std::errc::invalid_argument);
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
@@ -125,7 +125,7 @@ static int fiber_detach(lua_State* L)
     auto& vm_ctx = get_vm_context(L);
     auto handle = reinterpret_cast<fiber_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::argument_out_of_domain);
+        push(L, std::errc::invalid_argument);
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
@@ -133,7 +133,7 @@ static int fiber_detach(lua_State* L)
     }
     rawgetp(L, LUA_REGISTRYINDEX, &fiber_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::argument_out_of_domain);
+        push(L, std::errc::invalid_argument);
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
