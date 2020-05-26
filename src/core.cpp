@@ -40,8 +40,30 @@ vm_context::~vm_context()
 
 void vm_context::close()
 {
-    if (valid_)
+    if (valid_) {
+        if (lua_errmem) {
+            constexpr auto spec{FMT_STRING(
+                "{}VM {:p} forcibly closed due to '{}LUA_ERRMEM{}'{}\n"
+            )};
+
+            std::string_view red{"\033[31;1m"};
+            std::string_view underline{"\033[4m"};
+            std::string_view reset_red{"\033[22;39m"};
+            std::string_view reset_underline{"\033[24m"};
+            if (!stdout_has_color)
+                red = underline = reset_red = reset_underline = {};
+
+            fmt::print(
+                stderr,
+                spec,
+                red,
+                static_cast<const void*>(L_),
+                underline, reset_underline,
+                reset_red);
+        }
+
         lua_close(L_);
+    }
 
     valid_ = false;
     L_ = nullptr;
@@ -71,6 +93,7 @@ void vm_context::fiber_epilogue(int resume_result)
         constexpr int extra = /*common path=*/3 +
             /*code branches=*/hana::maximum(hana::tuple_c<int, 2, 1, 2>);
         if (!lua_checkstack(current_fiber_, extra)) {
+            lua_errmem = true;
             close();
             return;
         }
@@ -91,6 +114,7 @@ void vm_context::fiber_epilogue(int resume_result)
                 result<std::string, std::bad_alloc> err_str =
                     errobj_to_string(current_fiber_);
                 if (!err_str) {
+                    lua_errmem = true;
                     close();
                     return;
                 }
@@ -118,6 +142,7 @@ void vm_context::fiber_epilogue(int resume_result)
 
             int nret = (resume_result == 0) ? lua_gettop(current_fiber_) : 1;
             if (!lua_checkstack(joiner, nret + 1)) {
+                lua_errmem = true;
                 close();
                 return;
             }
@@ -158,6 +183,7 @@ void vm_context::fiber_epilogue(int resume_result)
         break;
     }
     case LUA_ERRMEM: //< memory allocation error
+        lua_errmem = true;
         close();
         break;
     case LUA_ERRERR:
