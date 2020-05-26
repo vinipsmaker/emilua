@@ -1,5 +1,7 @@
 #pragma once
 
+#include <boost/asio/io_context_strand.hpp>
+#include <boost/asio/bind_executor.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <boost/asio/io_context.hpp>
 

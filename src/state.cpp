@@ -1,3 +1,5 @@
+#include <iostream>
+#include <fstream>
 #include <new>
 
 #include <emilua/detail/core.hpp>

@@ -1,3 +1,5 @@
+#include <boost/asio/steady_timer.hpp>
+
 #include <emilua/timer.hpp>
 
 namespace asio = boost::asio;
