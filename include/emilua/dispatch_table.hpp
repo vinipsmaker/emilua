@@ -2,15 +2,21 @@
 
 #include <emilua/core.hpp>
 
+#include <boost/hana/functional/overload_linearly.hpp>
 #include <boost/hana/functional/overload.hpp>
 #include <boost/hana/functional/always.hpp>
 #include <boost/hana/fold_right.hpp>
 #include <boost/hana/drop_back.hpp>
+#include <boost/hana/not_equal.hpp>
+#include <boost/hana/greater.hpp>
+#include <boost/hana/minimum.hpp>
 #include <boost/hana/reverse.hpp>
 #include <boost/hana/string.hpp>
+#include <boost/hana/minus.hpp>
 #include <boost/hana/range.hpp>
 #include <boost/hana/tuple.hpp>
 #include <boost/hana/fold.hpp>
+#include <boost/hana/mult.hpp>
 #include <boost/hana/size.hpp>
 #include <boost/hana/sort.hpp>
 #include <boost/hana/set.hpp>
@@ -126,7 +132,7 @@ struct Hash
                             [](std::string_view str) { return str.size(); },
                             hana::size
                         );
-                        auto at = hana::overload(
+                        auto at = hana::overload_linearly(
                             [](std::string_view str, std::size_t i) {
                                 return std::uint32_t(str[i]);
                             },
