@@ -9,9 +9,6 @@
 #include <boost/hana/tuple.hpp>
 #include <boost/hana/plus.hpp>
 
-namespace asio = boost::asio;
-namespace hana = boost::hana;
-
 namespace emilua {
 
 extern unsigned char fiber_join_bytecode[];

@@ -2,8 +2,6 @@
 
 #include <emilua/timer.hpp>
 
-namespace asio = boost::asio;
-
 namespace emilua {
 
 extern unsigned char sleep_for_bytecode[];

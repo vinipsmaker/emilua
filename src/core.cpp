@@ -8,9 +8,6 @@
 #include <emilua/detail/core.hpp>
 #include <emilua/fiber.hpp>
 
-namespace asio = boost::asio;
-namespace hana = boost::hana;
-
 namespace emilua {
 
 bool stdout_has_color;

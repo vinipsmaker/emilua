@@ -7,11 +7,10 @@
 #include <emilua/state.hpp>
 #include <emilua/timer.hpp>
 
-using namespace std::string_view_literals;
-namespace asio = boost::asio;
-namespace fs = std::filesystem;
-
 namespace emilua {
+
+using namespace std::string_view_literals;
+namespace fs = std::filesystem;
 
 static int println(lua_State* L)
 {
