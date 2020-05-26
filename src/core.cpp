@@ -1,6 +1,8 @@
 #include <cstdio>
 #include <new>
 
+#include <fmt/format.h>
+
 #include <boost/hana/maximum.hpp>
 #include <boost/hana/tuple.hpp>
 #include <boost/hana/plus.hpp>
