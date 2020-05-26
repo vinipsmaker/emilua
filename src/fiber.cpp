@@ -373,7 +373,23 @@ static int this_fiber_meta_index(lua_State* L)
             hana::make_pair(
                 BOOST_HANA_STRING("local"),
                 [](lua_State* L) -> int {
-                    return luaL_error(L, "unimplemented");
+                    auto& vm_ctx = get_vm_context(L);
+                    if (!lua_checkstack(vm_ctx.current_fiber(), 1)) {
+                        vm_ctx.notify_errmem();
+                        return lua_yield(L, 0);
+                    }
+
+                    rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
+                    lua_pushthread(vm_ctx.current_fiber());
+                    lua_xmove(vm_ctx.current_fiber(), L, 1);
+                    lua_rawget(L, -2);
+                    lua_rawgeti(L, -1, FiberDataIndex::LOCAL_STORAGE);
+                    if (lua_type(L, -1) == LUA_TNIL) {
+                        lua_newtable(L);
+                        lua_pushvalue(L, -1);
+                        lua_rawseti(L, -4, FiberDataIndex::LOCAL_STORAGE);
+                    }
+                    return 1;
                 }
             ),
             hana::make_pair(

@@ -83,6 +83,7 @@ if get_option('enable_tests')
             'join5',
             'join6',
             'yield',
+            'local_storage',
         ],
         'programs' : [
             'sleepsort',

@@ -1,0 +1,9 @@
+nil
+foo
+foo
+nil
+bar
+foo
+end of main fiber
+bar
+end of secondary fiber
