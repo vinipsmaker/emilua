@@ -31,6 +31,12 @@ else
     curses = dependency('curses', required : true)
 endif
 
+if get_option('enable_tests')
+    # GNU Coreutils binaries are not specified explicitly, but expected too
+    bash = find_program('bash')
+    awk = find_program('awk')
+endif
+
 incdir = include_directories([
     '3rd/CLI11/include',
     '3rd/fmt/include',
@@ -52,7 +58,7 @@ bytecode_src = bytecode_gen.process(
     'bytecode/fiber.lua',
 )
 
-executable(
+emilua_bin = executable(
     'emilua',
     src,
     bytecode_src,
@@ -60,3 +66,40 @@ executable(
     dependencies : [boost, luajit, curses],
     include_directories : incdir
 )
+
+if get_option('enable_tests')
+    tests = {
+        'fiber' : [
+            'detach1',
+            'detach2',
+            'detach3',
+            'detach4',
+            'detach5',
+            'detach6',
+            'join1',
+            'join2',
+            'join3',
+            'join4',
+            'join5',
+            'join6',
+        ],
+        'programs' : [
+            'sleepsort',
+        ]
+    }
+
+    foreach suite, t : tests
+        foreach t : t
+            test(t, bash, suite : suite,
+                 args : [
+                     meson.current_source_dir() + '/test/run_test.sh',
+                     meson.current_source_dir() + '/test/run_test.awk',
+                     meson.current_source_dir() + '/test/' + t,
+                 ],
+                 env : [
+                     'EMILUA_BIN=' + emilua_bin.full_path(),
+                     'AWK_BIN=' + awk.path(),
+                 ])
+        endforeach
+    endforeach
+endif
