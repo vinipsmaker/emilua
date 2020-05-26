@@ -13,7 +13,8 @@
         exit 1
     }
     if ($0 != expected) {
-        print "Expected:\n\t" expected "\nGot:\n\t" $0 > "/dev/stderr"
+        print "Expected (LINE " NR "):\n\t" expected "\nGot:\n\t" $0 > \
+            "/dev/stderr"
         err = 1
     }
 }
