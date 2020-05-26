@@ -1,7 +1,6 @@
 -- This test ensures join() propagates values back from the joinee.
 
 local println = require('println')
-local sleep_for = require('sleep_for')
 
 local fib = spawn(function()
     println('secondary fiber starts')

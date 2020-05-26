@@ -2,15 +2,14 @@
 -- printed to stderr
 
 local println = require('println')
-local sleep_for = require('sleep_for')
 
 local fib = spawn(function()
     println('secondary fiber starts')
-    sleep_for(20)
+    this_fiber.yield()
     error('tag', 0)
 end)
 
 println('secondary fiber spawned')
-sleep_for(10)
+this_fiber.yield()
 fib:detach()
 println('end of main fiber')

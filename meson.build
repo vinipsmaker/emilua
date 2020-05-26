@@ -82,6 +82,7 @@ if get_option('enable_tests')
             'join4',
             'join5',
             'join6',
+            'yield',
         ],
         'programs' : [
             'sleepsort',

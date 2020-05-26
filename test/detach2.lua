@@ -2,7 +2,6 @@
 -- will have their stacktrace printed to stderr (if err'ed)
 
 local println = require('println')
-local sleep_for = require('sleep_for')
 
 collectgarbage("stop")
 
@@ -12,7 +11,7 @@ spawn(function()
 end)
 
 println('secondary fiber spawned')
-sleep_for(10)
+this_fiber.yield()
 println('about to gc')
 collectgarbage("collect")
 println('end of main fiber')

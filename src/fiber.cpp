@@ -341,6 +341,60 @@ static int spawn(lua_State* L)
     return 1;
 }
 
+static int this_fiber_yield(lua_State* L)
+{
+    auto vm_ctx = get_vm_context(L).shared_from_this();
+    auto current_fiber = vm_ctx->current_fiber();
+    vm_ctx->strand().defer(
+        [vm_ctx,current_fiber]() {
+            if (!vm_ctx->valid())
+                return;
+
+            vm_ctx->fiber_prologue(current_fiber);
+            int res = lua_resume(current_fiber, 0);
+            vm_ctx->fiber_epilogue(res);
+        },
+        std::allocator<void>{}
+    );
+    return lua_yield(L, 0);
+}
+
+static int this_fiber_meta_index(lua_State* L)
+{
+    return dispatch_table::dispatch(
+        hana::make_tuple(
+            hana::make_pair(
+                BOOST_HANA_STRING("yield"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, this_fiber_yield);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("local"),
+                [](lua_State* L) -> int {
+                    return luaL_error(L, "unimplemented");
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("is_main"),
+                [](lua_State* L) -> int {
+                    return luaL_error(L, "unimplemented");
+                }
+            )
+        ),
+        [](std::string_view /*key*/, lua_State* L) -> int {
+            push(L, errc::bad_index);
+            lua_pushliteral(L, "index");
+            lua_pushvalue(L, 2);
+            lua_rawset(L, -3);
+            return lua_error(L);
+        },
+        tostringview(L, 2),
+        L
+    );
+}
+
 void init_fiber_module(lua_State* L)
 {
     lua_pushliteral(L, "spawn");
@@ -379,6 +433,22 @@ void init_fiber_module(lua_State* L)
         lua_call(L, 3, 1);
         lua_rawset(L, LUA_REGISTRYINDEX);
     }
+
+    lua_pushliteral(L, "this_fiber");
+    lua_newtable(L);
+    {
+        lua_newtable(L);
+
+        lua_pushliteral(L, "__metatable");
+        lua_pushliteral(L, "this_fiber");
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__index");
+        lua_pushcfunction(L, this_fiber_meta_index);
+        lua_rawset(L, -3);
+    }
+    lua_setmetatable(L, -2);
+    lua_rawset(L, LUA_GLOBALSINDEX);
 }
 
 void print_panic(const lua_State* fiber, bool is_main, std::string_view error,
