@@ -1,4 +1,4 @@
-#include <emilua/core.hpp>
+#include <emilua/timer.hpp>
 
 namespace asio = boost::asio;
 
@@ -35,21 +35,22 @@ static int sleep_for(lua_State* L)
     return lua_yield(L, 0);
 }
 
-int push_sleep_for(lua_State* L)
+result<void, std::bad_alloc> push_sleep_for(lua_State* L)
 {
-    auto& vm_ctx = get_vm_context(L);
+    if (!lua_checkstack(L, 3))
+        return std::bad_alloc{};
+
     int res = luaL_loadbuffer(L, reinterpret_cast<char*>(sleep_for_bytecode),
                               sleep_for_bytecode_size, nullptr);
     assert(res != LUA_ERRSYNTAX);
-    if (res == LUA_ERRMEM) {
-        vm_ctx.notify_errmem();
-        return lua_yield(L, 0);
-    }
+    if (res == LUA_ERRMEM)
+        return std::bad_alloc{};
+
     assert(res == 0);
     lua_pushcfunction(L, lua_error);
     lua_pushcfunction(L, sleep_for);
     lua_call(L, 2, 1);
-    return 1;
+    return outcome::success();
 }
 
 } // namespace emilua

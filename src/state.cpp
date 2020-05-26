@@ -3,14 +3,13 @@
 #include <emilua/detail/core.hpp>
 #include <emilua/fiber.hpp>
 #include <emilua/state.hpp>
+#include <emilua/timer.hpp>
 
 using namespace std::string_view_literals;
 namespace asio = boost::asio;
 namespace fs = std::filesystem;
 
 namespace emilua {
-
-int push_sleep_for(lua_State* L);
 
 static int println(lua_State* L)
 {
@@ -21,11 +20,15 @@ static int println(lua_State* L)
 
 static int require(lua_State* L)
 {
+    auto& vm_ctx = get_vm_context(L);
     luaL_checktype(L, 1, LUA_TSTRING);
     auto module = tostringview(L, 1);
     if (module == "sleep_for") {
-        lua_pushcfunction(L, push_sleep_for);
-        lua_call(L, 0, 1);
+        result<void, std::bad_alloc> res = push_sleep_for(L);
+        if (!res) {
+            vm_ctx.notify_errmem();
+            return lua_yield(L, 0);
+        }
         return 1;
     } else if (module == "println") {
         lua_pushcfunction(L, println);
