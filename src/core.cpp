@@ -97,8 +97,7 @@ void vm_context::fiber_epilogue(int resume_result)
                     close();
                     return;
                 }
-                print_panic(current_fiber_, /*is_main=*/false,
-                            err_str.assume_value(),
+                print_panic(current_fiber_, /*is_main=*/false, err_str.value(),
                             tostringview(current_fiber_, -2));
                 lua_pop(current_fiber_, 2);
             }
@@ -145,7 +144,7 @@ void vm_context::fiber_epilogue(int resume_result)
                     errobj_to_string(L());
                 if (!err_str)
                     err_str = outcome::success();
-                print_panic(L(), /*is_main=*/true, err_str.assume_value(),
+                print_panic(L(), /*is_main=*/true, err_str.value(),
                             tostringview(L(), -2));
                 close();
                 return;

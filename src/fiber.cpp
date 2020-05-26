@@ -178,8 +178,8 @@ static int fiber_detach(lua_State* L)
                 vm_ctx.notify_errmem();
                 return lua_yield(L, 0);
             }
-            print_panic(handle->fiber, /*is_main=*/false,
-                        err_str.assume_value(), tostringview(L, -1));
+            print_panic(handle->fiber, /*is_main=*/false, err_str.value(),
+                        tostringview(L, -1));
         }
         lua_pushthread(handle->fiber);
         lua_pushnil(handle->fiber);
@@ -294,8 +294,8 @@ static int fiber_meta_gc(lua_State* L)
                 vm_ctx.notify_errmem();
                 return 0;
             }
-            print_panic(handle->fiber, /*is_main=*/false,
-                        err_str.assume_value(), tostringview(L, -1));
+            print_panic(handle->fiber, /*is_main=*/false, err_str.value(),
+                        tostringview(L, -1));
         }
         lua_pushthread(handle->fiber);
         lua_pushnil(handle->fiber);
