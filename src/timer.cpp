@@ -26,7 +26,17 @@ static int sleep_for(lua_State* L)
             // TODO: fiber interruption
 
             vm_ctx->fiber_prologue(current_fiber);
-            push(current_fiber, ec);
+            vm_ctx->enable_reserved_zone();
+
+            if (result<void, std::bad_alloc> r = push(current_fiber, ec) ; !r) {
+                vm_ctx->fiber_epilogue(LUA_ERRMEM);
+                return;
+            }
+
+            vm_ctx->reclaim_reserved_zone_or_close();
+            if (!vm_ctx->valid())
+                return;
+
             int res = lua_resume(current_fiber, 1);
             vm_ctx->fiber_epilogue(res);
         }

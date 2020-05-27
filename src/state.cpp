@@ -35,7 +35,7 @@ static int require(lua_State* L)
         lua_pushcfunction(L, println);
         return 1;
     } else {
-        push(L, errc::module_not_found);
+        push(L, errc::module_not_found).value();
         return lua_error(L);
     }
     return 0;
@@ -129,7 +129,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
                     );
                     return 1;
                 } else {
-                    push(L, errc::bad_index);
+                    push(L, errc::bad_index).value();
                     lua_pushliteral(L, "index");
                     lua_pushvalue(L, 2);
                     lua_rawset(L, -3);
@@ -180,19 +180,19 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
                 lua_pushliteral(L, "val");
                 lua_rawget(L, 1);
                 if (lua_type(L, -1) != LUA_TNUMBER) {
-                    push(L, std::errc::invalid_argument);
+                    push(L, std::errc::invalid_argument).value();
                     return lua_error(L);
                 }
                 int val = lua_tonumber(L, -1);
                 lua_pushliteral(L, "cat");
                 lua_rawget(L, 1);
                 if (!lua_getmetatable(L, -1)) {
-                    push(L, std::errc::invalid_argument);
+                    push(L, std::errc::invalid_argument).value();
                     return lua_error(L);
                 }
                 rawgetp(L, LUA_REGISTRYINDEX, &detail::error_category_key);
                 if (!lua_rawequal(L, -1, -2)) {
-                    push(L, std::errc::invalid_argument);
+                    push(L, std::errc::invalid_argument).value();
                     return lua_error(L);
                 }
                 auto cat = reinterpret_cast<std::error_category**>(

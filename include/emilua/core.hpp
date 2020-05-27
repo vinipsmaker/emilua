@@ -179,6 +179,8 @@ public:
     void fiber_epilogue(int resume_result);
 
     void notify_errmem();
+    void enable_reserved_zone();
+    void reclaim_reserved_zone_or_close();
 
 private:
     boost::asio::io_context::strand strand_;
@@ -190,9 +192,9 @@ private:
 
 vm_context& get_vm_context(lua_State* L);
 
-void push(lua_State* L, const std::error_code& ec);
+result<void, std::bad_alloc> push(lua_State* L, const std::error_code& ec);
 
-inline void push(lua_State* L, std::errc ec)
+inline result<void, std::bad_alloc> push(lua_State* L, std::errc ec)
 {
     return push(L, make_error_code(ec));
 }

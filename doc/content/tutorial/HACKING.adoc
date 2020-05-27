@@ -118,6 +118,14 @@ Besides the common practices to create custom objects through userdata, Emilua
   assumption described in the previous point (which we _do_ care about) is
   covered as well.
 
+== Conventions
+
+And there are a few conventions apart from IO objects on the code-base as well:
+
+* If a function returns `result<T, std::bad_alloc>`, the function itself will be
+  responsible to call `lua_checkstack()` and you don't need to do this usual
+  preparation beforehand yourself.
+
 == {cpp} async operations
 
 Let's begin with `require()`.
@@ -255,6 +263,27 @@ their own objects from this container and use them for other purposes.
 `LUA_ERRMEM` all they have to do is to mark the flags field from `vm_context`
 and suspend the fiber. The runtime will take care of closing `lua_State*` and
 extra cleanup when it recovers control of the thread.
+
+The other side of the coin is to _detect_ `LUA_ERRMEM` — not always a trivial
+task. The manual will instruct you about the basics — `LUA_MINSTACK`,
+`lua_checkstack()` and `lua_pcall()`. `lua_pcall()` might return `LUA_ERRMEM` if
+allocation fails, but this only works for {cpp} code running within VM
+context. Outside VM context (e.g. when an async op completes and is about to
+push the result and call `lua_resume()`), there are plenty of functions that
+just cannot be safely called (e.g. `lua_createtable()`) and in fact might not
+even be possible to create a safe context to call them.
+
+Emilua's solution is to use an allocator that reserves a small area to critical
+sections (i.e. code running outside the VM context). This zone is only available
+when explicitly enabled. By the end of the critical section, you must instruct
+the allocator to reclaim the reserved zone (and the zone will become unavailable
+again until requested a second time). If reclaiming fails, then you safely
+detected `LUA_ERRMEM` and should proceed to the path that will trigger
+`lua_close()`. The critical section *must not* use indiscriminate
+allocations/operations (so arbitrary lua code is also forbidden). The reserved
+zone must be understood as “too small to fail” (but do note that
+`lua_checkstack()` might still fail given `realloc()` semantics), so do keep
+this extra usage during the critical section bounded and small.
 
 == Channels and resources
 
@@ -758,6 +787,11 @@ Always keep in mind:
   which fiber to wake-up later on. They must resort — at initiation time — to
   the `vm_context` API. Check the simple `sleep_for()` implementation for a code
   template.
+* Don't forget to call `lua_checkstack()` before resuming a suspended fiber (if
+  there is any value that you need to push to the stack). Lua only allocates
+  `LUA_MINSTACK` when the VM calls a C function. Therefore you don't have
+  `LUA_MINSTACK` when you're resuming a Lua thread. There are non-obvious paths
+  that executed Lua code can walk to reach this limit.
 
 == Final note
 

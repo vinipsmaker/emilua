@@ -199,6 +199,17 @@ void vm_context::notify_errmem()
     lua_errmem = true;
 }
 
+void vm_context::enable_reserved_zone()
+{
+    // TODO: when per-VM allocator is ready
+    // it should be safe to be called multiple times in a row
+}
+
+void vm_context::reclaim_reserved_zone_or_close()
+{
+    // TODO: when per-VM allocator is ready
+}
+
 vm_context& get_vm_context(lua_State* L)
 {
     rawgetp(L, LUA_REGISTRYINDEX, &detail::context_key);
@@ -208,11 +219,14 @@ vm_context& get_vm_context(lua_State* L)
     return *ret;
 }
 
-void push(lua_State* L, const std::error_code& ec)
+result<void, std::bad_alloc> push(lua_State* L, const std::error_code& ec)
 {
+    if (!lua_checkstack(L, 4))
+        return std::bad_alloc{};
+
     if (!ec) {
         lua_pushnil(L);
-        return;
+        return outcome::success();
     }
 
     lua_createtable(L, /*narr=*/0, /*nrec=*/2);
@@ -232,6 +246,7 @@ void push(lua_State* L, const std::error_code& ec)
 
     rawgetp(L, LUA_REGISTRYINDEX, &detail::error_code_key);
     lua_setmetatable(L, -2);
+    return outcome::success();
 }
 
 result<std::string, std::bad_alloc> errobj_to_string(lua_State* L)

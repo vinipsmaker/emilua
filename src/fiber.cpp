@@ -34,7 +34,7 @@ static int fiber_join(lua_State* L)
     auto& vm_ctx = get_vm_context(L);
     auto handle = reinterpret_cast<fiber_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
+        push(L, std::errc::invalid_argument).value();
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
@@ -42,7 +42,7 @@ static int fiber_join(lua_State* L)
     }
     rawgetp(L, LUA_REGISTRYINDEX, &fiber_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
+        push(L, std::errc::invalid_argument).value();
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
@@ -50,7 +50,7 @@ static int fiber_join(lua_State* L)
     }
 
     if (!handle->fiber) {
-        push(L, std::errc::invalid_argument);
+        push(L, std::errc::invalid_argument).value();
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
@@ -58,7 +58,7 @@ static int fiber_join(lua_State* L)
     }
 
     if (handle->fiber == L) {
-        push(L, std::errc::resource_deadlock_would_occur);
+        push(L, std::errc::resource_deadlock_would_occur).value();
         lua_error(L);
     }
 
@@ -122,7 +122,7 @@ static int fiber_detach(lua_State* L)
     auto& vm_ctx = get_vm_context(L);
     auto handle = reinterpret_cast<fiber_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
+        push(L, std::errc::invalid_argument).value();
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
@@ -130,7 +130,7 @@ static int fiber_detach(lua_State* L)
     }
     rawgetp(L, LUA_REGISTRYINDEX, &fiber_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
+        push(L, std::errc::invalid_argument).value();
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
@@ -138,7 +138,7 @@ static int fiber_detach(lua_State* L)
     }
 
     if (!handle->fiber) {
-        push(L, std::errc::invalid_argument);
+        push(L, std::errc::invalid_argument).value();
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
@@ -222,7 +222,7 @@ static int fiber_meta_index(lua_State* L)
                 BOOST_HANA_STRING("interruption_caught"),
                 [](lua_State* L) -> int {
                     // TODO
-                    push(L, errc::bad_index);
+                    push(L, errc::bad_index).value();
                     lua_pushliteral(L, "index");
                     lua_pushvalue(L, 2);
                     lua_rawset(L, -3);
@@ -241,7 +241,7 @@ static int fiber_meta_index(lua_State* L)
             )
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index);
+            push(L, errc::bad_index).value();
             lua_pushliteral(L, "index");
             lua_pushvalue(L, 2);
             lua_rawset(L, -3);
@@ -400,7 +400,7 @@ static int this_fiber_meta_index(lua_State* L)
             )
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index);
+            push(L, errc::bad_index).value();
             lua_pushliteral(L, "index");
             lua_pushvalue(L, 2);
             lua_rawset(L, -3);
