@@ -319,7 +319,7 @@ static int spawn(lua_State* L)
     lua_pushvalue(L, 1);
     lua_xmove(L, new_fiber, 1);
 
-    vm_ctx->strand().defer([vm_ctx,new_fiber]() {
+    vm_ctx->strand().post([vm_ctx,new_fiber]() {
         if (!vm_ctx->valid())
             return;
 
