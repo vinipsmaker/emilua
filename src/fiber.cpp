@@ -371,7 +371,7 @@ static int this_fiber_meta_index(lua_State* L)
                 }
             ),
             hana::make_pair(
-                BOOST_HANA_STRING("local"),
+                BOOST_HANA_STRING("local_"),
                 [](lua_State* L) -> int {
                     auto& vm_ctx = get_vm_context(L);
                     if (!lua_checkstack(vm_ctx.current_fiber(), 1)) {
