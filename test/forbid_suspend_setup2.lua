@@ -1,0 +1,10 @@
+this_fiber.forbid_suspend()
+this_fiber.forbid_suspend()
+this_fiber.forbid_suspend()
+this_fiber.forbid_suspend()
+
+this_fiber.allow_suspend()
+this_fiber.allow_suspend()
+this_fiber.allow_suspend()
+this_fiber.allow_suspend()
+this_fiber.allow_suspend()

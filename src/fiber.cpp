@@ -32,6 +32,8 @@ static int fiber_join(lua_State* L)
     // TODO: handle interruption
 
     auto& vm_ctx = get_vm_context(L);
+    EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
+
     auto handle = reinterpret_cast<fiber_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument).value();
@@ -344,6 +346,8 @@ static int spawn(lua_State* L)
 static int this_fiber_yield(lua_State* L)
 {
     auto vm_ctx = get_vm_context(L).shared_from_this();
+    EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
+
     auto current_fiber = vm_ctx->current_fiber();
     vm_ctx->strand().defer(
         [vm_ctx,current_fiber]() {
@@ -359,6 +363,52 @@ static int this_fiber_yield(lua_State* L)
     return lua_yield(L, 0);
 }
 
+static int this_fiber_forbid_suspend(lua_State* L)
+{
+    auto& vm_ctx = get_vm_context(L);
+    auto current_fiber = vm_ctx.current_fiber();
+    if (!lua_checkstack(current_fiber, 1)) {
+        vm_ctx.notify_errmem();
+        return lua_yield(L, 0);
+    }
+
+    rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
+    lua_pushthread(current_fiber);
+    lua_xmove(current_fiber, L, 1);
+    lua_rawget(L, -2);
+    lua_rawgeti(L, -1, FiberDataIndex::SUSPENSION_DISALLOWED);
+    auto count = lua_tointeger(L, -1);
+    ++count;
+    assert(count >= 0); //< TODO: better overflow detection and VM shutdown
+    lua_pushinteger(L, count);
+    lua_rawseti(L, -3, FiberDataIndex::SUSPENSION_DISALLOWED);
+    return 0;
+}
+
+static int this_fiber_allow_suspend(lua_State* L)
+{
+    auto& vm_ctx = get_vm_context(L);
+    auto current_fiber = vm_ctx.current_fiber();
+    if (!lua_checkstack(current_fiber, 1)) {
+        vm_ctx.notify_errmem();
+        return lua_yield(L, 0);
+    }
+
+    rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
+    lua_pushthread(current_fiber);
+    lua_xmove(current_fiber, L, 1);
+    lua_rawget(L, -2);
+    lua_rawgeti(L, -1, FiberDataIndex::SUSPENSION_DISALLOWED);
+    auto count = lua_tointeger(L, -1);
+    if (!(count > 0)) {
+        push(L, errc::suspension_already_allowed).value();
+        return lua_error(L);
+    }
+    lua_pushinteger(L, --count);
+    lua_rawseti(L, -3, FiberDataIndex::SUSPENSION_DISALLOWED);
+    return 0;
+}
+
 static int this_fiber_meta_index(lua_State* L)
 {
     return dispatch_table::dispatch(
@@ -367,6 +417,20 @@ static int this_fiber_meta_index(lua_State* L)
                 BOOST_HANA_STRING("yield"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, this_fiber_yield);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("allow_suspend"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, this_fiber_allow_suspend);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("forbid_suspend"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, this_fiber_forbid_suspend);
                     return 1;
                 }
             ),

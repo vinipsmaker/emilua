@@ -1,7 +1,13 @@
+BEGIN {
+    printed_path = TEST
+    if (length(printed_path) > 55) {
+        printed_path = "..." substr(printed_path, length(printed_path) - 51)
+    }
+}
 {
     $0 = gensub(/(Fiber|VM) 0x[[:xdigit:]]+/, "\\1 0x0", "g")
-    while (i = index($0, TEST)) {
-        $0 = substr($0, 1, i - 1) "input" substr($0, i + length(TEST))
+    while (i = index($0, printed_path)) {
+        $0 = substr($0, 1, i - 1) "input" substr($0, i + length(printed_path))
     }
     i = getline expected < (TEST ".out")
     if (i != 1) {

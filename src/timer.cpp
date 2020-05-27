@@ -14,6 +14,7 @@ static int sleep_for(lua_State* L)
 
     auto vm_ctx = get_vm_context(L).shared_from_this();
     auto current_fiber = vm_ctx->current_fiber();
+    EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
     auto t = std::make_shared<asio::steady_timer>(vm_ctx->strand().context());
     t->expires_after(std::chrono::milliseconds(msecs));

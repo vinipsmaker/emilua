@@ -1,0 +1,3 @@
+Main fiber from VM 0x0 panicked: 'Suspension already allowed'
+stack traceback:
+	input.lua:1: in main chunk

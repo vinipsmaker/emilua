@@ -386,6 +386,10 @@ std::string category_impl::message(int value) const noexcept
         return "Bad root context";
     case static_cast<int>(errc::bad_index):
         return "Requested key wasn't found in the table/userdata";
+    case static_cast<int>(errc::suspension_already_allowed):
+        return "Suspension already allowed";
+    case static_cast<int>(errc::forbid_suspend_block):
+        return "Operation not permitted within a forbid-suspend block";
     default:
         return {};
     }
@@ -420,5 +424,19 @@ exception::exception(errc ec, const std::string& what_arg)
 exception::exception(errc ec, const char* what_arg)
     : std::system_error{ec, what_arg}
 {}
+
+lua_Integer detail::unsafe_suspension_disallowed_count(
+    vm_context& vm_ctx, lua_State* L)
+{
+    auto current_fiber = vm_ctx.current_fiber();
+    rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
+    lua_pushthread(current_fiber);
+    lua_xmove(current_fiber, L, 1);
+    lua_rawget(L, -2);
+    lua_rawgeti(L, -1, FiberDataIndex::SUSPENSION_DISALLOWED);
+    auto count = lua_tointeger(L, -1);
+    lua_pop(L, 3);
+    return count;
+}
 
 } // namespace emilua

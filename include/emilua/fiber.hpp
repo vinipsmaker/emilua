@@ -10,6 +10,7 @@ enum FiberDataIndex: lua_Integer
 {
     JOINER = 1,
     STATUS,
+    SUSPENSION_DISALLOWED,
     LOCAL_STORAGE,
 
     // data only avaiable for modules:

@@ -84,6 +84,12 @@ if get_option('enable_tests')
             'join6',
             'yield',
             'local_storage',
+            'forbid_suspend_setup1',
+            'forbid_suspend_setup2',
+            'forbid_suspend_setup3',
+            'forbid_suspend_join',
+            'forbid_suspend_yield',
+            'forbid_suspend_sleep_for',
         ],
         'programs' : [
             'sleepsort',

@@ -23,6 +23,19 @@ extern "C" {
 
 #include <config.h>
 
+#define EMILUA_CHECK_SUSPEND_ALLOWED(VM_CTX, L)                            \
+    if (!lua_checkstack((VM_CTX).current_fiber(), 1)) {                    \
+        (VM_CTX).notify_errmem();                                          \
+        return lua_yield((L), 0);                                          \
+    }                                                                      \
+    {                                                                      \
+        using emilua::detail::unsafe_suspension_disallowed_count;          \
+        if (unsafe_suspension_disallowed_count((VM_CTX), (L)) != 0) {      \
+            emilua::push((L), emilua::errc::forbid_suspend_block).value(); \
+            return lua_error((L));                                         \
+        }                                                                  \
+    }
+
 namespace boost::hana {}
 
 namespace emilua {
@@ -271,6 +284,8 @@ enum class errc {
     only_main_fiber_may_import,
     bad_root_context,
     bad_index,
+    suspension_already_allowed,
+    forbid_suspend_block,
 };
 
 const std::error_category& category();
@@ -293,6 +308,11 @@ public:
 
     exception& operator=(const exception&) noexcept = default;
 };
+
+namespace detail {
+lua_Integer unsafe_suspension_disallowed_count(
+    vm_context& vm_ctx, lua_State* L);
+} // namespace detail
 
 } // namespace emilua
 

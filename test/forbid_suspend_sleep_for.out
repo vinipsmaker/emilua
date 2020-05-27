@@ -1,0 +1,4 @@
+Main fiber from VM 0x0 panicked: 'Operation not permitted within a forbid-suspend block'
+stack traceback:
+	[string "?"]: in function 'sleep_for'
+	input.lua:4: in main chunk
