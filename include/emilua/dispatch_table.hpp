@@ -12,6 +12,7 @@
 #include <boost/hana/minimum.hpp>
 #include <boost/hana/reverse.hpp>
 #include <boost/hana/string.hpp>
+#include <boost/hana/front.hpp>
 #include <boost/hana/minus.hpp>
 #include <boost/hana/range.hpp>
 #include <boost/hana/tuple.hpp>
@@ -183,6 +184,14 @@ constexpr bool all_sizes_differ(const Xs& xs)
         hana::transform(hana::transform(xs, hana::first), hana::size)
     )) == hana::size(xs);
 }
+
+template<class Xs>
+constexpr bool all_first_letters_differ(const Xs& xs)
+{
+    return hana::size(hana::to_set(
+        hana::transform(hana::transform(xs, hana::first), hana::front)
+    )) == hana::size(xs);
+}
 } // namespace detail
 
 // Even if a perfect-hash is generated, a walk through the whole table is
@@ -194,7 +203,7 @@ auto dispatch(Xs xs, Fallback fallback, std::string_view key, Args&&... args)
     -> decltype(fallback(key, std::forward<Args>(args)...))
 {
     std::conditional_t<
-        detail::all_sizes_differ(xs),
+        detail::all_sizes_differ(xs) || detail::all_first_letters_differ(xs),
         detail::ConstantHash,
         detail::Hash<decltype(hana::transform(xs, hana::first))>
     > hash;
