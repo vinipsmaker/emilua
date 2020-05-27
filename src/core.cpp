@@ -367,28 +367,27 @@ std::string category_impl::message(int value) const noexcept
 {
     switch (value) {
     case static_cast<int>(errc::invalid_module_name):
-        return "Cannot have a module with this name.";
+        return "Cannot have a module with this name";
     case static_cast<int>(errc::module_not_found):
-        return "Module not found.";
+        return "Module not found";
     case static_cast<int>(errc::root_cannot_import_parent):
-        return "The root module doesn't have a parent and can't reference"
-            " one.";
+        return "The root module doesn't have a parent and can't reference one";
     case static_cast<int>(errc::cyclic_import):
         return "The module you're trying to import has a dependency on the"
-            " current module (and it is partially loaded already).";
+            " current module (and it is partially loaded already)";
     case static_cast<int>(errc::leaf_cannot_import_child):
-        return "A leaf module cannot import child modules.";
+        return "A leaf module cannot import child modules";
     case static_cast<int>(errc::failed_to_load_module):
         return "Error when opening/loading module file (maybe invalid lua"
-            " syntax).";
+            " syntax)";
     case static_cast<int>(errc::only_main_fiber_may_import):
-        return "You can only import modules from the main fiber.";
+        return "You can only import modules from the main fiber";
     case static_cast<int>(errc::bad_root_context):
-        return "Bad root context.";
+        return "Bad root context";
     case static_cast<int>(errc::bad_index):
-        return "Requested key wasn't found in the table/userdata.";
+        return "Requested key wasn't found in the table/userdata";
     default:
-        return "";
+        return {};
     }
 }
 
