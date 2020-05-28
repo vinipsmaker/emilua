@@ -4,9 +4,9 @@ println(tostring(this_fiber.local_.test))
 this_fiber.local_.test = 'foo'
 println(tostring(this_fiber.local_.test))
 
-coroutine.resume(coroutine.create(function()
+coroutine.wrap(function()
     println(tostring(this_fiber.local_.test))
-end))
+end)()
 
 spawn(function()
     println(tostring(this_fiber.local_.test))
