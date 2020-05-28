@@ -238,10 +238,10 @@ inline std::string_view tostringview(lua_State* L, int index = -1)
     return std::string_view{buf, len};
 }
 
-inline void rawgetp(lua_State* L, int index, const void* p)
+inline void rawgetp(lua_State* L, int pseudoindex, const void* p)
 {
     lua_pushlightuserdata(L, const_cast<void*>(p));
-    lua_rawget(L, index);
+    lua_rawget(L, pseudoindex);
 }
 
 enum class lua_errc
