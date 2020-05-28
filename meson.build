@@ -82,6 +82,8 @@ if get_option('enable_tests')
             'join4',
             'join5',
             'join6',
+            'join7',
+            'join8',
             'yield',
             'local_storage',
             'forbid_suspend_setup1',

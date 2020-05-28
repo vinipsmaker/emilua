@@ -59,7 +59,7 @@ static int fiber_join(lua_State* L)
         lua_error(L);
     }
 
-    if (handle->fiber == L) {
+    if (handle->fiber == vm_ctx.current_fiber()) {
         push(L, std::errc::resource_deadlock_would_occur).value();
         lua_error(L);
     }
