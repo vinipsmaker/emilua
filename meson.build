@@ -96,6 +96,9 @@ if get_option('enable_tests')
         'lua_shim' : [
             'coroutine_running1',
             'coroutine_running2',
+            'coroutine_yield1',
+            'coroutine_yield2',
+            'coroutine_yield3',
         ],
         'programs' : [
             'sleepsort',

@@ -386,6 +386,8 @@ std::string category_impl::message(int value) const noexcept
         return "Bad root context";
     case static_cast<int>(errc::bad_index):
         return "Requested key wasn't found in the table/userdata";
+    case static_cast<int>(errc::bad_coroutine):
+        return "The fiber coroutine is reserved to the scheduler";
     case static_cast<int>(errc::suspension_already_allowed):
         return "Suspension already allowed";
     case static_cast<int>(errc::forbid_suspend_block):

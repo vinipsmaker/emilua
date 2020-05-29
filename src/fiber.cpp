@@ -493,6 +493,24 @@ int coroutine_running(lua_State* L)
     }
 }
 
+int coroutine_yield(lua_State* L)
+{
+    rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
+    lua_pushthread(L);
+    lua_rawget(L, -2);
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        lua_pop(L, 2);
+        return lua_yield(L, lua_gettop(L));
+    case LUA_TTABLE:
+        push(L, errc::bad_coroutine).value();
+        return lua_error(L);
+    default:
+        assert(false);
+        std::abort();
+    }
+}
+
 void init_fiber_module(lua_State* L)
 {
     lua_pushliteral(L, "spawn");
@@ -550,9 +568,15 @@ void init_fiber_module(lua_State* L)
 
     lua_pushliteral(L, "coroutine");
     lua_rawget(L, LUA_GLOBALSINDEX);
-    lua_pushliteral(L, "running");
-    lua_pushcfunction(L, coroutine_running);
-    lua_rawset(L, -3);
+    {
+        lua_pushliteral(L, "running");
+        lua_pushcfunction(L, coroutine_running);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "yield");
+        lua_pushcfunction(L, coroutine_yield);
+        lua_rawset(L, -3);
+    }
     lua_pop(L, 1);
 }
 

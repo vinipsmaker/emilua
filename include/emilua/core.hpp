@@ -284,6 +284,7 @@ enum class errc {
     only_main_fiber_may_import,
     bad_root_context,
     bad_index,
+    bad_coroutine,
     suspension_already_allowed,
     forbid_suspend_block,
 };
