@@ -93,6 +93,10 @@ if get_option('enable_tests')
             'forbid_suspend_yield',
             'forbid_suspend_sleep_for',
         ],
+        'lua_shim' : [
+            'coroutine_running1',
+            'coroutine_running2',
+        ],
         'programs' : [
             'sleepsort',
         ]

@@ -475,6 +475,24 @@ static int this_fiber_meta_index(lua_State* L)
     );
 }
 
+int coroutine_running(lua_State* L)
+{
+    rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
+    lua_pushthread(L);
+    lua_rawget(L, -2);
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        lua_pushthread(L);
+        return 1;
+    case LUA_TTABLE:
+        lua_pushnil(L);
+        return 1;
+    default:
+        assert(false);
+        std::abort();
+    }
+}
+
 void init_fiber_module(lua_State* L)
 {
     lua_pushliteral(L, "spawn");
@@ -529,6 +547,13 @@ void init_fiber_module(lua_State* L)
     }
     lua_setmetatable(L, -2);
     lua_rawset(L, LUA_GLOBALSINDEX);
+
+    lua_pushliteral(L, "coroutine");
+    lua_rawget(L, LUA_GLOBALSINDEX);
+    lua_pushliteral(L, "running");
+    lua_pushcfunction(L, coroutine_running);
+    lua_rawset(L, -3);
+    lua_pop(L, 1);
 }
 
 void print_panic(const lua_State* fiber, bool is_main, std::string_view error,
