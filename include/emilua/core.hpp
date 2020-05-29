@@ -192,10 +192,11 @@ public:
     void fiber_epilogue(int resume_result);
 
     void notify_errmem();
-    void enable_reserved_zone();
-    void reclaim_reserved_zone_or_close();
+    void reclaim_reserved_zone();
 
 private:
+    void enable_reserved_zone();
+
     boost::asio::io_context::strand strand_;
     bool valid_;
     bool lua_errmem;

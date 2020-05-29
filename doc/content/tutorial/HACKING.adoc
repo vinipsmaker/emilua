@@ -787,11 +787,6 @@ Always keep in mind:
   which fiber to wake-up later on. They must resort — at initiation time — to
   the `vm_context` API. Check the simple `sleep_for()` implementation for a code
   template.
-* Don't forget to call `lua_checkstack()` before resuming a suspended fiber (if
-  there is any value that you need to push to the stack). Lua only allocates
-  `LUA_MINSTACK` when the VM calls a C function. Therefore you don't have
-  `LUA_MINSTACK` when you're resuming a Lua thread. There are non-obvious paths
-  that executed Lua code can walk to reach this limit.
 
 == Final note
 

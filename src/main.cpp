@@ -90,7 +90,15 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    ioctx.run();
+    for (;;) {
+        try {
+            ioctx.run();
+            break;
+        } catch (const emilua::lua_exception& e) {
+            assert(e.code() == emilua::lua_errc::mem);
+            boost::ignore_unused(e);
+        }
+    }
 
     return exit_code;
 }

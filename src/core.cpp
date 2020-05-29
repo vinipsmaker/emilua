@@ -71,12 +71,19 @@ void vm_context::close()
     L_ = nullptr;
 }
 
+[[gnu::flatten]]
 void vm_context::fiber_prologue(lua_State* new_current_fiber)
 {
     assert(valid_);
     assert(lua_status(new_current_fiber) == 0 ||
            lua_status(new_current_fiber) == LUA_YIELD);
     current_fiber_ = new_current_fiber;
+    if (!lua_checkstack(current_fiber_, LUA_MINSTACK)) {
+        lua_errmem = true;
+        close();
+        throw lua_exception{LUA_ERRMEM};
+    }
+    enable_reserved_zone();
 }
 
 void vm_context::fiber_epilogue(int resume_result)
@@ -205,9 +212,10 @@ void vm_context::enable_reserved_zone()
     // it should be safe to be called multiple times in a row
 }
 
-void vm_context::reclaim_reserved_zone_or_close()
+void vm_context::reclaim_reserved_zone()
 {
     // TODO: when per-VM allocator is ready
+    // this function may throw LUA_ERRMEM and call close()
 }
 
 vm_context& get_vm_context(lua_State* L)
