@@ -6,6 +6,9 @@ end)
 
 x = {coroutine.resume(co)}
 println(tostring(#x))
-println(tostring(x[2] == 1))
-println(tostring(x[3] == 2))
-println(tostring(x[4] == 3))
+println(type(x[2]))
+println(tostring(x[2]))
+println(type(x[3]))
+println(tostring(x[3]))
+println(type(x[4]))
+println(tostring(x[4]))
