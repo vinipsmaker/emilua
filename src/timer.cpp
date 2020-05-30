@@ -21,9 +21,6 @@ static int sleep_for(lua_State* L)
     t->async_wait(asio::bind_executor(
         vm_ctx->strand_using_defer(),
         [vm_ctx,current_fiber,t](const boost::system::error_code &ec) {
-            if (!vm_ctx->valid())
-                return;
-
             // TODO: fiber interruption
 
             vm_ctx->fiber_prologue(current_fiber);

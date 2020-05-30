@@ -78,9 +78,6 @@ int main(int argc, char *argv[])
         auto vm_ctx = emilua::make_vm(ioctx, exit_code, filename,
                                       emilua::ContextType::main);
         vm_ctx->strand().post([vm_ctx]() {
-            if (!vm_ctx->valid())
-                return;
-
             vm_ctx->fiber_prologue(vm_ctx->L());
             int res = lua_resume(vm_ctx->L(), 0);
             vm_ctx->fiber_epilogue(res);
@@ -94,9 +91,8 @@ int main(int argc, char *argv[])
         try {
             ioctx.run();
             break;
-        } catch (const emilua::lua_exception& e) {
-            assert(e.code() == emilua::lua_errc::mem);
-            boost::ignore_unused(e);
+        } catch (const emilua::dead_vm_error&) {
+            continue;
         }
     }
 

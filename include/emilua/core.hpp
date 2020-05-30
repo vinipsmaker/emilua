@@ -311,6 +311,38 @@ public:
     exception& operator=(const exception&) noexcept = default;
 };
 
+class dead_vm_error: public std::runtime_error
+{
+public:
+    enum class reason
+    {
+        unknown,
+        mem,
+    };
+
+    dead_vm_error()
+        : std::runtime_error{""}
+        , code{0}
+    {}
+
+    dead_vm_error(reason r)
+        : std::runtime_error{nullptr}
+        , code{static_cast<int>(r)}
+    {}
+
+    virtual const char* what() const noexcept override
+    {
+        static const char* reasons[] = {
+            "Lua VM is dead",
+            "Lua VM is dead due to LUA_ERRMEM"
+        };
+        return reasons[code];
+    }
+
+private:
+    int code;
+};
+
 namespace detail {
 lua_Integer unsafe_suspension_disallowed_count(
     vm_context& vm_ctx, lua_State* L);

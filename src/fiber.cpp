@@ -329,9 +329,6 @@ static int spawn(lua_State* L)
     lua_xmove(L, new_fiber, 1);
 
     vm_ctx->strand().post([vm_ctx,new_fiber]() {
-        if (!vm_ctx->valid())
-            return;
-
         vm_ctx->fiber_prologue(new_fiber);
         int res = lua_resume(new_fiber, 0);
         vm_ctx->fiber_epilogue(res);
@@ -358,9 +355,6 @@ static int this_fiber_yield(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     vm_ctx->strand().defer(
         [vm_ctx,current_fiber]() {
-            if (!vm_ctx->valid())
-                return;
-
             vm_ctx->fiber_prologue(current_fiber);
             int res = lua_resume(current_fiber, 0);
             vm_ctx->fiber_epilogue(res);

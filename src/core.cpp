@@ -74,14 +74,16 @@ void vm_context::close()
 [[gnu::flatten]]
 void vm_context::fiber_prologue(lua_State* new_current_fiber)
 {
-    assert(valid_);
+    if (!valid_)
+        throw dead_vm_error{};
+
     assert(lua_status(new_current_fiber) == 0 ||
            lua_status(new_current_fiber) == LUA_YIELD);
     current_fiber_ = new_current_fiber;
     if (!lua_checkstack(current_fiber_, LUA_MINSTACK)) {
         lua_errmem = true;
         close();
-        throw lua_exception{LUA_ERRMEM};
+        throw dead_vm_error{dead_vm_error::reason::mem};
     }
     enable_reserved_zone();
 }
