@@ -5,6 +5,7 @@
 namespace emilua {
 
 extern char fiber_list_key;
+extern char yield_reason_is_native_key;
 
 enum FiberDataIndex: lua_Integer
 {

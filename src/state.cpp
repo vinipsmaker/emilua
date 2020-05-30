@@ -71,6 +71,12 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
     }
 
     {
+        lua_pushlightuserdata(L, &yield_reason_is_native_key);
+        lua_pushboolean(L, 1);
+        lua_rawset(L, LUA_REGISTRYINDEX);
+    }
+
+    {
         lua_pushlightuserdata(L, &detail::error_category_key);
         lua_createtable(L, /*narr=*/0, /*nrec=*/4);
 

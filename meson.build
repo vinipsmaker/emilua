@@ -99,6 +99,9 @@ if get_option('enable_tests')
             'coroutine_yield1',
             'coroutine_yield2',
             'coroutine_yield3',
+            'coroutine_resume1',
+            'coroutine_resume2',
+            'coroutine_resume3',
         ],
         'programs' : [
             'sleepsort',
