@@ -20,7 +20,7 @@ BEGIN {
         err = 1
         exit
     case 0:
-        print "Expected EOF\nGot:\n\t" $0 > "/dev/stderr"
+        print "Expected EOF\nGot (LINE " NR "):\n\t" $0 > "/dev/stderr"
         while (getline == 1) {
             sanitize_record()
             print "\t" $0 > "/dev/stderr"
