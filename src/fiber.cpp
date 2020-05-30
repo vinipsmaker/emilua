@@ -80,8 +80,8 @@ static int fiber_join(lua_State* L)
     rawgetp(handle->fiber, LUA_REGISTRYINDEX, &fiber_list_key);
     lua_pushthread(handle->fiber);
     lua_rawget(handle->fiber, -2);
+    lua_replace(handle->fiber, -2);
     lua_xmove(handle->fiber, L, 1);
-    lua_pop(handle->fiber, 1);
 
     lua_rawgeti(L, -1, FiberDataIndex::STATUS);
     int status_type = lua_type(L, -1);
