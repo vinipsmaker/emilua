@@ -146,6 +146,38 @@ public:
     static boost::asio::io_context::id id;
 };
 
+class dead_vm_error: public std::runtime_error
+{
+public:
+    enum class reason
+    {
+        unknown,
+        mem,
+    };
+
+    dead_vm_error()
+        : std::runtime_error{""}
+        , code{0}
+    {}
+
+    dead_vm_error(reason r)
+        : std::runtime_error{nullptr}
+        , code{static_cast<int>(r)}
+    {}
+
+    virtual const char* what() const noexcept override
+    {
+        static const char* reasons[] = {
+            "Lua VM is dead",
+            "Lua VM is dead due to LUA_ERRMEM"
+        };
+        return reasons[code];
+    }
+
+private:
+    int code;
+};
+
 class vm_context: public std::enable_shared_from_this<vm_context>
 {
 public:
@@ -188,8 +220,26 @@ public:
         return valid_;
     }
 
-    void fiber_prologue(lua_State* new_current_fiber);
+    void fiber_resume(lua_State* fiber)
+    {
+        fiber_prologue_trivial(fiber);
+        int res = lua_resume(fiber, 0);
+        fiber_epilogue(res);
+    }
+
+    void fiber_prologue_trivial(lua_State* new_current_fiber);
     void fiber_epilogue(int resume_result);
+
+    void fiber_prologue(lua_State* new_current_fiber)
+    {
+        fiber_prologue_trivial(new_current_fiber);
+        if (!lua_checkstack(current_fiber_, LUA_MINSTACK)) {
+            lua_errmem = true;
+            close();
+            throw dead_vm_error{dead_vm_error::reason::mem};
+        }
+        enable_reserved_zone();
+    }
 
     void notify_errmem();
     void reclaim_reserved_zone();
@@ -309,38 +359,6 @@ public:
     exception(const exception&) noexcept = default;
 
     exception& operator=(const exception&) noexcept = default;
-};
-
-class dead_vm_error: public std::runtime_error
-{
-public:
-    enum class reason
-    {
-        unknown,
-        mem,
-    };
-
-    dead_vm_error()
-        : std::runtime_error{""}
-        , code{0}
-    {}
-
-    dead_vm_error(reason r)
-        : std::runtime_error{nullptr}
-        , code{static_cast<int>(r)}
-    {}
-
-    virtual const char* what() const noexcept override
-    {
-        static const char* reasons[] = {
-            "Lua VM is dead",
-            "Lua VM is dead due to LUA_ERRMEM"
-        };
-        return reasons[code];
-    }
-
-private:
-    int code;
 };
 
 namespace detail {

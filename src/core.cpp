@@ -71,8 +71,7 @@ void vm_context::close()
     L_ = nullptr;
 }
 
-[[gnu::flatten]]
-void vm_context::fiber_prologue(lua_State* new_current_fiber)
+void vm_context::fiber_prologue_trivial(lua_State* new_current_fiber)
 {
     if (!valid_)
         throw dead_vm_error{};
@@ -80,12 +79,6 @@ void vm_context::fiber_prologue(lua_State* new_current_fiber)
     assert(lua_status(new_current_fiber) == 0 ||
            lua_status(new_current_fiber) == LUA_YIELD);
     current_fiber_ = new_current_fiber;
-    if (!lua_checkstack(current_fiber_, LUA_MINSTACK)) {
-        lua_errmem = true;
-        close();
-        throw dead_vm_error{dead_vm_error::reason::mem};
-    }
-    enable_reserved_zone();
 }
 
 void vm_context::fiber_epilogue(int resume_result)
@@ -160,7 +153,7 @@ void vm_context::fiber_epilogue(int resume_result)
             lua_pushboolean(joiner, resume_result == 0);
             lua_xmove(current_fiber_, joiner, nret);
 
-            fiber_prologue(joiner);
+            fiber_prologue_trivial(joiner);
             int res = lua_resume(joiner, nret + 1);
             // I'm assuming the compiler will eliminate this tail recursive call
             // or else we may experience stack overflow on really really long
