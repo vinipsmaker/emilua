@@ -221,7 +221,10 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
         lua_rawset(L, LUA_REGISTRYINDEX);
 
         lua_pushthread(L);
-        lua_createtable(L, /*narr=*/3, /*nrec=*/0);
+        lua_createtable(
+            L,
+            /*narr=*/EMILUA_IMPL_INITIAL_MODULE_FIBER_DATA_CAPACITY,
+            /*nrec=*/0);
 
         lua_createtable(L, /*narr=*/1, /*nrec=*/0);
         push(L, entry_point);
@@ -233,6 +236,11 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
 
         lua_pushinteger(L, lua_context);
         lua_rawseti(L, -2, FiberDataIndex::CONTEXT);
+
+        // when boolean (i.e. not integer), lua code requests to change this
+        // setting are ignored
+        lua_pushboolean(L, 1);
+        lua_rawseti(L, -2, FiberDataIndex::INTERRUPTION_DISABLED);
 
         lua_rawset(L, -3);
         lua_pop(L, 1);

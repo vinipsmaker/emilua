@@ -12,6 +12,7 @@
 #include <system_error>
 #include <string_view>
 #include <filesystem>
+#include <variant>
 #include <mutex>
 
 extern "C" {
@@ -23,18 +24,13 @@ extern "C" {
 
 #include <config.h>
 
-#define EMILUA_CHECK_SUSPEND_ALLOWED(VM_CTX, L)                            \
-    if (!lua_checkstack((VM_CTX).current_fiber(), 1)) {                    \
-        (VM_CTX).notify_errmem();                                          \
-        return lua_yield((L), 0);                                          \
-    }                                                                      \
-    {                                                                      \
-        using emilua::detail::unsafe_suspension_disallowed_count;          \
-        if (unsafe_suspension_disallowed_count((VM_CTX), (L)) != 0) {      \
-            emilua::push((L), emilua::errc::forbid_suspend_block).value(); \
-            return lua_error((L));                                         \
-        }                                                                  \
-    }
+#define EMILUA_CHECK_SUSPEND_ALLOWED(VM_CTX, L)             \
+    if (!lua_checkstack((VM_CTX).current_fiber(), 1)) {     \
+        (VM_CTX).notify_errmem();                           \
+        return lua_yield((L), 0);                           \
+    }                                                       \
+    if (!emilua::detail::unsafe_can_suspend((VM_CTX), (L))) \
+        return lua_error((L));
 
 namespace boost::hana {}
 
@@ -178,6 +174,8 @@ private:
     int code;
 };
 
+void set_interrupter(lua_State* L);
+
 class vm_context: public std::enable_shared_from_this<vm_context>
 {
 public:
@@ -239,13 +237,16 @@ public:
             throw dead_vm_error{dead_vm_error::reason::mem};
         }
         enable_reserved_zone();
+
+        lua_pushnil(current_fiber_);
+        set_interrupter(current_fiber_);
     }
 
     void notify_errmem();
+    void enable_reserved_zone();
     void reclaim_reserved_zone();
 
 private:
-    void enable_reserved_zone();
 
     boost::asio::io_context::strand strand_;
     bool valid_;
@@ -264,7 +265,11 @@ inline result<void, std::bad_alloc> push(lua_State* L, std::errc ec)
 }
 
 // gets value from top of the stack
-result<std::string, std::bad_alloc> errobj_to_string(lua_State* L);
+result<std::variant<std::string_view, std::error_code>, std::bad_alloc>
+inspect_errobj(lua_State* L);
+
+std::string errobj_to_string(
+    result<std::variant<std::string_view, std::error_code>, std::bad_alloc> o);
 
 inline void push(lua_State* L, std::string_view str)
 {
@@ -337,7 +342,9 @@ enum class errc {
     bad_index,
     bad_coroutine,
     suspension_already_allowed,
+    interruption_already_allowed,
     forbid_suspend_block,
+    interrupted,
 };
 
 const std::error_category& category();
@@ -362,8 +369,7 @@ public:
 };
 
 namespace detail {
-lua_Integer unsafe_suspension_disallowed_count(
-    vm_context& vm_ctx, lua_State* L);
+bool unsafe_can_suspend(vm_context& vm_ctx, lua_State* L);
 } // namespace detail
 
 } // namespace emilua

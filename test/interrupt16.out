@@ -1,0 +1,8 @@
+foo
+false
+false
+baz
+Fiber 0x0 panicked: 'Invalid argument'
+stack traceback:
+	[string "?"]: in function 'join'
+	input.lua:20: in function <input.lua:5>

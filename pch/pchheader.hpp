@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <iostream>
 #include <fstream>
+#include <variant>
 #include <cstdio>
 #include <memory>
 #include <mutex>

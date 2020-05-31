@@ -2,6 +2,22 @@
 
 #include <emilua/core.hpp>
 
+#define EMILUA_IMPL_INITIAL_FIBER_DATA_CAPACITY 8
+#define EMILUA_IMPL_INITIAL_MODULE_FIBER_DATA_CAPACITY 6
+
+// EMILUA_IMPL_INITIAL_MODULE_FIBER_DATA_CAPACITY currently takes into
+// consideration:
+//
+// * STACK
+// * LEAF
+// * CONTEXT
+// * INTERRUPTION_DISABLED
+// * JOINER
+// * STATUS
+//
+// Needs to be reviewed to possibly include more values when the module system
+// is ready.
+
 namespace emilua {
 
 extern char fiber_list_key;
@@ -14,6 +30,13 @@ enum FiberDataIndex: lua_Integer
     SUSPENSION_DISALLOWED,
     LOCAL_STORAGE,
 
+    // data used by the interruption system {{{
+    INTERRUPTION_DISABLED,
+    INTERRUPTED,
+    INTERRUPTER,
+    USER_HANDLE, //< "augmented joiner"
+    // }}}
+
     // data only avaiable for modules:
     STACK,
     LEAF,
@@ -25,6 +48,17 @@ enum FiberStatus: lua_Integer
     //RUNNING, //< same as not set/nil
     FINISHED_SUCCESSFULLY = 1,
     FINISHED_WITH_ERROR,
+};
+
+struct fiber_handle
+{
+    fiber_handle(lua_State* fiber)
+        : fiber{fiber}
+        , interruption_caught{std::in_place_type_t<void>{}}
+    {}
+
+    lua_State* fiber;
+    result<bool, void> interruption_caught;
 };
 
 void init_fiber_module(lua_State* L);

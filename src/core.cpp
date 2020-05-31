@@ -115,15 +115,21 @@ void vm_context::fiber_epilogue(int resume_result)
             if (resume_result == LUA_ERRRUN) {
                 luaL_traceback(current_fiber_, current_fiber_, nullptr, 1);
                 lua_pushvalue(current_fiber_, -5);
-                result<std::string, std::bad_alloc> err_str =
-                    errobj_to_string(current_fiber_);
-                if (!err_str) {
+                auto err_obj = inspect_errobj(current_fiber_);
+                static_assert(std::is_same_v<decltype(err_obj)::error_type,
+                                             std::bad_alloc>,
+                              "");
+                if (!err_obj) {
                     lua_errmem = true;
                     close();
                     return;
                 }
-                print_panic(current_fiber_, /*is_main=*/false, err_str.value(),
-                            tostringview(current_fiber_, -2));
+                if (auto e = std::get_if<std::error_code>(&err_obj.value()) ;
+                    !e || *e != errc::interrupted) {
+                    print_panic(current_fiber_, /*is_main=*/false,
+                                errobj_to_string(err_obj),
+                                tostringview(current_fiber_, -2));
+                }
                 lua_pop(current_fiber_, 2);
             }
 
@@ -142,7 +148,11 @@ void vm_context::fiber_epilogue(int resume_result)
                 : FiberStatus::FINISHED_WITH_ERROR);
             lua_rawseti(current_fiber_, -3, FiberDataIndex::STATUS);
 
-            lua_pop(current_fiber_, 3);
+            lua_rawgeti(current_fiber_, -2, FiberDataIndex::USER_HANDLE);
+            auto join_handle = reinterpret_cast<fiber_handle*>(
+                lua_touserdata(current_fiber_, -1));
+
+            lua_pop(current_fiber_, 4);
 
             int nret = (resume_result == 0) ? lua_gettop(current_fiber_) : 1;
             if (!lua_checkstack(joiner, nret + 1)) {
@@ -153,7 +163,33 @@ void vm_context::fiber_epilogue(int resume_result)
             lua_pushboolean(joiner, resume_result == 0);
             lua_xmove(current_fiber_, joiner, nret);
 
-            fiber_prologue_trivial(joiner);
+            bool interruption_caught = false;
+            if (resume_result == LUA_ERRRUN) {
+                auto err_obj = inspect_errobj(joiner);
+                static_assert(std::is_same_v<decltype(err_obj)::error_type,
+                                             std::bad_alloc>,
+                              "");
+                if (!err_obj) {
+                    lua_errmem = true;
+                    close();
+                    return;
+                }
+                if (auto e = std::get_if<std::error_code>(&err_obj.value()) ;
+                    e && *e == errc::interrupted) {
+                    lua_pop(joiner, 2);
+                    lua_pushboolean(joiner, 1);
+                    nret = 0;
+                    interruption_caught = true;
+                }
+            }
+            if (join_handle) {
+                join_handle->interruption_caught = interruption_caught;
+            } else {
+                // do nothing;  this branch happens only for modules' fibers
+            }
+
+            fiber_prologue(joiner);
+            reclaim_reserved_zone();
             int res = lua_resume(joiner, nret + 1);
             // I'm assuming the compiler will eliminate this tail recursive call
             // or else we may experience stack overflow on really really long
@@ -166,11 +202,8 @@ void vm_context::fiber_epilogue(int resume_result)
                 // TODO: call uncaught-hook
                 luaL_traceback(L(), L(), nullptr, 1);
                 lua_pushvalue(L(), -5);
-                result<std::string, std::bad_alloc> err_str =
-                    errobj_to_string(L());
-                if (!err_str)
-                    err_str = outcome::success();
-                print_panic(L(), /*is_main=*/true, err_str.value(),
+                std::string err_str = errobj_to_string(inspect_errobj(L()));
+                print_panic(L(), /*is_main=*/true, err_str,
                             tostringview(L(), -2));
                 close();
                 return;
@@ -252,12 +285,13 @@ result<void, std::bad_alloc> push(lua_State* L, const std::error_code& ec)
     return outcome::success();
 }
 
-result<std::string, std::bad_alloc> errobj_to_string(lua_State* L)
+result<std::variant<std::string_view, std::error_code>, std::bad_alloc>
+inspect_errobj(lua_State* L)
 {
     if (!lua_checkstack(L, 4))
         return std::bad_alloc{};
 
-    std::string ret;
+    std::variant<std::string_view, std::error_code> ret = std::string_view{};
 
     switch (lua_type(L, -1)) {
     case LUA_TSTRING:
@@ -285,13 +319,58 @@ result<std::string, std::bad_alloc> errobj_to_string(lua_State* L)
             break;
         }
         cat = *reinterpret_cast<std::error_category**>(lua_touserdata(L, -3));
-        ret = cat->message(ev);
+        ret = std::error_code{ev, *cat};
         lua_pop(L, 4);
         break;
     }
     }
 
-    return std::move(ret);
+    return ret;
+}
+
+std::string errobj_to_string(
+    result<std::variant<std::string_view, std::error_code>, std::bad_alloc> o)
+{
+    if (!o)
+        return {};
+
+    return std::visit(
+        [](auto&& arg) -> std::string {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, std::string_view>)
+                return std::string{arg};
+            else if constexpr (std::is_same_v<T, std::error_code>)
+                return arg.category().message(arg.value());
+        },
+        o.value()
+    );
+}
+
+void set_interrupter(lua_State* L)
+{
+    bool interruption_disabled;
+
+    rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
+    lua_pushthread(L);
+    lua_rawget(L, -2);
+    lua_rawgeti(L, -1, FiberDataIndex::INTERRUPTION_DISABLED);
+    switch (lua_type(L, -1)) {
+    case LUA_TBOOLEAN:
+        interruption_disabled = lua_toboolean(L, -1);
+        break;
+    case LUA_TNUMBER:
+        interruption_disabled = lua_tointeger(L, -1) > 0;
+        break;
+    default: assert(false);
+    }
+    if (interruption_disabled) {
+        lua_pop(L, 4);
+        return;
+    }
+
+    lua_pushvalue(L, -4);
+    lua_rawseti(L, -3, FiberDataIndex::INTERRUPTER);
+    lua_pop(L, 4);
 }
 
 class lua_category_impl: public std::error_category
@@ -393,8 +472,12 @@ std::string category_impl::message(int value) const noexcept
         return "The fiber coroutine is reserved to the scheduler";
     case static_cast<int>(errc::suspension_already_allowed):
         return "Suspension already allowed";
+    case static_cast<int>(errc::interruption_already_allowed):
+        return "Interrupt-ability already allowed";
     case static_cast<int>(errc::forbid_suspend_block):
         return "Operation not permitted within a forbid-suspend block";
+    case static_cast<int>(errc::interrupted):
+        return "Fiber interrupted";
     default:
         return {};
     }
@@ -430,8 +513,7 @@ exception::exception(errc ec, const char* what_arg)
     : std::system_error{ec, what_arg}
 {}
 
-lua_Integer detail::unsafe_suspension_disallowed_count(
-    vm_context& vm_ctx, lua_State* L)
+bool detail::unsafe_can_suspend(vm_context& vm_ctx, lua_State* L)
 {
     auto current_fiber = vm_ctx.current_fiber();
     rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
@@ -439,9 +521,32 @@ lua_Integer detail::unsafe_suspension_disallowed_count(
     lua_xmove(current_fiber, L, 1);
     lua_rawget(L, -2);
     lua_rawgeti(L, -1, FiberDataIndex::SUSPENSION_DISALLOWED);
-    auto count = lua_tointeger(L, -1);
-    lua_pop(L, 3);
-    return count;
+    if (lua_tointeger(L, -1) != 0) {
+        push(L, emilua::errc::forbid_suspend_block).value();
+        return false;
+    }
+    lua_rawgeti(L, -2, FiberDataIndex::INTERRUPTION_DISABLED);
+    bool interruption_disabled;
+    switch (lua_type(L, -1)) {
+    case LUA_TBOOLEAN:
+        interruption_disabled = lua_toboolean(L, -1);
+        break;
+    case LUA_TNUMBER:
+        interruption_disabled = lua_tointeger(L, -1) > 0;
+        break;
+    default: assert(false);
+    }
+    if (interruption_disabled) {
+        lua_pop(L, 4);
+        return true;
+    }
+    lua_rawgeti(L, -3, FiberDataIndex::INTERRUPTED);
+    if (lua_toboolean(L, -1) == 1) {
+        push(L, emilua::errc::interrupted).value();
+        return false;
+    }
+    lua_pop(L, 5);
+    return true;
 }
 
 } // namespace emilua
