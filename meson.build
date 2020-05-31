@@ -109,6 +109,7 @@ if get_option('enable_tests')
             'interrupt15',
             'interrupt16',
             'interrupt17',
+            'interrupt18',
         ],
         'lua_shim' : [
             'coroutine_running1',
