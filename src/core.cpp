@@ -95,7 +95,7 @@ void vm_context::fiber_epilogue(int resume_result)
     case 0: //< finished without errors
     case LUA_ERRRUN: { //< a runtime error
         constexpr int extra = /*common path=*/3 +
-            /*code branches=*/hana::maximum(hana::tuple_c<int, 2, 1, 2>);
+            /*code branches=*/hana::maximum(hana::tuple_c<int, 2, 1, 1>);
         if (!lua_checkstack(current_fiber_, extra)) {
             lua_errmem = true;
             close();
@@ -113,6 +113,7 @@ void vm_context::fiber_epilogue(int resume_result)
             assert(lua_toboolean(current_fiber_, -1) == 0);
 
             if (resume_result == LUA_ERRRUN) {
+                bool is_main = L() == current_fiber_;
                 luaL_traceback(current_fiber_, current_fiber_, nullptr, 1);
                 lua_pushvalue(current_fiber_, -5);
                 auto err_obj = inspect_errobj(current_fiber_);
@@ -125,10 +126,15 @@ void vm_context::fiber_epilogue(int resume_result)
                     return;
                 }
                 if (auto e = std::get_if<std::error_code>(&err_obj.value()) ;
-                    !e || *e != errc::interrupted) {
-                    print_panic(current_fiber_, /*is_main=*/false,
+                    !e || *e != errc::interrupted || is_main) {
+                    print_panic(current_fiber_, is_main,
                                 errobj_to_string(err_obj),
                                 tostringview(current_fiber_, -2));
+                }
+                if (is_main) {
+                    // TODO: call uncaught-hook
+                    close();
+                    return;
                 }
                 lua_pop(current_fiber_, 2);
             }
@@ -198,24 +204,13 @@ void vm_context::fiber_epilogue(int resume_result)
             return fiber_epilogue(res);
         } else {
             // Handle still alive
-            if (resume_result == LUA_ERRRUN && L() == current_fiber_) {
-                // TODO: call uncaught-hook
-                luaL_traceback(L(), L(), nullptr, 1);
-                lua_pushvalue(L(), -5);
-                std::string err_str = errobj_to_string(inspect_errobj(L()));
-                print_panic(L(), /*is_main=*/true, err_str,
-                            tostringview(L(), -2));
-                close();
-                return;
-            } else {
-                lua_pushinteger(
-                    current_fiber_,
-                    (resume_result == 0)
-                    ? FiberStatus::FINISHED_SUCCESSFULLY
-                    : FiberStatus::FINISHED_WITH_ERROR);
-                lua_rawseti(current_fiber_, -3, FiberDataIndex::STATUS);
-                lua_pop(current_fiber_, 3);
-            }
+            lua_pushinteger(
+                current_fiber_,
+                (resume_result == 0)
+                ? FiberStatus::FINISHED_SUCCESSFULLY
+                : FiberStatus::FINISHED_WITH_ERROR);
+            lua_rawseti(current_fiber_, -3, FiberDataIndex::STATUS);
+            lua_pop(current_fiber_, 3);
         }
         break;
     }

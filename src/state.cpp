@@ -242,6 +242,9 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
         lua_pushboolean(L, 1);
         lua_rawseti(L, -2, FiberDataIndex::INTERRUPTION_DISABLED);
 
+        lua_pushboolean(L, 0);
+        lua_rawseti(L, -2, FiberDataIndex::JOINER);
+
         lua_rawset(L, -3);
         lua_pop(L, 1);
     }
