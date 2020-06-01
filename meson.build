@@ -3,7 +3,7 @@ project('emilua', 'cpp', default_options : ['cpp_std=c++17'])
 conf = configuration_data()
 conf.set10('ENABLE_COLOR', not get_option('disable_color'))
 configure_file(
-    input : 'config.h.in',
+    input : 'meson/config.h.in',
     output : 'config.h',
     configuration : conf,
 )
@@ -64,7 +64,7 @@ emilua_bin = executable(
     'emilua',
     src,
     bytecode_src,
-    cpp_pch : 'pch/pchheader.hpp',
+    cpp_pch : 'meson/pchheader.hpp',
     dependencies : [boost, luajit, curses],
     include_directories : incdir
 )
