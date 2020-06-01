@@ -46,6 +46,7 @@ incdir = include_directories([
 src = [
     '3rd/fmt/src/format.cc',
 
+    'src/lua_shim.cpp',
     'src/fiber.cpp',
     'src/timer.cpp',
     'src/state.cpp',
@@ -55,6 +56,7 @@ src = [
 
 bytecode_src = bytecode_gen.process(
     'bytecode/sleep_for.lua',
+    'bytecode/lua_shim.lua',
     'bytecode/fiber.lua',
 )
 

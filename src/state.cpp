@@ -3,6 +3,7 @@
 #include <new>
 
 #include <emilua/detail/core.hpp>
+#include <emilua/lua_shim.hpp>
 #include <emilua/fiber.hpp>
 #include <emilua/state.hpp>
 #include <emilua/timer.hpp>
@@ -281,6 +282,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
     lua_rawget(L, LUA_GLOBALSINDEX);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
+    init_lua_shim_module(L);
     init_fiber_module(L);
 
     std::optional<std::reference_wrapper<std::string>> module_source;
