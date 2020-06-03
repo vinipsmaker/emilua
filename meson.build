@@ -137,6 +137,7 @@ if get_option('enable_tests')
                      meson.current_source_dir() + '/test/' + t,
                  ],
                  env : [
+                     'EMILUA_COLORS=',
                      'EMILUA_BIN=' + emilua_bin.full_path(),
                      'AWK_BIN=' + awk.path(),
                  ])
