@@ -33,7 +33,7 @@ endif
 
 if get_option('enable_tests')
     # GNU Coreutils binaries are not specified explicitly, but expected too
-    bash = find_program('bash')
+    shell = find_program('bash', 'ksh')
     awk = find_program('awk')
 endif
 
@@ -130,7 +130,7 @@ if get_option('enable_tests')
 
     foreach suite, t : tests
         foreach t : t
-            test(t, bash, suite : suite,
+            test(t, shell, suite : suite,
                  args : [
                      meson.current_source_dir() + '/test/run_test.sh',
                      meson.current_source_dir() + '/test/run_test.awk',
