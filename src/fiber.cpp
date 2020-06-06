@@ -303,6 +303,14 @@ inline int fiber_interruption_caught(lua_State* L)
     return 1;
 }
 
+inline int fiber_joinable(lua_State* L)
+{
+    auto handle = reinterpret_cast<fiber_handle*>(lua_touserdata(L, 1));
+    assert(handle);
+    lua_pushboolean(L, handle->fiber != nullptr);
+    return 1;
+}
+
 static int fiber_meta_index(lua_State* L)
 {
     return dispatch_table::dispatch(
@@ -332,16 +340,7 @@ static int fiber_meta_index(lua_State* L)
                 BOOST_HANA_STRING("interruption_caught"),
                 fiber_interruption_caught
             ),
-            hana::make_pair(
-                BOOST_HANA_STRING("joinable"),
-                [](lua_State* L) -> int {
-                    auto handle = reinterpret_cast<fiber_handle*>(
-                        lua_touserdata(L, 1));
-                    assert(handle);
-                    lua_pushboolean(L, handle->fiber != nullptr);
-                    return 1;
-                }
-            )
+            hana::make_pair(BOOST_HANA_STRING("joinable"), fiber_joinable)
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
             push(L, errc::bad_index).value();
@@ -538,6 +537,27 @@ static int this_fiber_allow_suspend(lua_State* L)
         errc::suspension_already_allowed);
 }
 
+inline int this_fiber_local(lua_State* L)
+{
+    auto& vm_ctx = get_vm_context(L);
+    if (!lua_checkstack(vm_ctx.current_fiber(), 1)) {
+        vm_ctx.notify_errmem();
+        return lua_yield(L, 0);
+    }
+
+    rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
+    lua_pushthread(vm_ctx.current_fiber());
+    lua_xmove(vm_ctx.current_fiber(), L, 1);
+    lua_rawget(L, -2);
+    lua_rawgeti(L, -1, FiberDataIndex::LOCAL_STORAGE);
+    if (lua_type(L, -1) == LUA_TNIL) {
+        lua_newtable(L);
+        lua_pushvalue(L, -1);
+        lua_rawseti(L, -4, FiberDataIndex::LOCAL_STORAGE);
+    }
+    return 1;
+}
+
 static int this_fiber_meta_index(lua_State* L)
 {
     return dispatch_table::dispatch(
@@ -577,28 +597,7 @@ static int this_fiber_meta_index(lua_State* L)
                     return 1;
                 }
             ),
-            hana::make_pair(
-                BOOST_HANA_STRING("local_"),
-                [](lua_State* L) -> int {
-                    auto& vm_ctx = get_vm_context(L);
-                    if (!lua_checkstack(vm_ctx.current_fiber(), 1)) {
-                        vm_ctx.notify_errmem();
-                        return lua_yield(L, 0);
-                    }
-
-                    rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
-                    lua_pushthread(vm_ctx.current_fiber());
-                    lua_xmove(vm_ctx.current_fiber(), L, 1);
-                    lua_rawget(L, -2);
-                    lua_rawgeti(L, -1, FiberDataIndex::LOCAL_STORAGE);
-                    if (lua_type(L, -1) == LUA_TNIL) {
-                        lua_newtable(L);
-                        lua_pushvalue(L, -1);
-                        lua_rawseti(L, -4, FiberDataIndex::LOCAL_STORAGE);
-                    }
-                    return 1;
-                }
-            ),
+            hana::make_pair(BOOST_HANA_STRING("local_"), this_fiber_local),
             hana::make_pair(
                 BOOST_HANA_STRING("is_main"),
                 [](lua_State* L) -> int {

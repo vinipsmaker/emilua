@@ -56,7 +56,7 @@ struct Hash
         //
         // * Produce indexes [0, N).
         // * Produce reverse indexes [N, 1].
-        // * Whether and index is reversed is indicated by the boolean constant
+        // * Whether an index is reversed is indicated by the boolean constant
         //   that follows the index. `true` means reversed. Reverse index count
         //   from the end iterator.
         // * We use N=smallest_pattern_size because we don't want to perform

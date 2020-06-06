@@ -17,8 +17,8 @@ char raw_unpack_key;
 
 namespace detail {
 char context_key;
-char error_code_key;
-char error_category_key;
+char error_code_mt_key;
+char error_category_mt_key;
 } // namespace detail
 
 boost::asio::io_context::id service::id;
@@ -191,7 +191,8 @@ void vm_context::fiber_epilogue(int resume_result)
             if (join_handle) {
                 join_handle->interruption_caught = interruption_caught;
             } else {
-                // do nothing;  this branch happens only for modules' fibers
+                // do nothing; this branch executes only for modules' fibers
+                // and modules' fibers never expose a join handle to the user
             }
 
             fiber_prologue(joiner);
@@ -270,12 +271,12 @@ result<void, std::bad_alloc> push(lua_State* L, const std::error_code& ec)
     {
         *reinterpret_cast<const std::error_category**>(
             lua_newuserdata(L, sizeof(void*))) = &ec.category();
-        rawgetp(L, LUA_REGISTRYINDEX, &detail::error_category_key);
+        rawgetp(L, LUA_REGISTRYINDEX, &detail::error_category_mt_key);
         lua_setmetatable(L, -2);
     }
     lua_rawset(L, -3);
 
-    rawgetp(L, LUA_REGISTRYINDEX, &detail::error_code_key);
+    rawgetp(L, LUA_REGISTRYINDEX, &detail::error_code_mt_key);
     lua_setmetatable(L, -2);
     return outcome::success();
 }
@@ -308,7 +309,7 @@ inspect_errobj(lua_State* L)
             lua_pop(L, 2);
             break;
         }
-        rawgetp(L, LUA_REGISTRYINDEX, &detail::error_category_key);
+        rawgetp(L, LUA_REGISTRYINDEX, &detail::error_category_mt_key);
         if (!lua_rawequal(L, -1, -2)) {
             lua_pop(L, 4);
             break;

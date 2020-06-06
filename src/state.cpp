@@ -78,7 +78,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
     }
 
     {
-        lua_pushlightuserdata(L, &detail::error_category_key);
+        lua_pushlightuserdata(L, &detail::error_category_mt_key);
         lua_createtable(L, /*narr=*/0, /*nrec=*/4);
 
         lua_pushliteral(L, "__metatable");
@@ -150,7 +150,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
     }
 
     {
-        lua_pushlightuserdata(L, &detail::error_code_key);
+        lua_pushlightuserdata(L, &detail::error_code_mt_key);
         lua_createtable(L, /*narr=*/0, /*nrec=*/2);
 
         lua_pushliteral(L, "__eq");
@@ -197,7 +197,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
                     push(L, std::errc::invalid_argument).value();
                     return lua_error(L);
                 }
-                rawgetp(L, LUA_REGISTRYINDEX, &detail::error_category_key);
+                rawgetp(L, LUA_REGISTRYINDEX, &detail::error_category_mt_key);
                 if (!lua_rawequal(L, -1, -2)) {
                     push(L, std::errc::invalid_argument).value();
                     return lua_error(L);

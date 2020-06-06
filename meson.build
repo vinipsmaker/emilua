@@ -34,7 +34,7 @@ endif
 if get_option('enable_tests')
     # GNU Coreutils binaries are not specified explicitly, but expected too
     shell = find_program('bash', 'ksh')
-    awk = find_program('awk')
+    gawk = find_program('gawk')
 endif
 
 incdir = include_directories([
@@ -97,7 +97,6 @@ if get_option('enable_tests')
             'interrupt1',
             'interrupt2',
             'interrupt3',
-            'interrupt4',
             'interrupt5',
             'interrupt6',
             'interrupt7',
@@ -112,6 +111,7 @@ if get_option('enable_tests')
             'interrupt16',
             'interrupt17',
             'interrupt18',
+            'non-portable/interrupt1',
         ],
         'lua_shim' : [
             'coroutine_running1',
@@ -137,9 +137,11 @@ if get_option('enable_tests')
                      meson.current_source_dir() + '/test/' + t,
                  ],
                  env : [
+# Test must override this env so non-colored terminal output will be
+# auto-detected (this is, in itself, another test)
                      'EMILUA_COLORS=',
                      'EMILUA_BIN=' + emilua_bin.full_path(),
-                     'AWK_BIN=' + awk.path(),
+                     'AWK_BIN=' + gawk.path(),
                  ])
         endforeach
     endforeach
