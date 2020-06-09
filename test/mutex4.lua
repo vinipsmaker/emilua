@@ -1,0 +1,35 @@
+local mutex = require('mutex')
+local sleep_for = require('sleep_for')
+local println = require('println')
+
+m = mutex.new()
+
+spawn(function()
+    m:lock()
+    println('101')
+
+    sleep_for(30)
+    m:unlock()
+    println('102')
+end)
+
+spawn(function()
+    sleep_for(10)
+    m:lock()
+    println('201')
+    m:unlock()
+    println('202')
+end)
+
+spawn(function()
+    sleep_for(20)
+    m:lock()
+    println('301')
+    m:unlock()
+    println('302')
+
+    sleep_for(10)
+    m:lock()
+    println('311')
+    m:unlock()
+end)

@@ -6,6 +6,7 @@
 #include <variant>
 #include <cstdio>
 #include <memory>
+#include <deque>
 #include <mutex>
 #include <new>
 

@@ -62,9 +62,36 @@ void vm_context::close()
                 static_cast<const void*>(L_),
                 underline, reset_underline,
                 reset_red);
+
+            suppress_tail_errors = true;
         }
 
         lua_close(L_);
+
+        if (!suppress_tail_errors && deadlock_errors.size() != 0) {
+            std::string_view red{"\033[31;1m"};
+            std::string_view dim{"\033[2m"};
+            std::string_view reset_red{"\033[22;39m"};
+            std::string_view reset_dim{"\033[22m"};
+            if (!stdout_has_color)
+                red = dim = reset_red = reset_dim = {};
+
+            constexpr auto spec{FMT_STRING(
+                "{}Possible deadlock(s) detected during VM {} shutdown{}:\n"
+                "{}{}{}"
+            )};
+            std::string errors;
+            for (auto& e: deadlock_errors) {
+                errors.push_back('\t');
+                errors += e;
+                errors.push_back('\n');
+            }
+            fmt::print(
+                stderr,
+                spec,
+                red, static_cast<void*>(L_), reset_red,
+                dim, errors, reset_dim);
+        }
     }
 
     valid_ = false;
@@ -133,6 +160,7 @@ void vm_context::fiber_epilogue(int resume_result)
                 }
                 if (is_main) {
                     // TODO: call uncaught-hook
+                    suppress_tail_errors = true;
                     close();
                     return;
                 }
@@ -240,6 +268,11 @@ void vm_context::reclaim_reserved_zone()
 {
     // TODO: when per-VM allocator is ready
     // this function may throw LUA_ERRMEM and call close()
+}
+
+void vm_context::notify_deadlock(std::string msg)
+{
+    deadlock_errors.emplace_back(std::move(msg));
 }
 
 vm_context& get_vm_context(lua_State* L)
@@ -542,6 +575,22 @@ bool detail::unsafe_can_suspend(vm_context& vm_ctx, lua_State* L)
         return false;
     }
     lua_pop(L, 5);
+    return true;
+}
+
+bool detail::unsafe_can_suspend2(vm_context& vm_ctx, lua_State* L)
+{
+    auto current_fiber = vm_ctx.current_fiber();
+    rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
+    lua_pushthread(current_fiber);
+    lua_xmove(current_fiber, L, 1);
+    lua_rawget(L, -2);
+    lua_rawgeti(L, -1, FiberDataIndex::SUSPENSION_DISALLOWED);
+    if (lua_tointeger(L, -1) != 0) {
+        push(L, emilua::errc::forbid_suspend_block).value();
+        return false;
+    }
+    lua_pop(L, 3);
     return true;
 }
 

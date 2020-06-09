@@ -32,6 +32,14 @@ extern "C" {
     if (!emilua::detail::unsafe_can_suspend((VM_CTX), (L))) \
         return lua_error((L));
 
+#define EMILUA_CHECK_SUSPEND_ALLOWED_ASSUMING_INTERRUPTION_DISABLED(VM_CTX, L) \
+    if (!lua_checkstack((VM_CTX).current_fiber(), 1)) {                        \
+        (VM_CTX).notify_errmem();                                              \
+        return lua_yield((L), 0);                                              \
+    }                                                                          \
+    if (!emilua::detail::unsafe_can_suspend2((VM_CTX), (L)))                   \
+        return lua_error((L));
+
 namespace boost::hana {}
 
 namespace emilua {
@@ -246,13 +254,17 @@ public:
     void enable_reserved_zone();
     void reclaim_reserved_zone();
 
+    void notify_deadlock(std::string msg);
+
 private:
 
     boost::asio::io_context::strand strand_;
     bool valid_;
     bool lua_errmem;
+    bool suppress_tail_errors = false;
     lua_State* L_;
     lua_State* current_fiber_;
+    std::vector<std::string> deadlock_errors;
 };
 
 vm_context& get_vm_context(lua_State* L);
@@ -298,6 +310,21 @@ inline void rawgetp(lua_State* L, int pseudoindex, const void* p)
 {
     lua_pushlightuserdata(L, const_cast<void*>(p));
     lua_rawget(L, pseudoindex);
+}
+
+template<class T>
+inline void finalize(lua_State* L, int index = 1)
+{
+    auto obj = reinterpret_cast<T*>(lua_touserdata(L, index));
+    assert(obj);
+    obj->~T();
+}
+
+template<class T>
+inline int finalizer(lua_State* L)
+{
+    finalize<T>(L);
+    return 0;
 }
 
 enum class lua_errc
@@ -370,6 +397,7 @@ public:
 
 namespace detail {
 bool unsafe_can_suspend(vm_context& vm_ctx, lua_State* L);
+bool unsafe_can_suspend2(vm_context& vm_ctx, lua_State* L);
 } // namespace detail
 
 } // namespace emilua

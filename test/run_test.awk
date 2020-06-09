@@ -1,6 +1,6 @@
 function sanitize_record()
 {
-    $0 = gensub(/(Fiber|VM) 0x[[:xdigit:]]+\>/, "\\1 0x0", "g")
+    $0 = gensub(/(Fiber|VM|mutex) 0x[[:xdigit:]]+\>/, "\\1 0x0", "g")
     while (i = index($0, printed_path)) {
         $0 = substr($0, 1, i - 1) "input" substr($0, i + length(printed_path))
     }

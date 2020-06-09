@@ -48,6 +48,7 @@ src = [
 
     'src/lua_shim.cpp',
     'src/fiber.cpp',
+    'src/mutex.cpp',
     'src/timer.cpp',
     'src/state.cpp',
     'src/core.cpp',
@@ -112,6 +113,13 @@ if get_option('enable_tests')
             'interrupt17',
             'interrupt18',
             'non-portable/interrupt1',
+        ],
+        'sync' : [
+            'mutex1',
+            'mutex2',
+            'mutex3',
+            'mutex4',
+            'non-portable/mutex1',
         ],
         'lua_shim' : [
             'coroutine_running1',
