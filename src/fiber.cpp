@@ -433,7 +433,7 @@ static int spawn(lua_State* L)
     lua_xmove(L, new_fiber, 1);
 
     vm_ctx->strand().post([vm_ctx,new_fiber]() {
-        vm_ctx->fiber_resume(new_fiber);
+        vm_ctx->fiber_resume_trivial(new_fiber);
     }, std::allocator<void>{});
 
     {
@@ -457,7 +457,7 @@ static int this_fiber_yield(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     vm_ctx->strand().defer(
         [vm_ctx,current_fiber]() {
-            vm_ctx->fiber_resume(current_fiber);
+            vm_ctx->fiber_resume_trivial(current_fiber);
         },
         std::allocator<void>{}
     );

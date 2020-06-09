@@ -94,7 +94,7 @@ static int mutex_unlock(lua_State* L)
     auto next = handle->pending.front();
     handle->pending.pop_front();
     vm_ctx->strand().post([vm_ctx,next]() {
-        vm_ctx->fiber_resume(next);
+        vm_ctx->fiber_resume_trivial(next);
     }, std::allocator<void>{});
     return 0;
 }

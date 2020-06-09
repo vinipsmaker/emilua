@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
         auto vm_ctx = emilua::make_vm(ioctx, exit_code, filename,
                                       emilua::ContextType::main);
         vm_ctx->strand().post([vm_ctx]() {
-            vm_ctx->fiber_resume(vm_ctx->L());
+            vm_ctx->fiber_resume_trivial(vm_ctx->L());
         }, std::allocator<void>{});
     } catch (std::exception& e) {
         std::cerr << "Error starting the lua VM: " << e.what() << std::endl;

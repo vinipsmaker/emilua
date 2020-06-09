@@ -226,7 +226,7 @@ public:
         return valid_;
     }
 
-    void fiber_resume(lua_State* fiber)
+    void fiber_resume_trivial(lua_State* fiber)
     {
         fiber_prologue_trivial(fiber);
         int res = lua_resume(fiber, 0);
