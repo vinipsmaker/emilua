@@ -8,6 +8,7 @@
 #include <emilua/mutex.hpp>
 #include <emilua/state.hpp>
 #include <emilua/timer.hpp>
+#include <emilua/cond.hpp>
 
 namespace emilua {
 
@@ -38,6 +39,9 @@ static int require(lua_State* L)
         return 1;
     } else if (module == "mutex") {
         rawgetp(L, LUA_REGISTRYINDEX, &mutex_key);
+        return 1;
+    } else if (module == "cond") {
+        rawgetp(L, LUA_REGISTRYINDEX, &cond_key);
         return 1;
     } else {
         push(L, errc::module_not_found).value();
@@ -289,6 +293,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
     init_lua_shim_module(L);
     init_fiber_module(L);
     init_mutex_module(L);
+    init_cond_module(L);
 
     std::optional<std::reference_wrapper<std::string>> module_source;
     {

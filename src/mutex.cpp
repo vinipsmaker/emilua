@@ -1,5 +1,3 @@
-#include <deque>
-
 #include <fmt/format.h>
 
 #include <emilua/dispatch_table.hpp>
@@ -8,27 +6,20 @@
 namespace emilua {
 
 char mutex_key;
-static char mutex_mt_key;
+char mutex_mt_key;
 
-struct mutex_handle
+inline mutex_handle::mutex_handle(vm_context& vm_ctx)
+    : vm_ctx{vm_ctx}
+{}
+
+inline mutex_handle::~mutex_handle()
 {
-    mutex_handle(vm_context& vm_ctx)
-        : vm_ctx{vm_ctx}
-    {}
-
-    ~mutex_handle()
-    {
-        constexpr auto spec{FMT_STRING(
-            "No scheduled fibers remaining to unlock mutex {}"
-        )};
-        if (pending.size() != 0)
-            vm_ctx.notify_deadlock(fmt::format(spec, static_cast<void*>(this)));
-    }
-
-    std::deque<lua_State*> pending;
-    bool locked = false;
-    vm_context& vm_ctx;
-};
+    constexpr auto spec{FMT_STRING(
+        "No scheduled fibers remaining to unlock mutex {}"
+    )};
+    if (pending.size() != 0)
+        vm_ctx.notify_deadlock(fmt::format(spec, static_cast<void*>(this)));
+}
 
 static int mutex_lock(lua_State* L)
 {

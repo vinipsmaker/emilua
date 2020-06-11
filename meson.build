@@ -51,6 +51,7 @@ src = [
     'src/mutex.cpp',
     'src/timer.cpp',
     'src/state.cpp',
+    'src/cond.cpp',
     'src/core.cpp',
     'src/main.cpp'
 ]
@@ -59,6 +60,7 @@ bytecode_src = bytecode_gen.process(
     'bytecode/sleep_for.lua',
     'bytecode/lua_shim.lua',
     'bytecode/fiber.lua',
+    'bytecode/cond.lua',
 )
 
 emilua_bin = executable(
@@ -119,6 +121,14 @@ if get_option('enable_tests')
             'mutex2',
             'mutex3',
             'mutex4',
+            'cond1',
+            'cond2',
+            'cond3',
+            'cond4',
+            'cond5',
+            'cond6',
+            'cond7',
+            'cond8',
             'non-portable/mutex1',
         ],
         'lua_shim' : [

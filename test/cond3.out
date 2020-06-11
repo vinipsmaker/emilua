@@ -1,0 +1,4 @@
+Main fiber from VM 0x0 panicked: 'Operation not permitted'
+stack traceback:
+	[string "?"]: in function 'wait'
+	input.lua:10: in main chunk

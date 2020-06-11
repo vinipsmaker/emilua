@@ -226,6 +226,14 @@ public:
         return valid_;
     }
 
+    void fiber_resume(lua_State* fiber)
+    {
+        fiber_prologue(fiber);
+        reclaim_reserved_zone();
+        int res = lua_resume(fiber, 0);
+        fiber_epilogue(res);
+    }
+
     void fiber_resume_trivial(lua_State* fiber)
     {
         fiber_prologue_trivial(fiber);
