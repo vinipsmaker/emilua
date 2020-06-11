@@ -17,6 +17,9 @@ BEGIN {
     sanitize_record()
     switch (getline expected <(TEST ".out")) {
     default:
+# This error message might be printed twice, but that's okay and I don't want to
+# complicate the script's logic thanks to this alone. Better print ERRNO twice
+# than to lose an error event even once.
         printf "Error while reading %s.out: %s\n", TEST, ERRNO >"/dev/stderr"
         err = 1
         exit
@@ -27,7 +30,7 @@ BEGIN {
             print "\t" $0 >"/dev/stderr"
         }
         err = 1
-        break
+        exit
     case 1:
         if ($0 != expected) {
             printf "Expected (LINE %i):\n\t%s\nGot:\n\t%s\n", NR, expected, $0 \
@@ -37,12 +40,11 @@ BEGIN {
     }
 }
 END {
-    if (err) {
-        exit err
-    }
-
     switch (getline expected <(TEST ".out")) {
     default:
+# According to gawk, "[...] subsequent attempts to read from that file result in
+# an end-of-file indication". So, in theory, the same error message shouldn't be
+# printed twice, but, in practice, it does.
         printf "Error while reading %s.out: %s\n", TEST, ERRNO >"/dev/stderr"
         exit 1
     case 1:
@@ -53,6 +55,8 @@ END {
         print "Got EOF" >"/dev/stderr"
         exit 1
     case 0:
-        exit
+        break
     }
+
+    exit err
 }
