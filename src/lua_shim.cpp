@@ -10,6 +10,8 @@ extern std::size_t coroutine_resume_bytecode_size;
 extern unsigned char coroutine_wrap_bytecode[];
 extern std::size_t coroutine_wrap_bytecode_size;
 
+static char busy_coroutines_key;
+
 static int coroutine_running(lua_State* L)
 {
     rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
@@ -49,8 +51,63 @@ static int coroutine_yield(lua_State* L)
     }
 }
 
+static int coroutine_status(lua_State* L)
+{
+    rawgetp(L, LUA_REGISTRYINDEX, &busy_coroutines_key);
+    lua_pushvalue(L, 1);
+    lua_rawget(L, -2);
+    if (lua_toboolean(L, -1)) {
+        lua_pushvalue(L, lua_upvalueindex(2));
+        return 1;
+    }
+
+    lua_pushvalue(L, lua_upvalueindex(1));
+    lua_pushvalue(L, 1);
+    lua_call(L, 1, 1);
+    return 1;
+}
+
+static int set_busy(lua_State* L)
+{
+    rawgetp(L, LUA_REGISTRYINDEX, &busy_coroutines_key);
+    lua_pushvalue(L, 1);
+    lua_pushboolean(L, 1);
+    lua_rawset(L, -3);
+    return 0;
+}
+
+static int clear_busy(lua_State* L)
+{
+    rawgetp(L, LUA_REGISTRYINDEX, &busy_coroutines_key);
+    lua_pushvalue(L, 1);
+    lua_pushnil(L);
+    lua_rawset(L, -3);
+    return 0;
+}
+
+static int is_busy(lua_State* L)
+{
+    rawgetp(L, LUA_REGISTRYINDEX, &busy_coroutines_key);
+    lua_pushvalue(L, 1);
+    lua_rawget(L, -2);
+    return 1;
+}
+
 void init_lua_shim_module(lua_State* L)
 {
+    lua_pushlightuserdata(L, &busy_coroutines_key);
+    lua_newtable(L);
+    {
+        lua_createtable(L, /*narr=*/0, /*nrec=*/1);
+
+        lua_pushliteral(L, "__mode");
+        lua_pushliteral(L, "k");
+        lua_rawset(L, -3);
+
+        lua_setmetatable(L, -2);
+    }
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
     lua_pushliteral(L, "coroutine");
     lua_rawget(L, LUA_GLOBALSINDEX);
     {
@@ -101,9 +158,14 @@ void init_lua_shim_module(lua_State* L)
                 lua_rawset(L, LUA_REGISTRYINDEX);
                 return 0;
             });
+        lua_pushcfunction(L, is_busy);
+        lua_pushcfunction(L, set_busy);
+        lua_pushcfunction(L, clear_busy);
+        push(L, std::errc::operation_not_permitted).value();
+        lua_pushcfunction(L, lua_error);
         lua_pushliteral(L, "unpack");
         lua_rawget(L, LUA_GLOBALSINDEX);
-        lua_call(L, 5, 1);
+        lua_call(L, 10, 1);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "wrap");
@@ -123,6 +185,13 @@ void init_lua_shim_module(lua_State* L)
 
         lua_pushliteral(L, "yield");
         lua_pushcfunction(L, coroutine_yield);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "status");
+        lua_pushvalue(L, -1);
+        lua_rawget(L, -3);
+        lua_pushliteral(L, "normal");
+        lua_pushcclosure(L, coroutine_status, 2);
         lua_rawset(L, -3);
     }
     lua_pop(L, 1);

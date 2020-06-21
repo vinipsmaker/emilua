@@ -140,6 +140,7 @@ if get_option('enable_tests')
             'coroutine_resume1',
             'coroutine_resume2',
             'coroutine_resume3',
+            'coroutine_resume4',
         ],
         'programs' : [
             'sleepsort',

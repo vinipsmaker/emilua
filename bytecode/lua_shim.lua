@@ -28,8 +28,13 @@ f:close()
 coroutine_create_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
 
 function coroutine_resume_bootstrap(resume, yield, is_yield_native,
-                                    mark_yield_as_native, unpack)
+                                    mark_yield_as_native, is_busy, set_busy,
+                                    clear_busy, eperm, error, unpack)
     return function(co, ...)
+        if is_busy(co) then
+            error(eperm)
+        end
+
         local args = {...}
         while true do
             local ret = {resume(co, unpack(args))}
@@ -38,7 +43,9 @@ function coroutine_resume_bootstrap(resume, yield, is_yield_native,
                 return unpack(ret)
             end
             if is_yield_native() then
+                set_busy(co)
                 args = {yield(unpack(ret, 2))}
+                clear_busy(co)
             else
                 mark_yield_as_native()
                 return unpack(ret)

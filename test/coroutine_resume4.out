@@ -1,0 +1,6 @@
+suspended
+normal
+Main fiber from VM 0x1 panicked: 'Operation not permitted'
+stack traceback:
+	[string "?"]: in function 'resume'
+	input.lua:18: in main chunk
