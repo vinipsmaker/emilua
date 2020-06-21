@@ -668,6 +668,15 @@ void init_fiber_module(lua_State* L)
         lua_pushliteral(L, "__index");
         lua_pushcfunction(L, this_fiber_meta_index);
         lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__newindex");
+        lua_pushcfunction(
+            L,
+            [](lua_State* L) -> int {
+                push(L, std::errc::operation_not_permitted).value();
+                return lua_error(L);
+            });
+        lua_rawset(L, -3);
     }
     lua_setmetatable(L, -2);
     lua_rawset(L, LUA_GLOBALSINDEX);
