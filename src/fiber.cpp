@@ -284,8 +284,10 @@ static int fiber_interrupt(lua_State* L)
 
     lua_rawgeti(L, -1, FiberDataIndex::INTERRUPTER);
     if (lua_type(L, -1) != LUA_TNIL) {
-        lua_pushvalue(L, -1);
         lua_call(L, 0, 0);
+
+        lua_pushnil(L);
+        lua_rawseti(L, -2, FiberDataIndex::INTERRUPTER);
     }
 
     return 0;
