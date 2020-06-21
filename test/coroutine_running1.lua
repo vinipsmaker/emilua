@@ -1,6 +1,6 @@
 println = require('println')
 
 coroutine.wrap(function()
-    println(type(coroutine.running()))
+    println(tostring(coroutine.running()))
 end)()
-println(type(coroutine.running()))
+println(tostring(coroutine.running()))

@@ -1,4 +1,4 @@
-Fiber 0x0 panicked: 'Resource deadlock avoided'
+Fiber 0x1 panicked: 'Resource deadlock avoided'
 stack traceback:
 	[string "?"]: in function 'join'
 	input.lua:4: in function <input.lua:3>

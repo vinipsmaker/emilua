@@ -1,4 +1,4 @@
-Main fiber from VM 0x0 panicked: 'Operation not permitted within a forbid-suspend block'
+Main fiber from VM 0x1 panicked: 'Operation not permitted within a forbid-suspend block'
 stack traceback:
 	[string "?"]: in function 'join'
 	input.lua:2: in main chunk

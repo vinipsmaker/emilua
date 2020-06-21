@@ -1,2 +1,2 @@
-Possible deadlock(s) detected during VM 0x0 shutdown:
-	No scheduled fibers remaining to unlock mutex 0x0
+Possible deadlock(s) detected during VM 0x1 shutdown:
+	No scheduled fibers remaining to unlock mutex 0x2

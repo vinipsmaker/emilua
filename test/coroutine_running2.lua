@@ -1,5 +1,5 @@
 println = require('println')
 
 spawn(function()
-    println(type(coroutine.running()))
+    println(tostring(coroutine.running()))
 end):join()

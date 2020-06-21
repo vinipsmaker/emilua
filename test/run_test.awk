@@ -61,15 +61,19 @@ function sanitize_record(    i, pattern, captures, input, output)
     }
 
     # Normalize runtime addresses
-    pattern = @/(Fiber|VM|mutex) 0x([[:xdigit:]]+\>)/
+    pattern = @/(Fiber|VM|mutex|thread:) 0x([[:xdigit:]]+\>)/
     for (input = $0 ; match(input, pattern, captures) ;
          input = substr(input, RSTART + RLENGTH)) {
+        if (!(captures[2] in sanitize_record_addrs)) {
+            sanitize_record_addrs[captures[2]] = \
+                sprintf("0x%X", ++sanitize_record_addr_idx)
+        }
         output = sprintf("%s%s%s %s",
                          output,                       #< append op
                          substr(input, 1, RSTART - 1), #< slice before match
                          # actual match work range
                          captures[1],
-                         "0x0")
+                         sanitize_record_addrs[captures[2]])
     }
     $0 = output input
 }

@@ -1,3 +1,3 @@
-Main fiber from VM 0x0 panicked: 'Invalid argument'
+Main fiber from VM 0x1 panicked: 'Invalid argument'
 stack traceback:
 	input.lua:6: in main chunk

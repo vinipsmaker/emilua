@@ -1,6 +1,6 @@
 secondary fiber spawned
 secondary fiber starts
 end of main fiber
-Fiber 0x0 panicked: 'tag'
+Fiber 0x1 panicked: 'tag'
 stack traceback:
 	input.lua:9: in function <input.lua:6>
