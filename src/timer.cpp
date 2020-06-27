@@ -49,7 +49,7 @@ static int sleep_for(lua_State* L)
             std::error_code std_ec = ec;
             if (handle->interrupted && ec == asio::error::operation_aborted)
                 std_ec = errc::interrupted;
-            push(current_fiber, std_ec).value();
+            push(current_fiber, std_ec);
             vm_ctx->reclaim_reserved_zone();
             int res = lua_resume(current_fiber, 1);
             vm_ctx->fiber_epilogue(res);
@@ -61,9 +61,6 @@ static int sleep_for(lua_State* L)
 
 result<void, std::bad_alloc> push_sleep_for(lua_State* L)
 {
-    if (!lua_checkstack(L, 3))
-        return std::bad_alloc{};
-
     int res = luaL_loadbuffer(L, reinterpret_cast<char*>(sleep_for_bytecode),
                               sleep_for_bytecode_size, nullptr);
     assert(res != LUA_ERRSYNTAX);

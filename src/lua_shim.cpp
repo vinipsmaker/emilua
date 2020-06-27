@@ -43,7 +43,7 @@ static int coroutine_yield(lua_State* L)
         lua_rawset(L, LUA_REGISTRYINDEX);
         return lua_yield(L, lua_gettop(L));
     case LUA_TTABLE:
-        push(L, errc::bad_coroutine).value();
+        push(L, errc::bad_coroutine);
         return lua_error(L);
     default:
         assert(false);
@@ -161,7 +161,7 @@ void init_lua_shim_module(lua_State* L)
         lua_pushcfunction(L, is_busy);
         lua_pushcfunction(L, set_busy);
         lua_pushcfunction(L, clear_busy);
-        push(L, std::errc::operation_not_permitted).value();
+        push(L, std::errc::operation_not_permitted);
         lua_pushcfunction(L, lua_error);
         lua_pushliteral(L, "unpack");
         lua_rawget(L, LUA_GLOBALSINDEX);

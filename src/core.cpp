@@ -115,20 +115,17 @@ void vm_context::fiber_epilogue(int resume_result)
         close();
         return;
     }
+    if (!lua_checkstack(current_fiber_, LUA_MINSTACK)) {
+        lua_errmem = true;
+        close();
+        return;
+    }
     switch (resume_result) {
     case LUA_YIELD:
         // Nothing to do. Fiber is awakened by the completion handler.
         break;
     case 0: //< finished without errors
     case LUA_ERRRUN: { //< a runtime error
-        constexpr int extra = /*common path=*/3 +
-            /*code branches=*/hana::maximum(hana::tuple_c<int, 2, 1, 1>);
-        if (!lua_checkstack(current_fiber_, extra)) {
-            lua_errmem = true;
-            close();
-            return;
-        }
-
         rawgetp(current_fiber_, LUA_REGISTRYINDEX, &fiber_list_key);
 
         lua_pushthread(current_fiber_);
@@ -144,15 +141,7 @@ void vm_context::fiber_epilogue(int resume_result)
                 luaL_traceback(current_fiber_, current_fiber_, nullptr, 1);
                 lua_pushvalue(current_fiber_, -5);
                 auto err_obj = inspect_errobj(current_fiber_);
-                static_assert(std::is_same_v<decltype(err_obj)::error_type,
-                                             std::bad_alloc>,
-                              "");
-                if (!err_obj) {
-                    lua_errmem = true;
-                    close();
-                    return;
-                }
-                if (auto e = std::get_if<std::error_code>(&err_obj.value()) ;
+                if (auto e = std::get_if<std::error_code>(&err_obj) ;
                     !e || *e != errc::interrupted || is_main) {
                     print_panic(current_fiber_, is_main,
                                 errobj_to_string(err_obj),
@@ -189,7 +178,7 @@ void vm_context::fiber_epilogue(int resume_result)
             lua_pop(current_fiber_, 4);
 
             int nret = (resume_result == 0) ? lua_gettop(current_fiber_) : 1;
-            if (!lua_checkstack(joiner, nret + 1)) {
+            if (!lua_checkstack(joiner, nret + 1 + LUA_MINSTACK)) {
                 lua_errmem = true;
                 close();
                 return;
@@ -200,15 +189,7 @@ void vm_context::fiber_epilogue(int resume_result)
             bool interruption_caught = false;
             if (resume_result == LUA_ERRRUN) {
                 auto err_obj = inspect_errobj(joiner);
-                static_assert(std::is_same_v<decltype(err_obj)::error_type,
-                                             std::bad_alloc>,
-                              "");
-                if (!err_obj) {
-                    lua_errmem = true;
-                    close();
-                    return;
-                }
-                if (auto e = std::get_if<std::error_code>(&err_obj.value()) ;
+                if (auto e = std::get_if<std::error_code>(&err_obj) ;
                     e && *e == errc::interrupted) {
                     lua_pop(joiner, 2);
                     lua_pushboolean(joiner, 1);
@@ -284,14 +265,11 @@ vm_context& get_vm_context(lua_State* L)
     return *ret;
 }
 
-result<void, std::bad_alloc> push(lua_State* L, const std::error_code& ec)
+void push(lua_State* L, const std::error_code& ec)
 {
-    if (!lua_checkstack(L, 4))
-        return std::bad_alloc{};
-
     if (!ec) {
         lua_pushnil(L);
-        return outcome::success();
+        return;
     }
 
     lua_createtable(L, /*narr=*/0, /*nrec=*/2);
@@ -311,15 +289,10 @@ result<void, std::bad_alloc> push(lua_State* L, const std::error_code& ec)
 
     rawgetp(L, LUA_REGISTRYINDEX, &detail::error_code_mt_key);
     lua_setmetatable(L, -2);
-    return outcome::success();
 }
 
-result<std::variant<std::string_view, std::error_code>, std::bad_alloc>
-inspect_errobj(lua_State* L)
+std::variant<std::string_view, std::error_code> inspect_errobj(lua_State* L)
 {
-    if (!lua_checkstack(L, 4))
-        return std::bad_alloc{};
-
     std::variant<std::string_view, std::error_code> ret = std::string_view{};
 
     switch (lua_type(L, -1)) {
@@ -357,12 +330,8 @@ inspect_errobj(lua_State* L)
     return ret;
 }
 
-std::string errobj_to_string(
-    result<std::variant<std::string_view, std::error_code>, std::bad_alloc> o)
+std::string errobj_to_string(std::variant<std::string_view, std::error_code> o)
 {
-    if (!o)
-        return {};
-
     return std::visit(
         [](auto&& arg) -> std::string {
             using T = std::decay_t<decltype(arg)>;
@@ -371,7 +340,7 @@ std::string errobj_to_string(
             else if constexpr (std::is_same_v<T, std::error_code>)
                 return arg.category().message(arg.value());
         },
-        o.value()
+        o
     );
 }
 
@@ -551,7 +520,7 @@ bool detail::unsafe_can_suspend(vm_context& vm_ctx, lua_State* L)
     lua_rawget(L, -2);
     lua_rawgeti(L, -1, FiberDataIndex::SUSPENSION_DISALLOWED);
     if (lua_tointeger(L, -1) != 0) {
-        push(L, emilua::errc::forbid_suspend_block).value();
+        push(L, emilua::errc::forbid_suspend_block);
         return false;
     }
     lua_rawgeti(L, -2, FiberDataIndex::INTERRUPTION_DISABLED);
@@ -571,7 +540,7 @@ bool detail::unsafe_can_suspend(vm_context& vm_ctx, lua_State* L)
     }
     lua_rawgeti(L, -3, FiberDataIndex::INTERRUPTED);
     if (lua_toboolean(L, -1) == 1) {
-        push(L, emilua::errc::interrupted).value();
+        push(L, emilua::errc::interrupted);
         return false;
     }
     lua_pop(L, 5);
@@ -587,7 +556,7 @@ bool detail::unsafe_can_suspend2(vm_context& vm_ctx, lua_State* L)
     lua_rawget(L, -2);
     lua_rawgeti(L, -1, FiberDataIndex::SUSPENSION_DISALLOWED);
     if (lua_tointeger(L, -1) != 0) {
-        push(L, emilua::errc::forbid_suspend_block).value();
+        push(L, emilua::errc::forbid_suspend_block);
         return false;
     }
     lua_pop(L, 3);

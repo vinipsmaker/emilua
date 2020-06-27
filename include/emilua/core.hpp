@@ -25,18 +25,10 @@ extern "C" {
 #include <config.h>
 
 #define EMILUA_CHECK_SUSPEND_ALLOWED(VM_CTX, L)             \
-    if (!lua_checkstack((VM_CTX).current_fiber(), 1)) {     \
-        (VM_CTX).notify_errmem();                           \
-        return lua_yield((L), 0);                           \
-    }                                                       \
     if (!emilua::detail::unsafe_can_suspend((VM_CTX), (L))) \
         return lua_error((L));
 
 #define EMILUA_CHECK_SUSPEND_ALLOWED_ASSUMING_INTERRUPTION_DISABLED(VM_CTX, L) \
-    if (!lua_checkstack((VM_CTX).current_fiber(), 1)) {                        \
-        (VM_CTX).notify_errmem();                                              \
-        return lua_yield((L), 0);                                              \
-    }                                                                          \
     if (!emilua::detail::unsafe_can_suspend2((VM_CTX), (L)))                   \
         return lua_error((L));
 
@@ -247,11 +239,6 @@ public:
     void fiber_prologue(lua_State* new_current_fiber)
     {
         fiber_prologue_trivial(new_current_fiber);
-        if (!lua_checkstack(current_fiber_, LUA_MINSTACK)) {
-            lua_errmem = true;
-            close();
-            throw dead_vm_error{dead_vm_error::reason::mem};
-        }
         enable_reserved_zone();
 
         lua_pushnil(current_fiber_);
@@ -277,19 +264,17 @@ private:
 
 vm_context& get_vm_context(lua_State* L);
 
-result<void, std::bad_alloc> push(lua_State* L, const std::error_code& ec);
+void push(lua_State* L, const std::error_code& ec);
 
-inline result<void, std::bad_alloc> push(lua_State* L, std::errc ec)
+inline void push(lua_State* L, std::errc ec)
 {
     return push(L, make_error_code(ec));
 }
 
 // gets value from top of the stack
-result<std::variant<std::string_view, std::error_code>, std::bad_alloc>
-inspect_errobj(lua_State* L);
+std::variant<std::string_view, std::error_code> inspect_errobj(lua_State* L);
 
-std::string errobj_to_string(
-    result<std::variant<std::string_view, std::error_code>, std::bad_alloc> o);
+std::string errobj_to_string(std::variant<std::string_view, std::error_code> o);
 
 inline void push(lua_State* L, std::string_view str)
 {

@@ -21,7 +21,7 @@ static int cond_wait(lua_State* L)
     auto cond_handle = reinterpret_cast<struct cond_handle*>(
         lua_touserdata(L, 1));
     if (!cond_handle || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument).value();
+        push(L, std::errc::invalid_argument);
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
@@ -29,7 +29,7 @@ static int cond_wait(lua_State* L)
     }
     rawgetp(L, LUA_REGISTRYINDEX, &cond_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument).value();
+        push(L, std::errc::invalid_argument);
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
@@ -39,7 +39,7 @@ static int cond_wait(lua_State* L)
     auto mutex_handle = reinterpret_cast<struct mutex_handle*>(
         lua_touserdata(L, 2));
     if (!mutex_handle || !lua_getmetatable(L, 2)) {
-        push(L, std::errc::invalid_argument).value();
+        push(L, std::errc::invalid_argument);
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
@@ -47,7 +47,7 @@ static int cond_wait(lua_State* L)
     }
     rawgetp(L, LUA_REGISTRYINDEX, &mutex_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument).value();
+        push(L, std::errc::invalid_argument);
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 2);
         lua_rawset(L, -3);
@@ -55,7 +55,7 @@ static int cond_wait(lua_State* L)
     }
 
     if (!mutex_handle->locked) {
-        push(L, std::errc::operation_not_permitted).value();
+        push(L, std::errc::operation_not_permitted);
         return lua_error(L);
     }
 
@@ -85,7 +85,7 @@ static int cond_wait(lua_State* L)
             handle->pending.erase(it);
             vm_ctx->strand().post([vm_ctx,current_fiber]() {
                 vm_ctx->fiber_prologue(current_fiber);
-                push(current_fiber, errc::interrupted).value();
+                push(current_fiber, errc::interrupted);
                 vm_ctx->reclaim_reserved_zone();
                 int res = lua_resume(current_fiber, 1);
                 vm_ctx->fiber_epilogue(res);
@@ -117,7 +117,7 @@ static int cond_notify_one(lua_State* L)
 {
     auto handle = reinterpret_cast<cond_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument).value();
+        push(L, std::errc::invalid_argument);
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
@@ -125,7 +125,7 @@ static int cond_notify_one(lua_State* L)
     }
     rawgetp(L, LUA_REGISTRYINDEX, &cond_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument).value();
+        push(L, std::errc::invalid_argument);
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
@@ -148,7 +148,7 @@ static int cond_notify_all(lua_State* L)
 {
     auto handle = reinterpret_cast<cond_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument).value();
+        push(L, std::errc::invalid_argument);
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
@@ -156,7 +156,7 @@ static int cond_notify_all(lua_State* L)
     }
     rawgetp(L, LUA_REGISTRYINDEX, &cond_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument).value();
+        push(L, std::errc::invalid_argument);
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
@@ -200,7 +200,7 @@ static int cond_mt_index(lua_State* L)
             )
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index).value();
+            push(L, errc::bad_index);
             lua_pushliteral(L, "index");
             lua_pushvalue(L, 2);
             lua_rawset(L, -3);
@@ -243,7 +243,7 @@ void init_cond_module(lua_State* L)
                     lua_pushcfunction(L, cond_new);
                     return 1;
                 } else {
-                    push(L, errc::bad_index).value();
+                    push(L, errc::bad_index);
                     lua_pushliteral(L, "index");
                     lua_pushvalue(L, 2);
                     lua_rawset(L, -3);
@@ -256,7 +256,7 @@ void init_cond_module(lua_State* L)
         lua_pushcfunction(
             L,
             [](lua_State* L) -> int {
-                push(L, std::errc::operation_not_permitted).value();
+                push(L, std::errc::operation_not_permitted);
                 return lua_error(L);
             });
         lua_rawset(L, -3);
