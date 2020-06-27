@@ -47,8 +47,8 @@ to IO objects, but the original references will be rendered unusable (their
 metatables are unset). Do pay attention to not let objects that have pending
 operations to be sent over (`EBUSY`, but do create an error code just for that).
 
-Nor synchronization primitives (such as `sync.mutex`) nor fiber handles can be
-sent over the channels and by implication can't be used to synchronize (or send
+Nor synchronization primitives (such as `mutex`) nor fiber handles can be sent
+over the channels and by implication can't be used to synchronize (or send
 cancellation requests to) fibers running in different lua VMs.
 
 You can also send a channel over a channel. This will only send the channel
@@ -84,8 +84,7 @@ spawn(fn)
 ----
 
 You can use the fiber handle just like you'd use a thread handle. There is
-`join()`, `detach()` and `interrupt()`. Thanks to `interrupt()`, every async
-operation on the {cpp} side must be cancellable (including `chan:recv()`).
+`join()`, `detach()` and `interrupt()`.
 
 All sync primitives obey some characteristics thanks to the restrictions we've
 laid out:
@@ -96,6 +95,24 @@ laid out:
 
 Given these conditions, it's now easier to implement and reason about the {cpp}
 code.
+
+Only the {cpp} code that suspended the fiber can resume it back. If the
+operation should be cancellable, the async op should set an interrupter before
+suspending the fiber. No other code from the runtime will wake this
+fiber up. Once the interrupter is called, it'll be cleared automatically to
+prevent further complications on the async op implementation. The completion
+handler should also clear the interrupter to make sure it won't be (wrongly)
+reused for other operations.
+
+A good level of serialization can be done by exploring these properties and
+simplify the implementation a lot. For once, you know no other code will wake
+the fiber up, so you can just as well call `io_obj.cancel()` on the interrupter
+and map `asio::error::operation_aborted` to `errc::interrupted` on the
+completion handler. A single handler (and no other) will take care of waking the
+fiber. There is no race to deal with here or anything alike.
+
+A lot of the boilerplate is handled already on the prologue/epilogue functions
+from `vm_context`.
 
 == Userdata practices
 
@@ -574,20 +591,17 @@ Lua's `coroutine` module must never be directly exposed to lua code.
 --
 
 The problem is solved by exposing a different `coroutine` module — a small shim
-over the original one. This version inspects `this_fiber` variable for the
-suspension reason (native code or lua code).
-
-Another responsibility we throw in is check if the user is trying to operate a
-fiber managed by the native scheduler (the user could get these objects through
-functions such as `coroutine.running()`).
+over the original one. This version inspects ``this_fiber``'s suspension reason
+(native code or lua code).
 
 Conceptually, the implementation looks like this:
 
 [source,lua]
 ----
 function coroutine.resume(co, ...)
-    if _G.fibers[co] ~= nil then
-        error("bad coroutine", 2)
+    if _G.busy_coroutines[co] then
+        -- CORUN
+        error("cannot resume running coroutine", 2)
     end
 
     local args = table.pack(...)
@@ -597,7 +611,9 @@ function coroutine.resume(co, ...)
             return table.unpack(ret)
         end
         if _G.this_fiber.native_yield then
+            _G.busy_coroutines[co] = true
             args = table.pack(raw_coroutine.yield(table.unpack(ret, 2)))
+            _G.busy_coroutines[co] = nil
         else
             return table.unpack(ret)
         end
@@ -605,16 +621,32 @@ function coroutine.resume(co, ...)
 end
 
 function coroutine.yield(...)
-    if _G.fibers[coroutine.running()] ~= nil then
+    if _G.fibers[raw_coroutine.running()] ~= nil then
         error("bad coroutine", 2)
     end
     return raw_coroutine.yield(...)
 end
 
+function coroutine.status(co)
+    if _G.busy_coroutines[co] then
+        return "normal"
+    end
+
+    return raw_coroutine.status(co)
+end
+
+function coroutine.running()
+    local co = raw_coroutine.running()
+    if _G.fibers[co] ~= nil then
+        -- Fiber's coroutines work just like the main coroutine
+        return nil
+    end
+
+    return co
+end
+
 coroutine.create = ...
 coroutine.wrap = ...
-coroutine.status = ...
-coroutine.running = ...
 ----
 
 == Dead fibers
@@ -694,16 +726,10 @@ lua_CFunction pcall_addr = lua_tocfunction(L, -1);
 assert(pcall_addr == nullptr); // :(
 ----
 
-So a larger boilerplate is required to (1) extract an usable luaJIT bytecode and
-then (2) feed it into the {cpp} source code. The solution this time also
-involves the build system which will call a few luajit-powered scripts to
-generate the proper bytecodes and convert them to C source using `xdd -i`.
-
-Just to clarify: the private resource in the previous example is problematic
-because `pcall()` won't be directly exposed to lua code. Therefore, the lua
-bootstrap function that runs within the lua VM used by Emilua doesn't have
-access to `pcall()` either. We must use another VM to create the VM
-bytecode. That's where the extra build step comes in.
+Therefore the lua bytecode won't be a closure with uninitialized upvalues per
+se, but a function that receives the private resources and returns the needed
+closure. It is an extra step on startup, but at least we save some cycles by
+compiling the bytecode with stripped debug info in the project build stage.
 
 == Process environment
 
