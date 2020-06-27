@@ -560,6 +560,13 @@ inline int this_fiber_local(lua_State* L)
     return 1;
 }
 
+inline int this_fiber_id(lua_State* L)
+{
+    auto& vm_ctx = get_vm_context(L);
+    lua_pushfstring(L, "%p", vm_ctx.current_fiber());
+    return 1;
+}
+
 static int this_fiber_meta_index(lua_State* L)
 {
     return dispatch_table::dispatch(
@@ -605,7 +612,8 @@ static int this_fiber_meta_index(lua_State* L)
                 [](lua_State* L) -> int {
                     return luaL_error(L, "unimplemented");
                 }
-            )
+            ),
+            hana::make_pair(BOOST_HANA_STRING("id"), this_fiber_id)
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
             push(L, errc::bad_index).value();
