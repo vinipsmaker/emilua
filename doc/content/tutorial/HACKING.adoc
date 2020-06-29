@@ -135,14 +135,6 @@ Besides the common practices to create custom objects through userdata, Emilua
   assumption described in the previous point (which we _do_ care about) is
   covered as well.
 
-== Conventions
-
-And there are a few conventions apart from IO objects on the code-base as well:
-
-* If a function returns `result<T, std::bad_alloc>`, the function itself will be
-  responsible to call `lua_checkstack()` and you don't need to do this usual
-  preparation beforehand yourself.
-
 == {cpp} async operations
 
 Let's begin with `require()`.
