@@ -1,0 +1,7 @@
+foo
+Main fiber from VM 0x1 panicked: 'bar'
+stack traceback:
+	[string "?"]: in function 'scope'
+	input.lua:3: in main chunk
+	[C]: in function ''
+	[string "?"]: in function <[string "?"]:0>

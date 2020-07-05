@@ -43,6 +43,8 @@ namespace hana = boost::hana;
 
 extern bool stdout_has_color;
 extern char raw_unpack_key;
+extern char raw_xpcall_key;
+extern char raw_pcall_key;
 
 template<class T, class EC = std::error_code>
 using result = outcome::basic_result<
@@ -250,9 +252,9 @@ public:
     void reclaim_reserved_zone();
 
     void notify_deadlock(std::string msg);
+    void notify_cleanup_error(lua_State* coro);
 
 private:
-
     boost::asio::io_context::strand strand_;
     bool valid_;
     bool lua_errmem;
@@ -260,6 +262,7 @@ private:
     lua_State* L_;
     lua_State* current_fiber_;
     std::vector<std::string> deadlock_errors;
+    void* failed_cleanup_handler_coro = nullptr;
 };
 
 vm_context& get_vm_context(lua_State* L);
@@ -365,6 +368,7 @@ enum class errc {
     interruption_already_allowed,
     forbid_suspend_block,
     interrupted,
+    unmatched_scope_cleanup,
 };
 
 const std::error_category& category();

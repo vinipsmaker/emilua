@@ -1,0 +1,12 @@
+local println = require('println')
+
+scope(function()
+    scope_cleanup_push(function() println('foobar') end)
+    scope_cleanup_push(function() println('foo') end)
+    scope_cleanup_push(function() println('bar') end)
+    scope_cleanup_push(function() println('baz') end)
+    scope_cleanup_pop()
+    scope_cleanup_pop(false)
+    scope_cleanup_pop(true)
+    println('qux')
+end)

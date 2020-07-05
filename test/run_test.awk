@@ -61,7 +61,7 @@ function sanitize_record(    i, pattern, captures, input, output)
     }
 
     # Normalize runtime addresses
-    pattern = @/(Fiber|VM|mutex|thread:) 0x([[:xdigit:]]+\>)/
+    pattern = @/(Fiber|VM|mutex|thread:|coroutine) 0x([[:xdigit:]]+\>)/
     for (input = $0 ; match(input, pattern, captures) ;
          input = substr(input, RSTART + RLENGTH)) {
         if (!(captures[2] in sanitize_record_addrs)) {

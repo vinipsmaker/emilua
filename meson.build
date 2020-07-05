@@ -46,6 +46,7 @@ incdir = include_directories([
 src = [
     '3rd/fmt/src/format.cc',
 
+    'src/scope_cleanup.cpp',
     'src/lua_shim.cpp',
     'src/fiber.cpp',
     'src/mutex.cpp',
@@ -60,6 +61,8 @@ bytecode_src = bytecode_gen.process(
     'bytecode/sleep_for.lua',
     'bytecode/lua_shim.lua',
     'bytecode/fiber.lua',
+    'bytecode/scope.lua',
+    'bytecode/state.lua',
     'bytecode/cond.lua',
 )
 
@@ -131,6 +134,21 @@ if get_option('enable_tests')
             'cond8',
             'non-portable/mutex1',
         ],
+        'scope' : [
+            'scope1',
+            'scope2',
+            'scope3',
+            'scope4',
+            'scope5',
+            'scope6',
+            'scope7',
+            'scope8',
+            'scope9',
+            'scope_pcall1',
+            'scope_xpcall1',
+            'scope_nested1',
+            'scope_nested2',
+        ],
         'lua_shim' : [
             'coroutine_running1',
             'coroutine_running2',
@@ -141,6 +159,10 @@ if get_option('enable_tests')
             'coroutine_resume2',
             'coroutine_resume3',
             'coroutine_resume4',
+            'coroutine_resume5',
+            'coroutine_resume6',
+            'pcall1',
+            'xpcall1',
         ],
         'programs' : [
             'sleepsort',

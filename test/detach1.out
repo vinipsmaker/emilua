@@ -4,3 +4,5 @@ end of main fiber
 Fiber 0x1 panicked: 'tag'
 stack traceback:
 	input.lua:10: in function <input.lua:8>
+	[C]: in function ''
+	[string "?"]: in function <[string "?"]:0>

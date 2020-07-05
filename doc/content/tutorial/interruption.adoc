@@ -2,6 +2,9 @@
 title = "Interruption API"
 +++
 
+:cpp: C++
+:_:
+
 Emilua also provides an interruption API that you can use to cancel fibers (you
 might use it to free resources from fibers stuck in IO requets that might never
 complete).
@@ -17,7 +20,7 @@ follows:
 
 [source,lua]
 ----
-local m = sync.mutex.new()
+local m = mutex.new()
 
 local f = spawn(function()
     m:lock()
@@ -226,7 +229,7 @@ function mt:new_sample(sample)
 end
 ----
 
-Functions that suspend the fiber (e.g. IO and functions from the `sync` module)
+Functions that suspend the fiber (e.g. IO and functions from the `cond` module)
 configure interruption points. The function `echo` defined below has
 interruption points.
 
@@ -411,19 +414,20 @@ reason why the default uncaught-hook doesn't terminate the VM when secondary
 fibers fail is that cleanup handlers are trusted to keep the program
 invariants. Once a cleanup handler fails we can no longer hold this assumption.
 
-The fiber will immediately suspend until the error for the current cleanup
-handler is taken care of. On ``join()``ed fibers, the fiber handle will remain
-joinable so you can further resume the action of the remaining cleanup
-handlers. On ``detach()``ed fibers, the VM is terminated (there's no way to
-recover from this error without context, and conceptually by the time uncaught
-hooks are executed, the context was already lost).
+Once a cleanup handler itself throws an error, the VM is
+terminated{_}footnote:[I initially drafted a design to recover on limited
+scenarios (check git history if you're curious), but then realized it was not
+only brittle but also unable to handle leaked fiber handles. Worse, it was very
+sensitive to leak fiber handles. Therefore I dismissed the idea altogether.]
+(there's no way to recover from this error without context, and conceptually by
+the time uncaught hooks are executed, the context was already lost). If you need
+some sort of protection against one complex module that will fail now and then,
+run it in a separate actor.
 
-For the common case, you shouldn't try to `join()` the fiber a second time
-trying to prevent VM termination on cleanup errors. Just let the handle be GC'ed
-to terminate the VM. Proper recovery in these cases is pretty tricky and your
-best bet is to change the code and fix the error in the cleanup handler. If you
-need some sort of protection against one complex module that will fail now and
-then, run it in a separate actor.
+In {cpp} this scenario is analogous to a destructor throwing an exception when
+the destructor itself was triggered by an exception-provoked stack
+unwinding. And the result is the same,
+https://en.cppreference.com/w/cpp/error/terminate[`terminate()`].
 --
 
 If you want to call the last registered cleanup handler and pop it from the
@@ -447,9 +451,6 @@ end)
 Every fiber has an implicit root scope so you don't need to always create one
 yourself. The standard lua's `pcall()` is also modified to act as a scope which
 is a lot of convenience for you.
-
-When you call `scope_cleanup_pop()` yourself, errors raised from the cleanup
-handler propagate through.
 
 IMPORTANT: Given `pcall()` is also an interruption point, examples written
 enclosed in *WARNING* blocks from the previous section had bugs related to
@@ -488,7 +489,7 @@ while true do
     if not ok then
         return
     end
-    -- uses `sync.cond`
+    -- uses `cond`
     app:wait_on_subscriptions()
 end
 ----
@@ -525,16 +526,17 @@ single fiber to keep the code sample small and easy to follow):
 [source,lua]
 ----
 scope_cleanup_push(function()
-    my_udp_sock:write(shutdown_msg)
+    my_sctp_sock:write(checksum.shutdown_msg)
 end)
 while true do
     sleep_for(20 * 1000)
-    dns_query:resolve()
+    my_sctp_sock:write(broadcast_msg)
+    checksum:update(broadcast_msg)
 end
 ----
 
 If the interruption request arrives when the fiber is suspended at
-`dns_query:resolve()`, the runtime will schedule cancellation of the underlying
+`my_sctp_sock:write()`, the runtime will schedule cancellation of the underlying
 IO operation and only resume the fiber when the reply for the cancellation
 request arrives. At this point, if the original IO operation already succeeded,
 `fiber_interrupted` exception won't be raised so you have a chance to examine

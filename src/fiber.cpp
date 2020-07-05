@@ -2,6 +2,7 @@
 
 #include <emilua/fiber.hpp>
 #include <emilua/dispatch_table.hpp>
+#include <emilua/scope_cleanup.hpp>
 
 #include <fmt/format.h>
 
@@ -13,9 +14,12 @@ namespace emilua {
 
 extern unsigned char fiber_join_bytecode[];
 extern std::size_t fiber_join_bytecode_size;
+extern unsigned char spawn_start_fn_bytecode[];
+extern std::size_t spawn_start_fn_bytecode_size;
 
 char fiber_list_key;
 char yield_reason_is_native_key;
+static char spawn_start_fn_key;
 static char fiber_mt_key;
 static char fiber_join_key;
 
@@ -163,7 +167,6 @@ static int fiber_join(lua_State* L)
 
 static int fiber_detach(lua_State* L)
 {
-    auto& vm_ctx = get_vm_context(L);
     auto handle = reinterpret_cast<fiber_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument);
@@ -203,7 +206,8 @@ static int fiber_detach(lua_State* L)
         // Finished
         if (lua_tointeger(handle->fiber, -1) ==
             FiberStatus::FINISHED_WITH_ERROR) {
-            luaL_traceback(L, handle->fiber, nullptr, 1);
+            lua_rawgeti(handle->fiber, -2, FiberDataIndex::STACKTRACE);
+            lua_xmove(handle->fiber, L, 1);
             lua_pushvalue(handle->fiber, -4);
             auto err_obj = inspect_errobj(handle->fiber);
             lua_pop(handle->fiber, 1);
@@ -361,7 +365,8 @@ static int fiber_meta_gc(lua_State* L)
         // Finished
         if (lua_tointeger(handle->fiber, -1) ==
             FiberStatus::FINISHED_WITH_ERROR) {
-            luaL_traceback(L, handle->fiber, nullptr, 1);
+            lua_rawgeti(handle->fiber, -2, FiberDataIndex::STACKTRACE);
+            lua_xmove(handle->fiber, L, 1);
             lua_pushvalue(handle->fiber, -4);
             auto err_obj = inspect_errobj(handle->fiber);
             lua_pop(handle->fiber, 1);
@@ -385,6 +390,7 @@ static int spawn(lua_State* L)
 
     auto vm_ctx = get_vm_context(L).shared_from_this();
     auto new_fiber = lua_newthread(L);
+    init_new_coro_or_fiber_scope(new_fiber);
 
     rawgetp(new_fiber, LUA_REGISTRYINDEX, &fiber_list_key);
     lua_pushthread(new_fiber);
@@ -399,7 +405,9 @@ static int spawn(lua_State* L)
     lua_rawset(new_fiber, -3);
     lua_pop(new_fiber, 1);
 
+    rawgetp(L, LUA_REGISTRYINDEX, &spawn_start_fn_key);
     lua_pushvalue(L, 1);
+    lua_call(L, 1, 1);
     lua_xmove(L, new_fiber, 1);
 
     vm_ctx->strand().post([vm_ctx,new_fiber]() {
@@ -436,8 +444,7 @@ static int this_fiber_yield(lua_State* L)
 
 inline int increment_this_fiber_counter(lua_State* L, FiberDataIndex counter)
 {
-    auto& vm_ctx = get_vm_context(L);
-    auto current_fiber = vm_ctx.current_fiber();
+    auto current_fiber = get_vm_context(L).current_fiber();
 
     rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
     lua_pushthread(current_fiber);
@@ -455,8 +462,7 @@ inline int increment_this_fiber_counter(lua_State* L, FiberDataIndex counter)
 inline int decrement_this_fiber_counter(lua_State* L, FiberDataIndex counter,
                                         errc e)
 {
-    auto& vm_ctx = get_vm_context(L);
-    auto current_fiber = vm_ctx.current_fiber();
+    auto current_fiber = get_vm_context(L).current_fiber();
 
     rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
     lua_pushthread(current_fiber);
@@ -610,6 +616,23 @@ void init_fiber_module(lua_State* L)
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     {
+        lua_pushlightuserdata(L, &spawn_start_fn_key);
+        int res = luaL_loadbuffer(
+            L, reinterpret_cast<char*>(spawn_start_fn_bytecode),
+            spawn_start_fn_bytecode_size, nullptr);
+        assert(res == 0); boost::ignore_unused(res);
+        lua_pushcfunction(L, root_scope);
+        lua_pushcfunction(L, set_current_traceback);
+        lua_pushcfunction(L, terminate_vm_with_cleanup_error);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_xpcall_key);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_pcall_key);
+        lua_pushcfunction(L, lua_error);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_unpack_key);
+        lua_call(L, 7, 1);
+        lua_rawset(L, LUA_REGISTRYINDEX);
+    }
+
+    {
         lua_pushlightuserdata(L, &fiber_join_key);
         int res = luaL_loadbuffer(
             L, reinterpret_cast<char*>(fiber_join_bytecode),
@@ -674,6 +697,18 @@ void print_panic(const lua_State* fiber, bool is_main, std::string_view error,
         underline, error, reset_underline,
         reset_red,
         dim, stacktrace, reset_dim);
+}
+
+int set_current_traceback(lua_State* L)
+{
+    auto& vm_ctx = get_vm_context(L);
+    rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
+    lua_pushthread(vm_ctx.current_fiber());
+    lua_xmove(vm_ctx.current_fiber(), L, 1);
+    lua_rawget(L, -2);
+    luaL_traceback(L, L, nullptr, 3);
+    lua_rawseti(L, -2, FiberDataIndex::STACKTRACE);
+    return 0;
 }
 
 } // namespace emilua

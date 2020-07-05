@@ -3,6 +3,7 @@
 #include <new>
 
 #include <emilua/detail/core.hpp>
+#include <emilua/scope_cleanup.hpp>
 #include <emilua/lua_shim.hpp>
 #include <emilua/fiber.hpp>
 #include <emilua/mutex.hpp>
@@ -14,6 +15,9 @@ namespace emilua {
 
 using namespace std::string_view_literals;
 namespace fs = std::filesystem;
+
+extern unsigned char start_fn_bytecode[];
+extern std::size_t start_fn_bytecode_size;
 
 static int println(lua_State* L)
 {
@@ -290,6 +294,17 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
     lua_rawget(L, LUA_GLOBALSINDEX);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
+    lua_pushlightuserdata(L, &raw_xpcall_key);
+    lua_pushliteral(L, "xpcall");
+    lua_rawget(L, LUA_GLOBALSINDEX);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &raw_pcall_key);
+    lua_pushliteral(L, "pcall");
+    lua_rawget(L, LUA_GLOBALSINDEX);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    init_scope_cleanup_module(L);
     init_lua_shim_module(L);
     init_fiber_module(L);
     init_mutex_module(L);
@@ -325,6 +340,19 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
     }
     assert(module_source);
 
+    {
+        int res = luaL_loadbuffer(
+            L, reinterpret_cast<char*>(start_fn_bytecode),
+            start_fn_bytecode_size, nullptr);
+        assert(res == 0); boost::ignore_unused(res);
+        lua_pushcfunction(L, root_scope);
+        lua_pushcfunction(L, set_current_traceback);
+        lua_pushcfunction(L, terminate_vm_with_cleanup_error);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_xpcall_key);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_pcall_key);
+        lua_pushcfunction(L, lua_error);
+    }
+
     std::string name{'@'};
     name += entry_point;
     switch (int res = luaL_loadbuffer(
@@ -340,6 +368,11 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
         throw lua_exception{res, std::string{str, len}};
     }
     }
+
+    int res = lua_pcall(L, 7, 1, 0);
+    if (res == LUA_ERRMEM)
+        throw std::bad_alloc();
+    assert(res == 0);
 
     return state;
 }

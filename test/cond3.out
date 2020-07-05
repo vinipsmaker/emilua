@@ -2,3 +2,5 @@ Main fiber from VM 0x1 panicked: 'Operation not permitted'
 stack traceback:
 	[string "?"]: in function 'wait'
 	input.lua:10: in main chunk
+	[C]: in function ''
+	[string "?"]: in function <[string "?"]:0>

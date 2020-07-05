@@ -14,6 +14,8 @@ namespace emilua {
 
 bool stdout_has_color;
 char raw_unpack_key;
+char raw_xpcall_key;
+char raw_pcall_key;
 
 namespace detail {
 char context_key;
@@ -68,6 +70,30 @@ void vm_context::close()
 
         lua_close(L_);
 
+        if (!suppress_tail_errors && failed_cleanup_handler_coro) {
+            std::string_view red{"\033[31;1m"};
+            std::string_view reset_red{"\033[22;39m"};
+            if (!stdout_has_color)
+                red = reset_red = {};
+
+            constexpr auto spec{FMT_STRING(
+                "{}VM {:p} forcibly closed due to error raised"
+                " on cleanup handler from coroutine {:p}{}\n"
+            )};
+            std::string errors;
+            for (auto& e: deadlock_errors) {
+                errors.push_back('\t');
+                errors += e;
+                errors.push_back('\n');
+            }
+            fmt::print(
+                stderr,
+                spec,
+                red, static_cast<void*>(L_), failed_cleanup_handler_coro,
+                reset_red);
+            suppress_tail_errors = true;
+        }
+
         if (!suppress_tail_errors && deadlock_errors.size() != 0) {
             std::string_view red{"\033[31;1m"};
             std::string_view dim{"\033[2m"};
@@ -77,7 +103,7 @@ void vm_context::close()
                 red = dim = reset_red = reset_dim = {};
 
             constexpr auto spec{FMT_STRING(
-                "{}Possible deadlock(s) detected during VM {} shutdown{}:\n"
+                "{}Possible deadlock(s) detected during VM {:p} shutdown{}:\n"
                 "{}{}{}"
             )};
             std::string errors;
@@ -111,7 +137,7 @@ void vm_context::fiber_prologue_trivial(lua_State* new_current_fiber)
 void vm_context::fiber_epilogue(int resume_result)
 {
     assert(valid_);
-    if (lua_errmem) {
+    if (lua_errmem || failed_cleanup_handler_coro) {
         close();
         return;
     }
@@ -138,7 +164,7 @@ void vm_context::fiber_epilogue(int resume_result)
 
             if (resume_result == LUA_ERRRUN) {
                 bool is_main = L() == current_fiber_;
-                luaL_traceback(current_fiber_, current_fiber_, nullptr, 1);
+                lua_rawgeti(current_fiber_, -2, FiberDataIndex::STACKTRACE);
                 lua_pushvalue(current_fiber_, -5);
                 auto err_obj = inspect_errobj(current_fiber_);
                 if (auto e = std::get_if<std::error_code>(&err_obj) ;
@@ -254,6 +280,11 @@ void vm_context::reclaim_reserved_zone()
 void vm_context::notify_deadlock(std::string msg)
 {
     deadlock_errors.emplace_back(std::move(msg));
+}
+
+void vm_context::notify_cleanup_error(lua_State* coro)
+{
+    failed_cleanup_handler_coro = coro;
 }
 
 vm_context& get_vm_context(lua_State* L)
@@ -476,6 +507,8 @@ std::string category_impl::message(int value) const noexcept
         return "Operation not permitted within a forbid-suspend block";
     case static_cast<int>(errc::interrupted):
         return "Fiber interrupted";
+    case static_cast<int>(errc::unmatched_scope_cleanup):
+        return "scope_cleanup_pop() called w/o a matching scope_cleanup_push()";
     default:
         return {};
     }

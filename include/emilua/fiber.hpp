@@ -29,6 +29,7 @@ enum FiberDataIndex: lua_Integer
     STATUS,
     SUSPENSION_DISALLOWED,
     LOCAL_STORAGE,
+    STACKTRACE,
 
     // data used by the interruption system {{{
     INTERRUPTION_DISABLED,
@@ -64,5 +65,7 @@ struct fiber_handle
 void init_fiber_module(lua_State* L);
 void print_panic(const lua_State* L, bool is_main, std::string_view error,
                  std::string_view stacktrace);
+
+int set_current_traceback(lua_State* L);
 
 } // namespace emilua

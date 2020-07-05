@@ -5,4 +5,6 @@ baz
 Fiber 0x1 panicked: 'Invalid argument'
 stack traceback:
 	[string "?"]: in function 'join'
-	input.lua:20: in function <input.lua:5>
+	input.lua:24: in function <input.lua:5>
+	[C]: in function ''
+	[string "?"]: in function <[string "?"]:0>
