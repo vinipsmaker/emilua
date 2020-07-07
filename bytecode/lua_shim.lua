@@ -144,10 +144,10 @@ pcall_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
 function xpcall_bootstrap(xpcall, pcall, scope_push, scope_pop,
                           terminate_vm_with_cleanup_error, restore_interruption,
                           check_not_interrupted, unpack)
-    return function(f, err)
+    return function(f, err, ...)
         check_not_interrupted()
         scope_push()
-        local ret = {xpcall(f, err)}
+        local ret = {xpcall(f, err, ...)}
         do
             local cleanup_handlers = scope_pop()
             local i = #cleanup_handlers
