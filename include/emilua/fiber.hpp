@@ -59,6 +59,7 @@ struct fiber_handle
     {}
 
     lua_State* fiber;
+    bool join_in_progress = false;
     result<bool, void> interruption_caught;
 };
 

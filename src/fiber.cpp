@@ -45,7 +45,7 @@ static int fiber_join(lua_State* L)
         lua_error(L);
     }
 
-    if (!handle->fiber) {
+    if (!handle->fiber || handle->join_in_progress) {
         push(L, std::errc::invalid_argument);
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
@@ -97,7 +97,7 @@ static int fiber_join(lua_State* L)
                 lua_pushnil(L);
                 lua_rawseti(L, -2, FiberDataIndex::USER_HANDLE);
 
-                handle->fiber = lua_tothread(L, lua_upvalueindex(3));
+                handle->join_in_progress = false;
 
                 vm_ctx->strand().post(
                     [vm_ctx,current_fiber]() {
@@ -115,7 +115,7 @@ static int fiber_join(lua_State* L)
             3);
         set_interrupter(L);
 
-        handle->fiber = nullptr;
+        handle->join_in_progress = true;
 
         return lua_yield(L, 0);
     } else { assert(status_type == LUA_TNUMBER);
@@ -184,7 +184,7 @@ static int fiber_detach(lua_State* L)
         lua_error(L);
     }
 
-    if (!handle->fiber) {
+    if (!handle->fiber || handle->join_in_progress) {
         push(L, std::errc::invalid_argument);
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
@@ -288,7 +288,7 @@ inline int fiber_joinable(lua_State* L)
 {
     auto handle = reinterpret_cast<fiber_handle*>(lua_touserdata(L, 1));
     assert(handle);
-    lua_pushboolean(L, handle->fiber != nullptr);
+    lua_pushboolean(L, handle->fiber != nullptr && !handle->join_in_progress);
     return 1;
 }
 
@@ -343,6 +343,7 @@ static int fiber_meta_gc(lua_State* L)
 
     if (!handle->fiber)
         return 0;
+    assert(!handle->join_in_progress);
 
     constexpr int extra = /*common path=*/3 +
         /*code branches=*/hana::maximum(hana::tuple_c<int, 1, 2>);

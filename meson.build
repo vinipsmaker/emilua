@@ -103,6 +103,7 @@ if get_option('enable_tests')
             'interrupt1',
             'interrupt2',
             'interrupt3',
+            'interrupt4',
             'interrupt5',
             'interrupt6',
             'interrupt7',

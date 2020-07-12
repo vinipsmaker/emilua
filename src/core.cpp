@@ -224,6 +224,7 @@ void vm_context::fiber_epilogue(int resume_result)
                 }
             }
             if (join_handle) {
+                join_handle->fiber = nullptr;
                 join_handle->interruption_caught = interruption_caught;
             } else {
                 // do nothing; this branch executes only for modules' fibers
