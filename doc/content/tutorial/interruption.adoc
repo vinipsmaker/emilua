@@ -628,14 +628,20 @@ this_fiber.disable_interruption()
 local numbers = {8, 42, 38, 111, 2, 39, 1}
 
 local sleeper = spawn(function()
+    local children = {}
+    scope_cleanup_push(function()
+        for _, f in pairs(children) do
+            f:interrupt()
+        end
+    end)
     for _, n in pairs(numbers) do
-        local f = spawn(function()
+        children[#children + 1] = spawn(function()
             sleep_for(n)
             print(n)
         end)
-        scope_cleanup_push(function()
-            f:interrupt()
-        end)
+    end
+    for _, f in pairs(children) do
+        f:join()
     end
 end)
 
@@ -648,8 +654,3 @@ end)
 sleeper:join()
 sigwaiter:interrupt()
 ----
-
-TIP: Calling `scope_cleanup_push()` within a loop like the example just given
-(w/o a matching `scope_cleanup_pop()` within the same scope's nesting level)
-makes it hard to visualize the execution of the cleanup handlers and it is thus
-discouraged.
