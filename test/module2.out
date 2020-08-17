@@ -1,0 +1,6 @@
+Main fiber from VM 0x1 panicked: 'Cannot have a module with this name'
+stack traceback:
+	[string "?"]: in function 'require'
+	input.lua:3: in main chunk
+	[C]: in function ''
+	[string "?"]: in function <[string "?"]:0>

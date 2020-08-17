@@ -14,9 +14,6 @@
 // * INTERRUPTION_DISABLED
 // * JOINER
 // * STATUS
-//
-// Needs to be reviewed to possibly include more values when the module system
-// is ready.
 
 namespace emilua {
 

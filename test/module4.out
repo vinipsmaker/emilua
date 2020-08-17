@@ -1,0 +1,6 @@
+Main fiber from VM 0x1 panicked: 'A leaf module cannot import child modules'
+stack traceback:
+	[string "?"]: in function 'require'
+	input.lua:3: in main chunk
+	[C]: in function ''
+	[string "?"]: in function <[string "?"]:0>

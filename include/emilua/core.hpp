@@ -291,7 +291,7 @@ inline void push(lua_State* L, const std::string& str)
 
 inline void push(lua_State* L, const std::filesystem::path& path)
 {
-    auto p = path.native();
+    auto p = path.string();
     lua_pushlstring(L, p.data(), p.size());
 }
 

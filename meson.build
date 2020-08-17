@@ -21,8 +21,20 @@ bytecode_gen = generator(
         'luajit',
         dirs: [luajit.get_pkgconfig_variable('prefix') + '/bin']
     ),
-    output: '@BASENAME@.cpp',
+    output: 'bc_@BASENAME@.cpp',
     arguments: ['--', '@INPUT@', '@OUTPUT@']
+)
+re2c_gen = generator(
+    find_program('re2c'),
+    output: '@BASENAME@.cpp',
+    arguments: [
+        '-W', # Turn on all warnings
+        '--flex-syntax',
+        '--case-ranges',
+        '--empty-class', 'match-none',
+        '--input-encoding', 'ascii',
+        '@INPUT@', '-o', '@OUTPUT@'
+    ]
 )
 
 if get_option('disable_color')
@@ -51,7 +63,6 @@ src = [
     'src/fiber.cpp',
     'src/mutex.cpp',
     'src/timer.cpp',
-    'src/state.cpp',
     'src/cond.cpp',
     'src/core.cpp',
     'src/main.cpp'
@@ -66,10 +77,15 @@ bytecode_src = bytecode_gen.process(
     'bytecode/cond.lua',
 )
 
+re2c_src = re2c_gen.process(
+    'src/state.ypp',
+)
+
 emilua_bin = executable(
     'emilua',
     src,
     bytecode_src,
+    re2c_src,
     cpp_pch : 'meson/pchheader.hpp',
     dependencies : [boost, luajit, curses],
     include_directories : incdir
@@ -164,6 +180,22 @@ if get_option('enable_tests')
             'coroutine_resume6',
             'pcall1',
             'xpcall1',
+        ],
+        'module_system' : [
+            'module1',
+            'module2',
+            'module3',
+            'module4',
+            'module5',
+            'module6',
+            'module7',
+            'module8',
+            'module9',
+            'module10',
+            'module11',
+            'module12',
+            'module13',
+            'non-portable/module1',
         ],
         'programs' : [
             'sleepsort',

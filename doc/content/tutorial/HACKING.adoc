@@ -788,6 +788,48 @@ maxmcode=40960  -- in KB
 * We do print to `stderr`. Shouldn't we provide an embedded logger module
   already?
 
+[discrete]
+=== Error reporting in the presence of multiple `lua_State*` handles
+
+When your C function executes within the VM context, some functions might fail
+(e.g. `lua_createtable()` on `ENOMEM`) and throw exceptions (or call `longjmp()`
+on PUC-Rio VM). The question is: does the `lua_State*` in context matters? For
+instance:
+
+[source,c]
+----
+int my_func(lua_State* L)
+{
+    // Called within L's VM context
+
+    // An allocation failure here will use
+    // L's context to throw the exception
+    lua_State* coro = lua_newthread(L);
+
+    // An allocation failure here will use
+    // coro's context to throw the
+    // exception. Does it matter?
+    lua_createtable(coro, 0, 0);
+
+    // ...
+}
+----
+
+For the most part, I've really put effort into avoiding this scenario and
+restricting possible failures to be raised from the active VM context. However,
+this coding style is starting to get ridiculous and I gave up for some
+snippets. Usually I'd check source code, mailing lists and other sources and
+write my findings here on this document, but I'm tired right now and the
+research on this topic will have to be postponed to a later time. For now, I'm
+marking every snippet where an exception might be thrown to the “inactive”
+thread context with the following comment (`grep` it), so it's easy to revert
+the decision if needed be:
+
+[source]
+----
+// bfb6ca3a-dfcc-11ea-87d0-0242ac130003
+----
+
 == Extra caution to take when writing plug-ins
 
 Always keep in mind:
