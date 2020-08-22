@@ -273,6 +273,12 @@ static int require(lua_State* L)
                         // std::io_errc::stream we can revisit this decision.
                         push(L, errc::failed_to_load_module);
                         return lua_error(L);
+                    } catch (const std::system_error& e) {
+                        push(L, e.code());
+                        return lua_error(L);
+                    } catch (const std::exception& e) {
+                        lua_pushstring(L, e.what());
+                        return lua_error(L);
                     }
                 }
                 module_source = it->second;
