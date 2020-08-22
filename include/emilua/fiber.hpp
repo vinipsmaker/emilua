@@ -2,8 +2,8 @@
 
 #include <emilua/core.hpp>
 
-#define EMILUA_IMPL_INITIAL_FIBER_DATA_CAPACITY 8
-#define EMILUA_IMPL_INITIAL_MODULE_FIBER_DATA_CAPACITY 6
+#define EMILUA_IMPL_INITIAL_FIBER_DATA_CAPACITY 9
+#define EMILUA_IMPL_INITIAL_MODULE_FIBER_DATA_CAPACITY 7
 
 // EMILUA_IMPL_INITIAL_MODULE_FIBER_DATA_CAPACITY currently takes into
 // consideration:
@@ -14,6 +14,7 @@
 // * INTERRUPTION_DISABLED
 // * JOINER
 // * STATUS
+// * SOURCE_PATH
 
 namespace emilua {
 
@@ -24,6 +25,7 @@ enum FiberDataIndex: lua_Integer
 {
     JOINER = 1,
     STATUS,
+    SOURCE_PATH,
     SUSPENSION_DISALLOWED,
     LOCAL_STORAGE,
     STACKTRACE,

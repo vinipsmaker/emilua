@@ -403,6 +403,15 @@ static int spawn(lua_State* L)
         lua_pushinteger(new_fiber, 0);
         lua_rawseti(new_fiber, -2, FiberDataIndex::INTERRUPTION_DISABLED);
     }
+    {
+        rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
+        lua_pushthread(vm_ctx->current_fiber());
+        lua_xmove(vm_ctx->current_fiber(), L, 1);
+        lua_rawget(L, -2);
+        lua_rawgeti(L, -1, FiberDataIndex::SOURCE_PATH);
+        lua_xmove(L, new_fiber, 1);
+        lua_rawseti(new_fiber, -2, FiberDataIndex::SOURCE_PATH);
+    }
     lua_rawset(new_fiber, -3);
     lua_pop(new_fiber, 1);
 

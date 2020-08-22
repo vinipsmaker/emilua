@@ -7,6 +7,7 @@
 #include <emilua/scope_cleanup.hpp>
 #include <emilua/lua_shim.hpp>
 #include <emilua/fiber.hpp>
+#include <emilua/actor.hpp>
 #include <emilua/mutex.hpp>
 #include <emilua/state.hpp>
 #include <emilua/timer.hpp>
@@ -372,6 +373,9 @@ static int require(lua_State* L)
                 lua_rawseti(L, -2, i);
             }
             push(L, module_path);
+            lua_pushvalue(L, -1);
+            // redundant to STACK, but simplifies code branches elsewhere
+            lua_rawseti(L, -4, FiberDataIndex::SOURCE_PATH);
             lua_rawseti(L, -2, parent_stacksize + 1);
             lua_rawseti(L, -2, FiberDataIndex::STACK);
 
@@ -597,6 +601,8 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
 
         lua_createtable(L, /*narr=*/1, /*nrec=*/0);
         push(L, entry_point);
+        lua_pushvalue(L, -1);
+        lua_rawseti(L, -4, FiberDataIndex::SOURCE_PATH);
         lua_rawseti(L, -2, 1);
         lua_rawseti(L, -2, FiberDataIndex::STACK);
 
@@ -652,6 +658,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
     init_fiber_module(L);
     init_mutex_module(L);
     init_cond_module(L);
+    init_actor_module(L);
 
     // default_modules_key {{{
     lua_pushliteral(L, "_G");
