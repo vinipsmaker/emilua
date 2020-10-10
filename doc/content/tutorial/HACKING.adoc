@@ -413,8 +413,8 @@ To wrap all up so far, the standard lua exception mechanism is used to report
 errors. The only difference is that emilua will `lua_error()` a structured error
 object inspired by `std::error_code` for our own errors.
 
-Things would get a little trick on the following point that we raised previously
-though:
+Things would get a little tricky on the following point that we raised
+previously though:
 
 [quote]
 ____
