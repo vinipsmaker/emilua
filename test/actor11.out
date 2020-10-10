@@ -1,0 +1,6 @@
+false
+Main fiber from VM 0x1 panicked: 'Channel closed'
+stack traceback:
+	input.lua:13: in main chunk
+	[C]: in function ''
+	[string "?"]: in function <[string "?"]:0>

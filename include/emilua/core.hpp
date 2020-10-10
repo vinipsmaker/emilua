@@ -13,6 +13,7 @@
 #include <string_view>
 #include <filesystem>
 #include <variant>
+#include <atomic>
 #include <mutex>
 
 extern "C" {
@@ -178,6 +179,76 @@ private:
 
 void set_interrupter(lua_State* L);
 
+class vm_context;
+
+struct actor_address
+{
+    actor_address(vm_context& vm_ctx);
+    ~actor_address();
+
+    actor_address(actor_address&&) = default;
+    actor_address(const actor_address&);
+
+    actor_address& operator=(actor_address&& o);
+
+    std::weak_ptr<vm_context> dest;
+    asio::executor_work_guard<asio::io_context::executor_type> work_guard;
+};
+
+struct inbox_t
+{
+    struct value_type: std::variant<
+        bool, double, std::string,
+        std::map<std::string, value_type>,
+        std::vector<value_type>,
+        actor_address
+    >
+    {
+        using variant_type = variant;
+
+        using variant::variant;
+
+        value_type(value_type&&) = default;
+        value_type(const value_type&) = default;
+
+        value_type& operator=(value_type&&) = default;
+    };
+
+    struct sender_state
+    {
+        sender_state(vm_context& vm_ctx);
+        sender_state(vm_context& vm_ctx, lua_State* fiber);
+        sender_state(sender_state&& o);
+
+        ~sender_state();
+
+        sender_state& operator=(sender_state&& o);
+
+        sender_state(const sender_state&) = delete;
+        sender_state& operator=(const sender_state&) = delete;
+
+        // check whether is same sender
+        bool operator==(const sender_state& o)
+        {
+            // `msg` is ignored
+            return vm_ctx == o.vm_ctx && fiber == o.fiber;
+        }
+
+        std::shared_ptr<vm_context> vm_ctx;
+        asio::executor_work_guard<asio::io_context::executor_type> work_guard;
+        lua_State* fiber;
+        value_type msg;
+        bool wake_on_destruct = false;
+    };
+
+    lua_State* recv_fiber = nullptr;
+    std::deque<sender_state> incoming;
+    bool open = true;
+    bool imported = false;
+    std::atomic_size_t nsenders = 0;
+    std::shared_ptr<vm_context> work_guard;
+};
+
 class vm_context: public std::enable_shared_from_this<vm_context>
 {
 public:
@@ -201,6 +272,12 @@ public:
         return detail::remap_post_to_defer<boost::asio::io_context::strand>{
             strand_
         };
+    }
+
+    asio::executor_work_guard<asio::io_context::executor_type> work_guard()
+    {
+        return asio::executor_work_guard<asio::io_context::executor_type>{
+            strand_.context().get_executor()};
     }
 
     lua_State* L()
@@ -253,6 +330,8 @@ public:
 
     void notify_deadlock(std::string msg);
     void notify_cleanup_error(lua_State* coro);
+
+    inbox_t inbox;
 
 private:
     boost::asio::io_context::strand strand_;
@@ -369,6 +448,8 @@ enum class errc {
     forbid_suspend_block,
     interrupted,
     unmatched_scope_cleanup,
+    channel_closed,
+    no_senders,
 };
 
 const std::error_category& category();
@@ -404,3 +485,128 @@ struct std::is_error_code_enum<emilua::lua_errc>: std::true_type {};
 
 template<>
 struct std::is_error_code_enum<emilua::errc>: std::true_type {};
+
+namespace emilua {
+
+inline actor_address::actor_address(vm_context& vm_ctx)
+    : dest{vm_ctx.weak_from_this()}
+    , work_guard{vm_ctx.work_guard()}
+{
+    ++vm_ctx.inbox.nsenders;
+}
+
+inline actor_address::actor_address(const actor_address& o)
+    : dest{o.dest}
+    , work_guard{o.work_guard}
+{
+    auto vm_ctx = dest.lock();
+    if (!vm_ctx)
+        return;
+
+    ++vm_ctx->inbox.nsenders;
+}
+
+inline actor_address& actor_address::operator=(actor_address&& o)
+{
+    dest = std::move(o.dest);
+    work_guard.~executor_work_guard();
+    new (&work_guard) asio::executor_work_guard<
+        asio::io_context::executor_type>{std::move(o.work_guard)};
+    return *this;
+}
+
+inline actor_address::~actor_address()
+{
+    auto vm_ctx = dest.lock();
+    if (!vm_ctx)
+        return;
+
+    if (--vm_ctx->inbox.nsenders != 0)
+        return;
+
+    vm_ctx->strand().post([vm_ctx]() {
+        if (vm_ctx->inbox.nsenders.load() != 0) {
+            // another fiber from the actor already created a new sender
+            return;
+        }
+
+        auto recv_fiber = vm_ctx->inbox.recv_fiber;
+        if (recv_fiber == nullptr)
+            return;
+
+        vm_ctx->inbox.recv_fiber = nullptr;
+        vm_ctx->inbox.work_guard.reset();
+
+        vm_ctx->fiber_prologue(recv_fiber);
+        push(recv_fiber, errc::no_senders);
+        vm_ctx->reclaim_reserved_zone();
+        int res = lua_resume(recv_fiber, 1);
+        vm_ctx->fiber_epilogue(res);
+    }, std::allocator<void>{});
+}
+
+inline inbox_t::sender_state::sender_state(vm_context& vm_ctx)
+    : vm_ctx(vm_ctx.shared_from_this())
+    , work_guard(vm_ctx.work_guard())
+    , fiber(vm_ctx.current_fiber())
+    , msg{std::in_place_type<bool>, false}
+{}
+
+inline inbox_t::sender_state::sender_state(vm_context& vm_ctx, lua_State* fiber)
+    : vm_ctx(vm_ctx.shared_from_this())
+    , work_guard(vm_ctx.work_guard())
+    , fiber(fiber)
+    , msg{std::in_place_type<bool>, false}
+{}
+
+inline inbox_t::sender_state::sender_state(sender_state&& o)
+    : vm_ctx(std::move(o.vm_ctx))
+    , work_guard(std::move(o.work_guard))
+    , fiber(o.fiber)
+    , msg(std::move(o.msg))
+    , wake_on_destruct(o.wake_on_destruct)
+{
+    o.wake_on_destruct = false;
+}
+
+inline inbox_t::sender_state::~sender_state()
+{
+    if (!wake_on_destruct)
+        return;
+
+    vm_ctx->strand().post([vm_ctx=vm_ctx, fiber=fiber]() {
+        vm_ctx->fiber_prologue(fiber);
+        push(fiber, errc::channel_closed);
+        vm_ctx->reclaim_reserved_zone();
+        int res = lua_resume(fiber, 1);
+        vm_ctx->fiber_epilogue(res);
+    }, std::allocator<void>{});
+}
+
+inline
+inbox_t::sender_state&
+inbox_t::sender_state::operator=(inbox_t::sender_state&& o)
+{
+    if (wake_on_destruct) {
+        vm_ctx->strand().post([vm_ctx=vm_ctx, fiber=fiber]() {
+            vm_ctx->fiber_prologue(fiber);
+            push(fiber, errc::channel_closed);
+            vm_ctx->reclaim_reserved_zone();
+            int res = lua_resume(fiber, 1);
+            vm_ctx->fiber_epilogue(res);
+        }, std::allocator<void>{});
+    }
+
+    vm_ctx = std::move(o.vm_ctx);
+    work_guard.~executor_work_guard();
+    new (&work_guard) asio::executor_work_guard<
+        asio::io_context::executor_type>{std::move(o.work_guard)};
+    fiber = o.fiber;
+    msg = std::move(o.msg);
+    wake_on_destruct = o.wake_on_destruct;
+
+    o.wake_on_destruct = false;
+    return *this;
+}
+
+} // namespace emilua

@@ -1,0 +1,21 @@
+local println = require('println')
+local sleep_for = require('sleep_for')
+
+if _CONTEXT == 'main' then
+    local inbox = require('inbox')
+    local ch = spawn_vm('.')
+    spawn(function()
+        ch:send(inbox)
+    end):detach()
+    local f = spawn(function()
+        inbox:recv()
+    end)
+    sleep_for(100)
+    f:interrupt()
+    f:join()
+    println('A')
+    println(tostring(f.interruption_caught))
+else assert(_CONTEXT == 'worker')
+    sleep_for(200)
+    println('B')
+end

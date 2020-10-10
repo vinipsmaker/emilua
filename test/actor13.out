@@ -1,0 +1,11 @@
+Main fiber from VM 0x1 panicked: 'Broadcast the address before attempting to receive on it'
+stack traceback:
+	[string "?"]: in function 'recv'
+	input.lua:10: in main chunk
+	[C]: in function ''
+	[string "?"]: in function <[string "?"]:0>
+Main fiber from VM 0x2 panicked: 'Channel closed'
+stack traceback:
+	input.lua:7: in main chunk
+	[C]: in function ''
+	[string "?"]: in function <[string "?"]:0>

@@ -5,6 +5,7 @@
 #include <fstream>
 #include <variant>
 #include <cstdio>
+#include <atomic>
 #include <memory>
 #include <deque>
 #include <mutex>

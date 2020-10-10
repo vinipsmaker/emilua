@@ -9,6 +9,7 @@
 
 #include <emilua/detail/core.hpp>
 #include <emilua/fiber.hpp>
+#include <emilua/actor.hpp>
 
 namespace emilua {
 
@@ -122,6 +123,14 @@ void vm_context::close()
 
     valid_ = false;
     L_ = nullptr;
+    inbox.recv_fiber = nullptr;
+    inbox.open = false;
+    inbox.work_guard.reset();
+
+    for (auto& m: inbox.incoming) {
+        m.wake_on_destruct = true;
+    }
+    inbox.incoming.clear();
 }
 
 void vm_context::fiber_prologue_trivial(lua_State* new_current_fiber)
@@ -161,9 +170,23 @@ void vm_context::fiber_epilogue(int resume_result)
         if (joiner_type == LUA_TBOOLEAN) {
             // Detached
             assert(lua_toboolean(current_fiber_, -1) == 0);
+            bool is_main = L() == current_fiber_;
+
+            if (is_main) {
+                lua_pushlightuserdata(current_fiber_, &inbox_key);
+                lua_pushnil(current_fiber_);
+                lua_rawset(current_fiber_, LUA_REGISTRYINDEX);
+
+                if (!inbox.imported) {
+                    inbox.open = false;
+                    for (auto& m: inbox.incoming) {
+                        m.wake_on_destruct = true;
+                    }
+                    inbox.incoming.clear();
+                }
+            }
 
             if (resume_result == LUA_ERRRUN) {
-                bool is_main = L() == current_fiber_;
                 lua_rawgeti(current_fiber_, -2, FiberDataIndex::STACKTRACE);
                 lua_pushvalue(current_fiber_, -5);
                 auto err_obj = inspect_errobj(current_fiber_);
@@ -510,6 +533,10 @@ std::string category_impl::message(int value) const noexcept
         return "Fiber interrupted";
     case static_cast<int>(errc::unmatched_scope_cleanup):
         return "scope_cleanup_pop() called w/o a matching scope_cleanup_push()";
+    case static_cast<int>(errc::channel_closed):
+        return "Channel closed";
+    case static_cast<int>(errc::no_senders):
+        return "Broadcast the address before attempting to receive on it";
     default:
         return {};
     }
