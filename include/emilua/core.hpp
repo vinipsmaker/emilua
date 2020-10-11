@@ -4,6 +4,7 @@
 #include <boost/asio/bind_executor.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <boost/asio/io_context.hpp>
+#include <boost/intrusive/list.hpp>
 
 #include <boost/outcome/basic_result.hpp>
 #include <boost/outcome/policy/all_narrow.hpp>
@@ -249,6 +250,28 @@ struct inbox_t
     std::shared_ptr<vm_context> work_guard;
 };
 
+// This class represents a node to be destroyed when the VM finishes
+// prematurely. It can be used to register cleanup code (the `cancel()` method).
+class pending_operation
+    : public boost::intrusive::list_base_hook<
+        boost::intrusive::link_mode<boost::intrusive::auto_unlink>
+    >
+{
+public:
+    pending_operation(bool shared_ownership)
+        : shared_ownership(shared_ownership)
+    {}
+
+    virtual ~pending_operation() noexcept = default;
+
+    virtual void cancel() noexcept = 0;
+
+    // If `shared_ownership`, then the runtime won't `delete` the node after it
+    // is removed from the list of pending operations. It's useful if you don't
+    // want to allocate `pending_operation` on the heap (and other scenarios).
+    bool shared_ownership;
+};
+
 class vm_context: public std::enable_shared_from_this<vm_context>
 {
 public:
@@ -332,6 +355,11 @@ public:
     void notify_cleanup_error(lua_State* coro);
 
     inbox_t inbox;
+
+    boost::intrusive::list<
+        pending_operation,
+        boost::intrusive::constant_time_size<false>
+    > pending_operations;
 
 private:
     boost::asio::io_context::strand strand_;

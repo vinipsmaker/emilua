@@ -21,6 +21,7 @@
 #include <boost/outcome/policy/terminate.hpp>
 
 #include <boost/core/ignore_unused.hpp>
+#include <boost/intrusive/list.hpp>
 #include <boost/asio.hpp>
 #include <boost/hana.hpp>
 

@@ -131,6 +131,25 @@ void vm_context::close()
         m.wake_on_destruct = true;
     }
     inbox.incoming.clear();
+
+    pending_operations.clear_and_dispose([](pending_operation* op) {
+        op->cancel();
+
+        if (!op->shared_ownership) {
+            // `vm_context` destructor calls `close()`, but only if `close()`
+            // hasn't been called before. This means that if extra operations
+            // were appended, they won't be deleted here (unless `close()` is
+            // again called explicitly somewhere else).
+            //
+            // However there is no leak. We don't need a different
+            // behaviour. The pattern under which pending operations fit is fine
+            // for this implementation. Pending operations will always hold a
+            // strong reference to `vm_context` anyway, so they can't rely on
+            // `vm_context` destructor anyway, and Boost.Intrusive's auto-unlink
+            // properties already make everything work kinda of automatically.
+            delete op;
+        }
+    });
 }
 
 void vm_context::fiber_prologue_trivial(lua_State* new_current_fiber)

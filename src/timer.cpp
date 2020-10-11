@@ -9,12 +9,18 @@ extern std::size_t sleep_for_bytecode_size;
 
 char sleep_for_key;
 
-struct handle_type
+struct sleep_for_operation: public pending_operation
 {
-    handle_type(asio::io_context& ctx)
-        : timer{ctx}
+    sleep_for_operation(asio::io_context& ctx)
+        : pending_operation{/*shared_ownership=*/true}
+        , timer{ctx}
         , interrupted{false}
     {}
+
+    void cancel() noexcept override
+    {
+        timer.cancel();
+    }
 
     asio::steady_timer timer;
     bool interrupted;
@@ -28,14 +34,15 @@ static int sleep_for(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto handle = std::make_shared<handle_type>(vm_ctx->strand().context());
+    auto handle = std::make_shared<sleep_for_operation>(
+        vm_ctx->strand().context());
     handle->timer.expires_after(std::chrono::milliseconds(msecs));
 
     lua_pushlightuserdata(L, handle.get());
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto handle = reinterpret_cast<handle_type*>(
+            auto handle = reinterpret_cast<sleep_for_operation*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             handle->interrupted = true;
             handle->timer.cancel();
@@ -43,6 +50,8 @@ static int sleep_for(lua_State* L)
         },
         1);
     set_interrupter(L);
+
+    vm_ctx->pending_operations.push_back(*handle);
 
     handle->timer.async_wait(asio::bind_executor(
         vm_ctx->strand_using_defer(),
