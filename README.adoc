@@ -1,0 +1,103 @@
+= Emilua
+
+:_:
+:cpp: C++
+
+An execution engine{_}footnote:[If you don't know what is an execution engine
+think NodeJS.] for Lua.
+
+Features:
+
+* Complete fiber API (sync primitives, interruption API, clean-up handlers,
+  fiber local storage, assert-like scheduling constraints, ...).
+* Integrates with Lua builtins (i.e. you can mix up fibers and coroutines,
+  modules, ...).
+* IO (HTTP, WebSocket).
+* Actor API (each VM is an actor and you can spawn many of them to be scheduled
+  through the same (or a new) thread pool).
+* Native JSON module.
+* Cross-platform (should run anywhere Boost.Asio also runs).
+
+== Hello World
+
+[source,lua]
+----
+local sleep_for = require('sleep_for')
+
+local numbers = {8, 42, 38, 111, 2, 39, 1}
+
+for _, n in pairs(numbers) do
+    spawn(function()
+        sleep_for(n * 10)
+        print(n)
+    end)
+end
+----
+
+== Actor example
+
+[source,lua]
+----
+local inbox = require('inbox')
+
+print('actor started with _CONTEXT=' .. _CONTEXT)
+
+if _CONTEXT == 'main' then
+    local ch = spawn_vm('.')
+    ch:send(inbox)
+    local m = inbox:recv()
+    print(m)
+else
+    assert(_CONTEXT == 'worker')
+    local ch = inbox:recv()
+    ch:send('Hello World')
+end
+----
+
+== Dependencies
+
+* Meson.
+* {cpp}17.
+* LuaJIT.
+* Boost.Asio (and other Boost libraries as well).
+* `re2c`.
+* `xxd`.
+
+== Optional dependencies
+
+* Curses: coloured output on errors.
+* GNU AWK: tests.
+
+== "Bundled" dependencies
+
+Run:
+
+[source,bash]
+----
+git submodule update --init
+----
+
+This will download the extra dependencies:
+
+* fmt.
+* CLI11.
+* Trial.Protocol.
+
+== LICENSE
+
+Boost Software License.
+
+== ROADMAP
+
+* Package manager.
+* Native plug-in API.
+** Regex plug-in.
+** D-Bus plug-in.
+** Python plug-in.
+** Redis plug-in.
+* Linux namespaces powered actors when available+requested.
+* Self-contained executables.
+* REPL.
+* Debugger.
+* Custom memory allocator per VM.
+* Try to infect other languages with similar ideas.
