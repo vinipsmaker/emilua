@@ -4,6 +4,8 @@
 
 namespace emilua {
 
-result<void, std::bad_alloc> push_sleep_for(lua_State* L);
+extern char sleep_for_key;
+
+void init_timer(lua_State* L);
 
 } // namespace emilua

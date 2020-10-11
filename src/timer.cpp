@@ -7,6 +7,8 @@ namespace emilua {
 extern unsigned char sleep_for_bytecode[];
 extern std::size_t sleep_for_bytecode_size;
 
+char sleep_for_key;
+
 struct handle_type
 {
     handle_type(asio::io_context& ctx)
@@ -59,19 +61,16 @@ static int sleep_for(lua_State* L)
     return lua_yield(L, 0);
 }
 
-result<void, std::bad_alloc> push_sleep_for(lua_State* L)
+void init_timer(lua_State* L)
 {
+    lua_pushlightuserdata(L, &sleep_for_key);
     int res = luaL_loadbuffer(L, reinterpret_cast<char*>(sleep_for_bytecode),
                               sleep_for_bytecode_size, nullptr);
-    assert(res != LUA_ERRSYNTAX);
-    if (res == LUA_ERRMEM)
-        return std::bad_alloc{};
-
-    assert(res == 0);
+    assert(res == 0); boost::ignore_unused(res);
     lua_pushcfunction(L, lua_error);
     lua_pushcfunction(L, sleep_for);
     lua_call(L, 2, 1);
-    return outcome::success();
+    lua_rawset(L, LUA_REGISTRYINDEX);
 }
 
 } // namespace emilua
