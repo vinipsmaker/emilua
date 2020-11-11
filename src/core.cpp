@@ -514,7 +514,7 @@ public:
 
 const char* category_impl::name() const noexcept
 {
-    return "emilua";
+    return "emilua.core";
 }
 
 std::string category_impl::message(int value) const noexcept
