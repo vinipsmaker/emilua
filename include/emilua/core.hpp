@@ -199,7 +199,7 @@ struct actor_address
 struct inbox_t
 {
     struct value_type: std::variant<
-        bool, double, std::string,
+        bool, lua_Number, std::string,
         std::map<std::string, value_type>,
         std::vector<value_type>,
         actor_address

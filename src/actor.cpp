@@ -29,7 +29,7 @@ int deserializer_closure(lua_State* L)
             lua_pushboolean(L, b ? 1 : 0);
             return 1;
         },
-        [L](double d) {
+        [L](lua_Number d) {
             lua_pushnumber(L, d);
             return 1;
         },
@@ -103,7 +103,7 @@ static int chan_send(lua_State* L)
         push(L, std::errc::invalid_argument);
         return lua_error(L);
     case LUA_TNUMBER:
-        sender.msg.emplace<double>(lua_tonumber(L, 2));
+        sender.msg.emplace<lua_Number>(lua_tonumber(L, 2));
         break;
     case LUA_TBOOLEAN:
         sender.msg.emplace<bool>(lua_toboolean(L, 2));
