@@ -1,0 +1,49 @@
+table
+true
+0
+--
+table
+true
+1
+true
+0
+--
+table
+true
+1
+true
+1
+table
+false
+--
+table
+true
+1
+true
+2
+table
+false
+test
+--
+table
+true
+2
+true
+1
+table
+false
+test
+--
+type	table
+is_array	true
+val	table: 0x1
+len	2
+1	33
+2	table: 0x2
+2.type	table
+2.is_array	true
+2.len	4
+2.1	44
+2.2	55
+2.3	66
+2.3	77

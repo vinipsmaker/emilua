@@ -1,0 +1,5 @@
+Main fiber from VM 0x1 panicked: 'algorithm used requires more tokens than available'
+stack traceback:
+	input.lua:3: in main chunk
+	[C]: in function ''
+	[string "?"]: in function <[string "?"]:0>

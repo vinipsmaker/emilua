@@ -50,6 +50,7 @@ if get_option('enable_tests')
 endif
 
 incdir = include_directories([
+    '3rd/trial.protocol/include',
     '3rd/CLI11/include',
     '3rd/fmt/include',
     'include'
@@ -66,6 +67,7 @@ src = [
     'src/timer.cpp',
     'src/cond.cpp',
     'src/core.cpp',
+    'src/json.cpp',
     'src/main.cpp'
 ]
 
@@ -77,6 +79,7 @@ bytecode_src = bytecode_gen.process(
     'bytecode/scope.lua',
     'bytecode/state.lua',
     'bytecode/cond.lua',
+    'bytecode/json.lua',
 )
 
 re2c_src = re2c_gen.process(
@@ -216,6 +219,22 @@ if get_option('enable_tests')
             'actor14',
             'actor15',
             'actor16',
+        ],
+        'json' : [
+            'json1',
+            'json2',
+            'json3',
+            'json4',
+            'json5',
+            'json6',
+            'json7',
+            'json8',
+            'json9',
+            'json10',
+            'json11',
+            'json12',
+            'json13',
+            'json14',
         ],
         'programs' : [
             'sleepsort',

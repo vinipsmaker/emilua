@@ -9,3 +9,6 @@
 	path = 3rd/fmt
 	url = https://github.com/fmtlib/fmt.git
 	branch = 6.2.1
+[submodule "3rd/trial.protocol"]
+	path = 3rd/trial.protocol
+	url = https://github.com/breese/trial.protocol.git

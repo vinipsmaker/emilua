@@ -12,6 +12,7 @@
 #include <emilua/state.hpp>
 #include <emilua/timer.hpp>
 #include <emilua/cond.hpp>
+#include <emilua/json.hpp>
 
 namespace emilua {
 
@@ -183,6 +184,18 @@ static int require(lua_State* L)
                     lua_pushboolean(L, 1);
                     rawgetp(L, LUA_REGISTRYINDEX, &inbox_key);
                     vm_ctx->inbox.imported = true;
+                    return 2;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("json"),
+                [&]() -> int {
+                    if (nparents != 0) {
+                        push(L, errc::module_not_found);
+                        return lua_error(L);
+                    }
+                    lua_pushboolean(L, 1);
+                    rawgetp(L, LUA_REGISTRYINDEX, &json_key);
                     return 2;
                 }
             )
@@ -662,7 +675,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
     lua_rawget(L, LUA_GLOBALSINDEX);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
-    // core modules {{{
+    // core modules (don't change order here) {{{
     init_scope_cleanup_module(L);
     init_lua_shim_module(L);
     init_fiber_module(L);
@@ -671,8 +684,9 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
     init_actor_module(L);
     // }}}
 
-    // IO modules {{{
+    // extra modules {{{
     init_timer(L);
+    init_json_module(L);
     // }}}
 
     // default_modules_key {{{

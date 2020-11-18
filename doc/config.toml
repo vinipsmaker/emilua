@@ -15,7 +15,7 @@ name = "Tutorials(7)"
 url = "tutorial/"
 weight = 1
 
-#[[menu.main]]
-#name = "Reference(3)"
-#url = "ref/"
-#weight = 2
+[[menu.main]]
+name = "Reference(3)"
+url = "ref/"
+weight = 2

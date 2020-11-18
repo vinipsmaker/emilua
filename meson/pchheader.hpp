@@ -25,6 +25,10 @@
 #include <boost/asio.hpp>
 #include <boost/hana.hpp>
 
+#include <trial/protocol/buffer/string.hpp>
+#include <trial/protocol/json/reader.hpp>
+#include <trial/protocol/json/writer.hpp>
+
 extern "C" {
 #include <lauxlib.h>
 #include <luajit.h>

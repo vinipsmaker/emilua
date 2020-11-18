@@ -1,0 +1,6 @@
+30
+Main fiber from VM 0x1 panicked: 'Numerical result out of range'
+stack traceback:
+	input.lua:5: in main chunk
+	[C]: in function ''
+	[string "?"]: in function <[string "?"]:0>

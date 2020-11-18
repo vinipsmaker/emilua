@@ -1,0 +1,313 @@
++++
+title = "json"
++++
+:toc: macro
+
+[source,lua]
+----
+-- Encoding
+
+json.encode({'foo', {bar = {'baz', json.null, 1, 2}}})
+--< '["foo", {"bar": ["baz", null, 1, 2]}]'
+print(json.encode('\\'))
+--< "\\"
+print(json.encode({c = 0, b = 0, a = 0}))
+--< {"a": 0, "b": 0, "c": 0}
+
+-- Decoding
+
+local obj = json.decode('["foo", {"bar":["baz", null, 1.0, 2]}]')
+print(json.decode('"\\"foo\\bar"'))
+----
+
+toc::[]
+
+== Types
+
+* link:../json.writer/[`json.writer]`
+
+== Constants
+
+=== `null: unspecified`
+
+The single object that represents the JSON null value.
+
+It's safe to compare against this object to test for JSON's `null`.
+
+NOTE: If you call `tostring()` on this object, the string `"null"` will be
+returned.
+
+=== `lexer_ecat`
+
+It comes straight from the https://github.com/breese/trial.protocol[imported
+library] and we don't really control the error codes.
+
+=== `dom_ecat`
+
+Errors from this category don't mean the textual JSON representation is
+invalid. Rather, conversion to/from lua value failed (e.g. number overflow would
+occur, nesting level too deep, cyclic references, ...).
+
+This error category represents the very membrane between textual and Lua data
+representation.
+
+== Functions
+
+=== `decode(raw_json: string) -> value`
+
+Deserialize `raw_json` to a lua value.
+
+[source,lua]
+----
+local json_str = '{"items":[],"properties":{}}'
+print(json_str)
+print(json.encode(json.decode(json_str)))
+----
+
+will output (do note that order is unspecified and might change from emilua
+version to version):
+
+[source]
+----
+{"items":[],"properties":{}}
+{"properties":{},"items":[]}
+----
+
+=== `encode(value[, opts: table]) -> string`
+
+Serialize `value` to a JSON formatted string.
+
+[source,lua]
+----
+print(json.encode(json.null))
+print(json.encode({hello = 'world', what = json.null,
+                   animals = {'cow', 'coelho'}}))
+print(json.encode(json.into_array()))
+print(json.encode('hey "pretty"'))
+----
+
+will output:
+
+[source]
+----
+null
+{"what":null,"hello":"world","animals":["cow","coelho"]}
+[]
+"hey \"pretty\""
+----
+
+If `value` (or any nested element) has a `\__tojson()` metamethod, it'll be used
+to serialize that nesting level. Check <<tojson,`__tojson()`>> below to see
+parameters documentation.
+
+`opts` is an options table that might contain the following fields:
+
+* `indent`: the indentation string (or `nil` if a compact ugly JSON is desired).
+
+* `state`: the `state` object passed in the `__tojson()` call. Useful to
+  serialize further subobjects from the metamethod site. This option overrides
+  other options in the `opts` table.
++
+NOTE: If called with `state`, `encode()` will *NOT* return the generated string
+as it expects to write a partial value using `state.writer` only.
+
+=== `is_array(json: value) -> boolean`
+
+Test if `json` is a lua table and it has been tagged using the
+`json.into_array()` function to indicate that it represents a JSON array.
+
+[source,lua]
+.Example
+----
+local raw_json = [[ ["test", 4, false] ]]
+
+function poor_print(value)
+   if json.is_array(value) then
+      print(unpack(value))
+   elseif type(value) == 'table' then
+      print('{')
+      for k, v in pairs(value) do
+         print('', '"' .. k .. '"', v)
+      end
+      print('}')
+   elseif type(value) == 'string' then
+      print('"' .. value .. '"')
+   else
+      print(value)
+   end
+end
+
+poor_print(json.decode(raw_json))
+----
+
+=== `into_array([json: table]) -> table`
+
+Change ``json``'s metatable to a certain tag that indicates either:
+
+* The associated table was created from the result of parsing a JSON array.
+* If this table is used to generate JSON textual representation, it should be
+  encoded as a JSON array.
+
+`json` is returned from this function to favour certain useful syntactic idioms.
+
+If called with no arguments, a new array is created and returned.
+
+Use `json.is_array()` to check if some value has been marked using this
+function.
+
+== Customization point metamethods
+
+[[tojson]]
+=== `__tojson(self, state)`
+
+Called to write current node in the JSON tree.
+
+`state` is a table with the following fields:
+
+* `writer`: the generator.
+* `visited`: a table to detect reference cycles. Before serializing a suboject,
+  check whether `visited` already contains the to-be-serialized table. If a
+  cycle is detected, raise `cycle_exists` error. If all is good, set
+  `visited[t] = true` _before_ calling `getmetatable(t).__tojson(t, state)` on
+  the subobject `t`.
+* `indent`: the indentation string (or `nil` if a compact ugly JSON is
+  desired). Current level of nested containers can be queried through `writer`,
+  so you should write this string as many times as this reported level.
+
+A trick to avoid the error-prone interactions involving `state` (e.g. updating
+`visited`, etc) to serialize subobjects is to call `json.encode(t, { state =
+state })` on the subobject `t`. This way, you move the responsibility away to
+the `json` module itself. Example:
+
+[source,lua]
+----
+-- NOTE: this example ignores `indent`
+mt = {
+    __tojson = function(o, state)
+        local writer = state.writer
+
+        writer:begin_object()
+        writer:value('foo')
+        writer:value(o.foo) --< a number
+        writer:value('bar')
+
+        -- a subobject
+        -- might contain its own `__tojson()`
+        json.encode(o.bar, { state = state })
+
+        writer:end_object()
+    end
+}
+----
+
+== Conversion table
+
+|===
+|Lua type|JSON type|Notes
+
+|`json.null`|`null`   |
+|boolean    |boolean  |
+|number     |number   |
+|string     |string   |
+
+|table      |array
+a|
+
+On `decode(raw_json)`:
+
+* The lua table is marked with the `json.into_array()` function.
+
+On `encode(lua_obj)`:
+
+* `lua_obj` is encoded as a JSON array if it has been marked as so using
+  `json.into_array()` or `#lua_obj` evaluates to a value larger than `0`.
+* Non-integer keys are ignored.
+
+|table      |object
+
+a|
+
+On `encode(lua_obj)`:
+
+* Non-string keys are ignored.
+
+|===
+
+
+
+== Rationale
+
+These choices are also used by other lua libraries in the wild.
+
+http://dkolf.de/[David Heiko Kolf]'s work on collecting and comparing JSON
+libraries for Lua, and generally documenting common pitfalls as well, was
+specially helpful. Thanks to his work it was much easier for me to design my own
+solution.
+
+=== `null`
+
+Encoding the JSON `null` value is a problem. Lua treats `nil` as
+indistinguishable from an absent value so we can't really map `null` to
+`nil`. This problem only gets worse when interactions with sparse tables
+begin. However, JavaScript uses a different value for absent, `undefined`. And
+the same solution is chosen here with the introduction of a `json.null` value.
+
+=== JSON arrays
+
+JSON arrays and JSON objects will map to the same type — lua tables. How do we
+differentiate them? This problem isn't exclusive to Lua.  JavaScript itself
+suffers from this problem:
+
+[source,javascript]
+----
+> typeof({})
+'object'
+> typeof([])
+'object'
+----
+
+The solution chosen by JavaScript is an `Array.isArray()` function:
+
+[source,javascript]
+----
+> Array.isArray({})
+false
+> Array.isArray([])
+true
+----
+
+Therefore the same solution is chosen here:
+
+[source,lua]
+----
+local value = json.decode(raw_json)
+if json.is_array(value) then
+  -- ...
+end
+----
+
+And `json.into_aray()` is introduced to make certain patterns easier to work
+with (especially for the `encode()` function).
+
+NOTE: I acknowledge that dkjson's `__jsontype` metafield is more general, but
+JSON doesn't really need this kind of generality. JSON is a closed world.
+
+=== `encode()`
+
+The following libraries and pages inspired this function:
+
+* https://github.com/xpol/lua-rapidjson#value-type-mappings[Section “value type
+  mappings” from lua-rapidjson homepage].
+* http://lua-users.org/wiki/JsonModules[Section “handling of empty arrays” from
+  lua-users wiki's JSON Modules page].
+* http://dkolf.de/src/dkjson-lua.fsl/home[Section “examples” from dkjson
+  homepage].
+
+The `decode()` function avoids a recursive implementation. However, the
+`encode()` function does *not* share the same property. The reason why no effort
+was made to offer a recursion-free `encode()` implementation is the
+`\__tojson()` metamethod. This metamethod would force an unbounded call-stack
+anyway, so there is no point. However, the recursion was implemented in lua
+bytecode, so at least your process shouldn't crash on stack overflow. If you
+wish for a recursion-free implementation, you can use the generator interface
+directly and avoid `__tojson()` yourself.
