@@ -215,6 +215,9 @@ struct inbox_t
         value_type& operator=(value_type&&) = default;
     };
 
+    using value_object_type = std::map<std::string, value_type>;
+    using value_array_type = std::vector<value_type>;
+
     struct sender_state
     {
         sender_state(vm_context& vm_ctx);

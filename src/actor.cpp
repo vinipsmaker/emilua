@@ -1,6 +1,7 @@
 #include <emilua/actor.hpp>
 #include <emilua/state.hpp>
 #include <emilua/fiber.hpp>
+#include <emilua/json.hpp>
 
 #include <boost/hana/functional/overload.hpp>
 
@@ -21,43 +22,146 @@ static int dummy;
 
 int deserializer_closure(lua_State* L)
 {
+    using array_key_type = int;
+
+    struct object_range
+    {
+        using iterator =
+            typename std::map<std::string, inbox_t::value_type>::iterator;
+
+        object_range(std::map<std::string, inbox_t::value_type>& m)
+            : it{m.begin()}
+            , end{m.end()}
+        {}
+
+        bool empty() const
+        {
+            return it == end;
+        }
+
+        iterator it;
+        iterator end;
+    };
+
+    struct array_range
+    {
+        array_range(std::vector<inbox_t::value_type>& array)
+            : array{array}
+        {
+            assert(array.size() <= std::numeric_limits<array_key_type>::max());
+        }
+
+        bool empty() const
+        {
+            return idx == array.size();
+        }
+
+        std::size_t idx = 0;
+        std::vector<inbox_t::value_type>& array;
+    };
+
     auto& value = *reinterpret_cast<inbox_t::value_type*>(
         lua_touserdata(L, lua_upvalueindex(1)));
 
-    return std::visit(hana::overload(
-        [L](bool b) {
-            lua_pushboolean(L, b ? 1 : 0);
-            return 1;
-        },
-        [L](lua_Number d) {
-            lua_pushnumber(L, d);
-            return 1;
-        },
-        [L](const std::string& s) {
-            lua_pushlstring(L, s.data(), s.size());
-            return 1;
-        },
-        [L](std::map<std::string, inbox_t::value_type>& m) {
-            // TODO
-            push(L, std::errc::not_supported);
-            return lua_error(L);
-        },
-        [L](std::vector<inbox_t::value_type>& v) {
-            // TODO
-            push(L, std::errc::not_supported);
-            return lua_error(L);
-        },
-        [L](actor_address& a) {
-            auto buf = reinterpret_cast<actor_address*>(
-                lua_newuserdata(L, sizeof(actor_address))
-            );
-            rawgetp(L, LUA_REGISTRYINDEX, &tx_chan_mt_key);
-            int res = lua_setmetatable(L, -2);
-            assert(res); boost::ignore_unused(res);
-            new (buf) actor_address{std::move(a)};
-            return 1;
+    std::vector<std::variant<object_range, array_range>> path;
+
+    static constexpr auto push_address = [](lua_State* L, actor_address& a) {
+        auto buf = reinterpret_cast<actor_address*>(
+            lua_newuserdata(L, sizeof(actor_address))
+        );
+        rawgetp(L, LUA_REGISTRYINDEX, &tx_chan_mt_key);
+        int res = lua_setmetatable(L, -2);
+        assert(res); boost::ignore_unused(res);
+        new (buf) actor_address{std::move(a)};
+    };
+
+    auto push_leaf_or_append_path_and_return_true_on_leaf = [&](
+        inbox_t::value_type::variant_type& value
+    ) {
+        return std::visit(hana::overload(
+            [L](bool b) { lua_pushboolean(L, b ? 1 : 0); return true; },
+            [L](lua_Number n) { lua_pushnumber(L, n); return true;},
+            [L](std::string_view v) { push(L, v); return true; },
+            [L](actor_address& a) { push_address(L, a); return true; },
+            [&](std::map<std::string, inbox_t::value_type>& m) {
+                path.emplace_back(std::in_place_type<object_range>, m);
+                return false;
+            },
+            [&](std::vector<inbox_t::value_type>& v) {
+                path.emplace_back(std::in_place_type<array_range>, v);
+                return false;
+            }
+        ), value);
+    };
+    if (/*is_leaf=*/push_leaf_or_append_path_and_return_true_on_leaf(value))
+        return 1;
+
+    // During `value` traversal, we always keep two values on top of the lua
+    // stack (from top to bottom):
+    //
+    // * -1: Current work item.
+    // * -2: The items tree stack.
+    //
+    // See `json::decode()` implementation for details. It's kinda the same
+    // layout idea. There's an explanation comment block there already. Do
+    // notice there are major differences between JSON and `value` traversal
+    // (e.g. key-value pair available in one-shot vs pieces, untrusted vs
+    // pre-sanitized data, cheapness of look-ahead, requirement to mark arrays
+    // with special metatable, etc) so the traversal algorithm accordingly
+    // deviates a lot (e.g. current work item is never nil, key-value pairing
+    // happens eagerly, ...).
+    lua_newtable(L);
+    lua_newtable(L);
+    lua_pushvalue(L, -1);
+    lua_rawseti(L, -3, 1);
+
+    for (;;) {
+        assert(lua_type(L, -1) == LUA_TTABLE);
+        inbox_t::value_type::variant_type *value = nullptr;
+        std::visit(hana::overload(
+            [&](object_range& o) {
+                if (o.empty())
+                    return;
+
+                push(L, o.it->first);
+                value = &o.it->second;
+                ++o.it;
+            },
+            [&](array_range& a) {
+                if (a.empty())
+                    return;
+
+                lua_pushinteger(L, a.idx + 1);
+                value = &a.array[a.idx];
+                ++a.idx;
+            }
+        ), path.back());
+        if (!value) { // close event
+            path.pop_back();
+            if (path.size() == 0)
+                break;
+
+            lua_pop(L, 1);
+            lua_pushnil(L);
+            lua_rawseti(L, -2, static_cast<array_key_type>(path.size() + 1));
+            lua_rawgeti(L, -1, static_cast<array_key_type>(path.size()));
+            continue;
         }
-    ), static_cast<inbox_t::value_type::variant_type&>(value));
+        if (push_leaf_or_append_path_and_return_true_on_leaf(*value)) {
+            lua_rawset(L, -3);
+            continue;
+        }
+        lua_newtable(L);
+        lua_insert(L, -2);
+        lua_pushvalue(L, -2);
+        lua_rawset(L, -4);
+        lua_remove(L, -2);
+        lua_pushvalue(L, -1);
+        lua_rawseti(L, -3, static_cast<array_key_type>(path.size()));
+    }
+
+    assert(lua_objlen(L, -2) == 1);
+    return 1;
 }
 
 static int chan_send(lua_State* L)
@@ -93,6 +197,55 @@ static int chan_send(lua_State* L)
         return lua_error(L);
     }
 
+    using array_key_type = int;
+    constexpr auto array_key_max = std::numeric_limits<array_key_type>::max();
+
+    enum {
+        NODE_IDX = 1,
+        ITER_IDX,
+    };
+
+    static constexpr std::uintptr_t is_object_bitmask = 0x1;
+    static_assert(sizeof(std::uintptr_t) == sizeof(void*));
+    // number of bits we can hijack from pointer for our own purposes {{{
+    static_assert(alignof(inbox_t::value_object_type) > 1);
+    static_assert(alignof(inbox_t::value_array_type) > 1);
+    // }}}
+
+    struct dom_reference
+    {
+        dom_reference(inbox_t::value_object_type& o)
+            : ptr{reinterpret_cast<std::uintptr_t>(&o) | is_object_bitmask}
+        {}
+
+        dom_reference(inbox_t::value_array_type& a)
+            : ptr{reinterpret_cast<std::uintptr_t>(&a)}
+        {}
+
+        inbox_t::value_object_type& as_object()
+        {
+            return *reinterpret_cast<inbox_t::value_object_type*>(
+                ptr & ~is_object_bitmask);
+        }
+
+        inbox_t::value_array_type& as_array()
+        {
+            return *reinterpret_cast<inbox_t::value_array_type*>(ptr);
+        }
+
+        bool is_object() const
+        {
+            return ptr & is_object_bitmask;
+        }
+
+        bool is_array() const
+        {
+            return !is_object();
+        }
+
+        std::uintptr_t ptr;
+    };
+
     inbox_t::sender_state sender{vm_ctx};
 
     switch (lua_type(L, 2)) {
@@ -114,10 +267,244 @@ static int chan_send(lua_State* L)
         sender.msg.emplace<std::string>(data, size);
         break;
     }
-    case LUA_TTABLE:
-        // TODO: serialize
-        push(L, std::errc::not_supported);
-        return lua_error(L);
+    case LUA_TTABLE: {
+        if (lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument);
+            return lua_error(L);
+        }
+
+        std::vector<dom_reference> dom_stack;
+        array_key_type current_array_idx;
+
+        // During iteration, we keep 3 values as the Lua stack base (from bottom
+        // to top):
+        //
+        // * A visited table to detect reference cycles.
+        // * The iterators stack (our iteration tree). Each element is a Lua
+        //   table (a work item).
+        // * The current Lua table being iterated.
+        //
+        // If current work item is an object, we keep 1 extra value on the Lua
+        // stack top:
+        //
+        // * Current key.
+        lua_newtable(L);
+        lua_pushvalue(L, 2);
+        lua_pushboolean(L, 1);
+        lua_rawset(L, -3);
+
+        lua_newtable(L);
+        lua_pushvalue(L, 2);
+
+        {
+            lua_createtable(L, /*narr=*/2, /*nrec=*/0);
+            lua_pushvalue(L, -2);
+            lua_rawseti(L, -2, NODE_IDX);
+        }
+        lua_rawseti(L, -3, 1);
+
+        if (lua_objlen(L, -1) > 0) {
+            dom_stack.emplace_back(
+                sender.msg.emplace<inbox_t::value_array_type>());
+            current_array_idx = 0;
+        } else {
+            dom_stack.emplace_back(
+                sender.msg.emplace<inbox_t::value_object_type>());
+            lua_pushnil(L);
+        }
+
+        while (dom_stack.size() > 0) {
+            auto cur_node = dom_stack.back();
+            inbox_t::value_type *cur_value = nullptr;
+            inbox_t::value_object_type::iterator obj_it;
+            if (cur_node.is_array()) {
+                if (current_array_idx == array_key_max) {
+                    push(L, json_errc::array_too_long);
+                    return lua_error(L);
+                }
+
+                lua_rawgeti(L, -1, ++current_array_idx);
+                switch (lua_type(L, -1)) {
+                case LUA_TNIL:
+                    lua_pop(L, 1);
+                    break;
+                default:
+                    cur_value = &cur_node.as_array().emplace_back(
+                        std::in_place_type<bool>, false);
+                }
+            } else {
+                if (lua_next(L, -2) != 0) {
+                    if (lua_type(L, -2) != LUA_TSTRING) {
+                        lua_pop(L, 1);
+                        continue;
+                    }
+                    obj_it = cur_node.as_object().emplace(
+                        tostringview(L, -2), false).first;
+                    cur_value = &obj_it->second;
+                }
+            }
+
+            auto update_lua_ctx_on_level_popped = [&]() {
+                // remove from visited
+                lua_pushnil(L);
+                lua_rawset(L, -4);
+
+                // update iterators stack {{{
+                lua_pushnil(L);
+                lua_rawseti(L, -2,
+                            static_cast<array_key_type>(dom_stack.size() + 1));
+                // }}}
+
+                // update cur table + iterator
+                lua_rawgeti(L, -1,
+                            static_cast<array_key_type>(dom_stack.size()));
+                lua_rawgeti(L, -1, NODE_IDX);
+                lua_rawgeti(L, -2, ITER_IDX);
+                lua_remove(L, -3);
+                if (dom_stack.back().is_array()) {
+                    current_array_idx = lua_tointeger(L, -1);
+                    lua_pop(L, 1);
+                }
+            };
+
+            // event: close current node
+            if (!cur_value) {
+                dom_stack.pop_back();
+                if (dom_stack.size() == 0)
+                    break;
+
+                update_lua_ctx_on_level_popped();
+                continue;
+            }
+
+            auto ignore_cur_item = [&]() {
+                lua_pop(L, 1);
+                if (cur_node.is_array()) {
+                    cur_node.as_array().pop_back();
+
+                    dom_stack.pop_back();
+                    if (dom_stack.size() == 0)
+                        return;
+
+                    update_lua_ctx_on_level_popped();
+                } else {
+                    cur_node.as_object().erase(obj_it);
+                }
+            };
+
+            switch (lua_type(L, -1)) {
+            case LUA_TNIL:
+                assert(false);
+            case LUA_TUSERDATA:
+                if (lua_getmetatable(L, -1)) {
+                    rawgetp(L, LUA_REGISTRYINDEX, &tx_chan_mt_key);
+                    if (lua_rawequal(L, -1, -2)) {
+                        const auto& msg = *reinterpret_cast<actor_address*>(
+                            lua_touserdata(L, -3));
+                        cur_value->emplace<actor_address>(msg);
+                        lua_pop(L, 3);
+                        break;
+                    }
+                    rawgetp(L, LUA_REGISTRYINDEX, &inbox_mt_key);
+                    if (lua_rawequal(L, -1, -3)) {
+                        cur_value->emplace<actor_address>(vm_ctx);
+                        lua_pop(L, 4);
+                        break;
+                    }
+                    // TODO: check whether has metamethod to transfer between
+                    // states
+                    lua_pop(L, 3);
+                }
+            case LUA_TFUNCTION:
+            case LUA_TTHREAD:
+            case LUA_TLIGHTUSERDATA:
+                ignore_cur_item();
+                break;
+            case LUA_TNUMBER:
+                cur_value->emplace<lua_Number>(lua_tonumber(L, -1));
+                lua_pop(L, 1);
+                break;
+            case LUA_TBOOLEAN:
+                cur_value->emplace<bool>(lua_toboolean(L, -1));
+                lua_pop(L, 1);
+                break;
+            case LUA_TSTRING:
+                cur_value->emplace<std::string>(tostringview(L, -1));
+                lua_pop(L, 1);
+                break;
+            case LUA_TTABLE: {
+                if (lua_getmetatable(L, -1)) {
+                    lua_pop(L, 1);
+                    ignore_cur_item();
+                    break;
+                }
+
+                {
+                    int visited_idx = cur_node.is_array() ? -4 : -5;
+                    lua_pushvalue(L, -1);
+                    lua_rawget(L, visited_idx - 1);
+                    if (lua_type(L, -1) == LUA_TBOOLEAN) {
+                        assert(lua_toboolean(L, -1) == 1);
+                        push(L, json_errc::cycle_exists);
+                        return lua_error(L);
+                    }
+                    assert(lua_type(L, -1) == LUA_TNIL);
+                    lua_pop(L, 1);
+
+                    lua_pushvalue(L, -1);
+                    lua_pushboolean(L, 1);
+                    lua_rawset(L, visited_idx - 2);
+                }
+
+                if (dom_stack.size() == array_key_max) {
+                    push(L, json_errc::too_many_levels);
+                    return lua_error(L);
+                }
+
+                // save current iterator
+                {
+                    int iterators_stack_idx = cur_node.is_array() ? -3 : -4;
+                    lua_rawgeti(L, iterators_stack_idx,
+                                static_cast<array_key_type>(dom_stack.size()));
+                    if (cur_node.is_array())
+                        lua_pushinteger(L, current_array_idx);
+                    else
+                        lua_pushvalue(L, -3);
+                    lua_rawseti(L, -2, ITER_IDX);
+                    lua_pop(L, 1);
+                }
+
+                // remove iter/key from Lua stack (only there on objects)
+                if (cur_node.is_object())
+                    lua_remove(L, -2);
+
+                // remove from the Lua stack, the node that we were previously
+                // iterating over
+                lua_remove(L, -2);
+
+                {
+                    lua_createtable(L, /*narr=*/2, /*nrec=*/0);
+                    lua_pushvalue(L, -2);
+                    lua_rawseti(L, -2, NODE_IDX);
+                }
+                lua_rawseti(L, -3,
+                            static_cast<array_key_type>(dom_stack.size() + 1));
+
+                if (lua_objlen(L, -1) > 0) {
+                    dom_stack.emplace_back(
+                        cur_value->emplace<inbox_t::value_array_type>());
+                    current_array_idx = 0;
+                } else {
+                    dom_stack.emplace_back(
+                        cur_value->emplace<inbox_t::value_object_type>());
+                    lua_pushnil(L);
+                }
+            }
+            }
+        }
+        lua_pop(L, 3);
+        break;
+    }
     case LUA_TUSERDATA:
         if (!lua_getmetatable(L, 2)) {
             push(L, std::errc::invalid_argument);
