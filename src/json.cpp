@@ -130,7 +130,6 @@ static int decode(lua_State* L)
 
     json::reader reader(tostringview(L, 1));
     std::string str_buf;
-    bool is_key = false;
     std::vector<std::variant<std::string, array_key_type>> path;
 
     // During the JSON tree traversal, we always keep two values on top of the
@@ -166,7 +165,6 @@ static int decode(lua_State* L)
             }
         );
 
-        assert(is_key == false);
         if (path.size() == 0) {
             lua_pop(L, 1);
             push_leaf(L, val);
@@ -179,7 +177,6 @@ static int decode(lua_State* L)
                 lua_pushlstring(L, key.data(), key.size());
                 push_leaf(L, val);
                 lua_rawset(L, -3);
-                is_key = true;
                 return {};
             },
             [&](array_key_type& key) -> json_errc {
@@ -262,22 +259,20 @@ static int decode(lua_State* L)
             ec = on_leaf(val);
             break;
         }
+        case json::token::symbol::key:
         case json::token::symbol::string:
             str_buf.clear();
             reader.string(str_buf);
-            if (is_key) {
+            if (sym == json::token::symbol::key)
                 path.back().emplace<std::string>(str_buf);
-                is_key = false;
-            } else {
+            else
                 ec = on_leaf(str_buf);
-            }
             break;
         case json::token::symbol::null:
             ec = on_leaf(std::monostate{});
             break;
         case json::token::symbol::begin_array:
         case json::token::symbol::begin_object:
-            assert(is_key == false);
             if (path.size() == array_key_max) {
                 push(L, json_errc::too_many_levels);
                 // We don't append path info here for the following reasons:
@@ -306,11 +301,8 @@ static int decode(lua_State* L)
             }
             lua_pushvalue(L, -1);
             lua_rawseti(L, -3, static_cast<array_key_type>(path.size()));
-            if (sym == json::token::symbol::begin_object)
-                is_key = true;
             break;
         case json::token::symbol::end_array:
-            assert(is_key == false);
         case json::token::symbol::end_object:
             path.pop_back();
             if (path.size() == 0) {
@@ -327,7 +319,6 @@ static int decode(lua_State* L)
                     lua_pushlstring(L, key.data(), key.size());
                     lua_insert(L, -2);
                     lua_rawset(L, -3);
-                    is_key = true;
                     return {};
                 },
                 [&](array_key_type& key) -> json_errc {
@@ -335,7 +326,6 @@ static int decode(lua_State* L)
                         return json_errc::array_too_long;
 
                     lua_rawseti(L, -2, ++key);
-                    is_key = false;
                     return {};
                 }
             ), path.back());
