@@ -108,8 +108,7 @@ int deserializer_closure(lua_State* L)
     // (e.g. key-value pair available in one-shot vs pieces, untrusted vs
     // pre-sanitized data, cheapness of look-ahead, requirement to mark arrays
     // with special metatable, etc) so the traversal algorithm accordingly
-    // deviates a lot (e.g. current work item is never nil, key-value pairing
-    // happens eagerly, ...).
+    // deviates a lot (e.g. current work item is never nil, ...).
     lua_newtable(L);
     lua_newtable(L);
     lua_pushvalue(L, -1);

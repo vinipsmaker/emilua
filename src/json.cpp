@@ -287,18 +287,41 @@ static int decode(lua_State* L)
                 //   protection from checking against deep levels.
                 return lua_error(L);
             }
-            if (sym == json::token::symbol::begin_array)
-                path.emplace_back(std::in_place_type<array_key_type>, 0);
-            else
-                path.emplace_back(std::in_place_type<std::string>);
 
-            lua_pop(L, 1);
             lua_newtable(L);
 
+            if (path.size() > 0) {
+                lua_pushvalue(L, -1);
+
+                ec = std::visit(hana::overload(
+                    [&](const std::string& key) -> json_errc {
+                        lua_pushlstring(L, key.data(), key.size());
+                        lua_insert(L, -2);
+                        lua_rawset(L, -4);
+                        return {};
+                    },
+                    [&](array_key_type& key) -> json_errc {
+                        if (key == array_key_max)
+                            return json_errc::array_too_long;
+
+                        lua_rawseti(L, -3, ++key);
+                        return {};
+                    }
+                ), path.back());
+                if (ec != json_errc{})
+                    break;
+            }
+
             if (sym == json::token::symbol::begin_array) {
+                path.emplace_back(std::in_place_type<array_key_type>, 0);
+
                 rawgetp(L, LUA_REGISTRYINDEX, &json_array_mt_key);
                 lua_setmetatable(L, -2);
+            } else {
+                path.emplace_back(std::in_place_type<std::string>);
             }
+
+            lua_remove(L, -2);
             lua_pushvalue(L, -1);
             lua_rawseti(L, -3, static_cast<array_key_type>(path.size()));
             break;
@@ -310,25 +333,10 @@ static int decode(lua_State* L)
                 break;
             }
 
+            lua_pop(L, 1);
             lua_pushnil(L);
-            lua_rawseti(L, -3, static_cast<array_key_type>(path.size() + 1));
-            lua_rawgeti(L, -2, static_cast<array_key_type>(path.size()));
-            lua_insert(L, -2);
-            ec = std::visit(hana::overload(
-                [&](const std::string& key) -> json_errc {
-                    lua_pushlstring(L, key.data(), key.size());
-                    lua_insert(L, -2);
-                    lua_rawset(L, -3);
-                    return {};
-                },
-                [&](array_key_type& key) -> json_errc {
-                    if (key == array_key_max)
-                        return json_errc::array_too_long;
-
-                    lua_rawseti(L, -2, ++key);
-                    return {};
-                }
-            ), path.back());
+            lua_rawseti(L, -2, static_cast<array_key_type>(path.size() + 1));
+            lua_rawgeti(L, -1, static_cast<array_key_type>(path.size()));
         }
         if (ec != json_errc{}) {
             push(L, ec);
