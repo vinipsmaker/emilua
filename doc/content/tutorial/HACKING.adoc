@@ -30,10 +30,12 @@ the same `asio::io_context` and each will be protected by its own ASIO strand.
 
 [source,lua]
 ----
--- Instantiates a new lua VM that shares the caller's `asio::io_context`
+-- Instantiates a new lua VM that shares
+-- the caller's `asio::io_context`
 spawn_vm(module)
 
--- Instantiates a new lua VM in a new thread with its own `asio::io_context`
+-- Instantiates a new lua VM in a new
+-- thread with its own `asio::io_context`
 spawn_vm(module, { inherit_ctx=false })
 ----
 
@@ -62,7 +64,8 @@ be configured purely in the lua side of coding.
 
 [source,lua]
 ----
--- Spawn extra threads to the caller's `asio::io_context`
+-- Spawn extra threads to the
+-- caller's `asio::io_context`
 spawn_ctx_threads(count)
 ----
 
@@ -201,7 +204,7 @@ structure (also protected by the same strand as the vm).
 == `this_fiber`
 
 As long as lua code is executing, there is a current fiber and this property
-stays unchanged for as long as control doesn't go back to {cpp} code.
+stays unchanged for as long as control doesn't return to host.
 
 [quote]
 ....
@@ -257,42 +260,336 @@ If the VM fails to allocate the closure passed to `scope_cleanup_push()`,
 unrecoverable state. There's no pattern or ordering to make resource management
 work here as allocation failures can happen almost anywhere and we then inherit
 some constraints and reasoning from preemptive scheduling. The only option (and
-this applies to *any* allocation failure reported by the lua VM) is to terminate
-the VM from the {cpp}-side.
+this applies to *any* allocation failure reported by the lua VM when running
+arbitrary user code) is to terminate the VM from the {cpp}-side.
 
 When `lua_close()` is called, there is no guarantee pending operations will be
 canceled as they might hold strong references to the underlying IO object
 preventing its destructor from getting called. Therefore, the `vm_context`
 structure also holds an intrusive container of polymorphic elements which are
-destroyed after `lua_close()` is called and can be used to register clenaup code
+destroyed after `lua_close()` is called and can be used to register cleanup code
 to avoid such leaks. If the operation finishes, the IO object is free to reclaim
 their own objects from this container and use them for other purposes.
 
 `lua_CFunction` objects should never call `lua_close()`. If they detect
 `LUA_ERRMEM` all they have to do is to mark the flags field from `vm_context`
-and suspend the fiber. The runtime will take care of closing `lua_State*` and
-extra cleanup when it recovers control of the thread.
+and suspend the fiber. The host will take care of closing `lua_State*` and extra
+cleanup when it recovers control of the thread.
 
-The other side of the coin is to _detect_ `LUA_ERRMEM` — not always a trivial
-task. The manual will instruct you about the basics — `LUA_MINSTACK`,
-`lua_checkstack()` and `lua_pcall()`. `lua_pcall()` might return `LUA_ERRMEM` if
-allocation fails, but this only works for {cpp} code running within VM
-context. Outside VM context (e.g. when an async op completes and is about to
-push the result and call `lua_resume()`), there are plenty of functions that
-just cannot be safely called (e.g. `lua_createtable()`) and in fact might not
-even be possible to create a safe context to call them.
+The other side of the coin is to _detect_ `LUA_ERRMEM`. All interactions with
+the VM from the C API happens through the virtual stack, so naturally that's the
+first concern. You must not push anything on the stack if there's no extra free
+stack slot available. To check for such slot space, there's `lua_checkstack()`.
 
-Emilua's solution is to use an allocator that reserves a small area to critical
-sections (i.e. code running outside the VM context). This zone is only available
-when explicitly enabled. By the end of the critical section, you must instruct
-the allocator to reclaim the reserved zone (and the zone will become unavailable
-again until requested a second time). If reclaiming fails, then you safely
-detected `LUA_ERRMEM` and should proceed to the path that will trigger
-`lua_close()`. The critical section *must not* use indiscriminate
-allocations/operations (so arbitrary lua code is also forbidden). The reserved
-zone must be understood as “too small to fail” (but do note that
-`lua_checkstack()` might still fail given `realloc()` semantics), so do keep
-this extra usage during the critical section bounded and small.
+The usual C function signature is not enough to convey all the semantics
+required by the Lua C API. On the
+http://www.lua.org/manual/5.1/manual.html#3.7[Functions and Types section from
+the manual], we verify the following information:
+
+[quote]
+____
+Here we list all functions and types from the C API in alphabetical order.  Each
+function has an indicator like this: `[-o, +p, x]`
+
+[...] The third field, `x`, tells whether the function may throw errors:
+\'``-``' means the function never throws any error; \'``m``' means the function
+may throw an error only due to not enough memory; \'``e``' means the function
+may throw other kinds of errors; \'``v``' means the function may throw an error
+on purpose.
+____
+
+The 5.1's signature for `lua_checkstack()` is:
+
+[source,c]
+----
+int lua_checkstack(lua_State *L, int extra); // [-0, +0, m]
+----
+
+That's obviously bogus. If `lua_checkstack()` can throw on `ENOMEM` that means
+there is no possible safe interaction with the VM. That's — plain and simple — a
+bug. This bug was fixed in Lua 5.2 when the signature changed to:
+
+[source,c]
+----
+int lua_checkstack(lua_State *L, int extra); // [-0, +0, –]
+----
+
+NOTE: Lua 5.2 received a few other improvements concerning `ENOMEM` such as
+obsoleting `lua_cpcall()` by introducing light C functions. API-wise, Lua 5.2
+was a great release as it fixed many shortcomings.
+
+You don't _always_ need to call `lua_checkstack()` before doing anything thanks
+to at least `LUA_MINSTACK` free stack slots being guaranteed for you when the VM
+calls into your `lua_CFunction` objects. And here's where things start to get
+tricky. Consider the following Lua code:
+
+[source,lua]
+----
+coroutine.wrap(function()
+    spawn(function()
+        print('Hello World')
+    end)
+end)()
+----
+
+The underlying C function implementing `spawn()` is exposed to 3 different
+`lua_State*` handles:
+
+Current fiber:: `get_vm_context(L).current_fiber()`. The one that calls
+`coroutine.wrap()`.
+
+Inner coroutine:: The `L` parameter from `lua_CFunction`. The one that calls
+`spawn()`.
+
+New fiber:: `lua_newthread(L)` return value. The one to print “_Hello World_”.
+
+If `lua_error()` is called on `L`, the stack for `L` will be in a completely
+deterministic state. Anything this `lua_CFunction` object pushed on the stack
+will be popped and the whole `pcall()`-chain on the state `L` will be
+respected too. However `lua_error()` might be called indirectly through other
+API functions. That's the signature for `lua_newtable()`:
+
+[source,c]
+----
+void lua_newtable(lua_State *L); // [-0, +1, m]
+----
+
+As we've seen previously:
+
+[quote]
+____
+\'``m``' means the function may throw an error only due to not enough memory
+____
+
+“Throw” here means sorts of a call to `lua_error()` (`LUAI_THROW` to be more
+accurate). That's the `pcall()`-chain and each `lua_State` has its own (this
+property won't change even if you compile the Lua VM as {cpp} code). This
+independent `pcall()`-chain for each `lua_State` is not a limitation from the C
+API, but an accurate model of the underlying machinery happening in Lua code
+itself. Consider the following snippet:
+
+[source,lua]
+----
+c1 = coroutine.create(function()
+    pcall(function()
+        -- ...
+    end)
+end)
+----
+
+If `c1` is suspended in the middle of `pcall()`, it retains this private
+`pcall()`-chain that doesn't get mixed with `pcall()`-chains from other
+coroutines (i.e. the other `lua_State*` handles). Therefore the C API accurately
+maps the language behaviour on retaining a private `pcall()`-chain for each
+`lua_State` and we can't expect any different behaviour here really. Lua
+documentation on the issue has been ironed out little-by-little throughout its
+releases. Lua 5.3 was the one to finally explicitly state the behaviour we just
+described:
+
+[quote, 'http://www.lua.org/manual/5.3/manual.html#4.6[Lua 5.3 Reference]']
+____
+The panic function, as its name implies, is a mechanism of last resort. Programs
+should avoid it. As a general rule, when a C function is called by Lua with a
+Lua state, it can do whatever it wants on that Lua state, as it should be
+already protected. However, when C code operates on other Lua states (e.g., a
+Lua argument to the function, a Lua state stored in the registry, or the result
+of `lua_newthread`), it should use them only in API calls that cannot raise
+errors.
+____
+
+In short, that means our `spawn()` implementation that is exposed to the {``L``,
+current fiber, new fiber} triple would throw to the wrong `pcall()`-chain if it
+calls `lua_newtable(new_fiber)`. The solution is to use `lua_xmove()` when
+necessary and maintain *rigorous discipline* as to which C API functions are
+called on “foreign” `lua_State*` handles paying very special attention to their
+respective throw specifications. As for the discipline required,
+http://lua-users.org/wiki/ErrorHandlingBetweenLuaAndCplusplus[Rici Lake wrote a
+good summary on the lua-users wiki]:
+
+[quote]
+____
+There are quite a number of API functions which will never throw a Lua
+error. API functions that throw errors are identified in the reference manual as
+of 5.1.3. First, none of the stack adjustment functions throw errors; this
+includes `lua_pop`, `lua_gettop`, `lua_settop`, `lua_pushvalue`, `lua_insert`,
+`lua_replace` and `lua_remove`. If you provide incorrect indexes to these
+functions, or you haven't called `lua_checkstack`, then you're either going to
+get garbage or a segfault, but not a Lua error.
+
+None of the functions which push atomic data -- `lua_pushnumber`, `lua_pushnil`,
+`lua_pushboolean` and `lua_pushlightuserdata` ever throw an error. API functions
+which push complex objects (strings, tables, closures, threads, full userdata)
+may throw a memory error. None of the type enquiry functions -- `lua_is*`,
+`lua_type` and `lua_typename` -- will ever throw an error, and neither will the
+functions which set/get metatables and environments. `lua_rawget`, `lua_rawgeti`
+and `lua_rawequal` will also never throw an error. Aside from `lua_tostring`,
+none of the `lua_to*` functions will throw an error, and you can avoid the
+possibility of `lua_tostring` throwing an out of memory error by first checking
+that the object is a string, using `lua_type`. `lua_rawset` and `lua_rawseti`
+may throw an out of memory error. The functions which may throw arbitrary errors
+are the ones which may call metamethods; these include all of the non-raw `get`
+and `set` functions, as well as `lua_equal` and `lua_lt`.
+____
+
+On a side note, Lua 5.2 added the following:
+
+[quote, 'http://www.lua.org/manual/5.2/manual.html#4.6[Lua 5.2 Reference]']
+____
+If an error happens outside any protected environment, Lua calls a _panic
+function_ (see `lua_atpanic`) and then calls `abort`, thus exiting the host
+application. Your panic function can avoid this exit by never returning (e.g.,
+doing a long jump to your own recovery point outside Lua).
+
+The panic function runs as if it were a message handler (see §2.3); in
+particular, the error message is at the top of the stack. However, there is no
+guarantees about stack space. To push anything on the stack, the panic function
+should first check the available space (see §4.2).
+____
+
+That's actually behaviour that already existed on the version 5.1. An
+alternative panic function could just throw a {cpp} exception to implement this
+`+__attribute__((noreturn))+` behaviour. However this hypothetical panic
+function is not an alternative solution to our problems due to the combination
+of the following facts:
+
+* As described elsewhere in this document, we require `lua_error()` to act as-if
+  it throws a {cpp} exception so our destructors are properly called. That
+  requires the underlying Lua VM (LuaJIT in our case) to throw and catch {cpp}
+  exceptions.
+* A {cpp}-throw is triggered from `lua_newtable(L)`. The type thrown here is
+  internal to the Lua VM and we cannot throw it ourselves. `LUA_ERRMEM`
+  information is correctly preserved.
+* A panic is triggered from `lua_newtable(new_fiber)`. Our panic function would
+  in turn discard `LUA_ERRMEM` and throw a generic {cpp} exception.
+* On `lua_newtable(new_fiber)` hitting `LUA_ERRMEM`, the ``L``'s {cpp}-catch
+  handler wouldn't receive the original error (`LUA_ERRMEM`). That means
+  information loss. That means our host code (the code that first calls into the
+  Lua VM) won't call `lua_close()` (when it should) as its
+  `lua_pcall()`/`lua_resume()` call might not report the correct error reason
+  (`LUA_ERRMEM`). That also means the possibility to unwind the wrong number of
+  cascaded `pcall()` blocks (a `pcall()` from Lua code is not supposed to handle
+  `LUA_ERRMEM` — if correctly detected — so the number of blocks unwinded
+  differs whenever `LUA_ERRMEM` is involved).
+* Although LuaJIT can catch generic {cpp} exceptions, it lacks context and
+  cannot possibly restore the stack state on each lateral `lua_State*` handle at
+  play (the triple {``L``, current fiber, new fiber} in our case). If the
+  `spawn()` `lua_CFunction` had a value pushed on the `current_fiber` stack when
+  a `new_fiber` panic-triggered exception raises, the value on the
+  `current_fiber` stack wouldn't be properly popped by the time `L` handles the
+  {cpp} exception (and do remember that `L` is executing nested on top of
+  `current_fiber` so you can already imagine the chaos here). In short, the Lua
+  VM needs our cooperation to maintain some invariants.
+* By wrapping these calls into our own {cpp} catch blocks we could work around
+  some of these issues, but the thought that thread control would still return
+  to the Lua VM one last time _after_ the panic handler got called is just too
+  scary and previous mailing list threads on this topic weren't very
+  reassuring. For one, if the exception is panic-triggered by `current_fiber`,
+  we won't know what remains on this stack (except for the stack top), but
+  that's exactly the `lua_State` that the host is operating on when our
+  `lua_CFunction` got called on `L`. Even if control does return safely to our
+  host it would still have problems to deal with there.
+
+That covers our policy when implementing `lua_CFunction` objects. In short, we
+cannot resort to Lua panics here and the only real solution is the *rigorous
+discipline* on C API usage mentioned earlier.
+
+Now let's talk about our policy for host code. The Lua suspending IO functions
+are implemented by querying which fiber is current and scheduling a
+`lua_resume()` on it as the callback for some Boost.Asio supported {cpp}
+`async_*()` function (plus a ton of other details properly documented elsewhere
+on this document such as strand handling and so on). The initiating function is
+called from the Lua VM, but the callback is not. The callback will act as the
+host.
+
+Back to `lua_resume()`, this function itself doesn't throw:
+
+[source,c]
+----
+int lua_resume(lua_State *L, int narg); // [-?, +?, –]
+----
+
+However the code that runs before `lua_resume()` might throw. This is the code
+that pushes the arguments to the coroutine. For instance, if a string is one of
+the coroutine parameters, you will have to use C API that might throw on
+`ENOMEM`:
+
+[source,c]
+----
+void lua_pushlstring(lua_State *L, const char *s, size_t len); // [-0, +1, m]
+----
+
+It's no use trying to call `lua_pcall()` to wrap `lua_pushlstring()`
+here. `lua_state()` now returns `LUA_YIELD` and that means you can't use
+`lua_pcall()` on this `lua_State*` handle. You can't create a new handle and use
+the `lua_xmove()` trick either as `lua_newthread()` itself can throw on
+`ENOMEM`:
+
+[source,c]
+----
+lua_State *lua_newthread(lua_State *L); // [-0, +1, m]
+----
+
+Fear not, for here is the place where we can finally use a panic function to
+throw a custom {cpp} exception. There are only two caveats. The first one is
+related to
+https://www.freelists.org/post/luajit/LuaJIT-ObjectiveC-throw-in-lua-atpanic-clang-infinite-recursion,5[LuaJIT
+having such tight integration with native exceptions that it makes (almost) no
+distinction between `lua_pcall()` and {cpp} catch frames]{_}footnote:[Do notice
+that contrary to the feeling nourished in the mailing list thread, panic
+functions also would work in our case. I've tested/verified and I also followed
+the relevant source code for multiple LuaJIT versions. Really, it's okay.]. The
+net result is that you can use {cpp}'s catch-all blocks and then no panic
+function will ever be involved (by now you must be feeling that we just
+travelled to the farthest candy shop in the kingdom just to make a full-turn
+just one block away from destination when we changed our minds and decided to go
+on the neighbour's candy shop). Despite the lack of a real panic function
+throwing our own exceptions, I'll still use the same previous terminology
+(i.e. panic-triggered exceptions).
+
+The second caveat is a little charming race to avoid. The completion handler
+doing the host job is executed through the strand that protects the VM. If we
+let the exception escape the completion handler, another thread might try to use
+the VM before we have the chance to close it. In other words, the following
+approach has a race and thus is not used:
+
+[source,cpp]
+----
+for (;;) {
+    try {
+        // Completion handler allows the panic
+        // exception to escape here.
+        ioctx.run();
+        break;
+    } catch (...) {
+        // This is a bug. This code isn't executed
+        // through the VM strand. A pending operation
+        // that just finished could try to access
+        // `current` from another thread while we're
+        // here.
+        vm_context* current = ...;
+        current->close();
+        continue;
+    }
+}
+----
+
+Therefore, it is responsibility from the completion handler to handle the
+panic-triggered exception (sorry about the boilerplate on your side, but that's
+the way it is).
+
+[source,cpp]
+----
+try {
+    // lua_push*() calls
+} catch (...) {
+    vm_ctx->close();
+    return;
+}
+int res = lua_resume(fiber, narg);
+----
+
+That is enough to cover the policy for host code and finally finish the
+`LUA_ERRMEM` discussion too.
 
 == Channels and resources
 
@@ -393,7 +690,7 @@ local fib = coroutine.create(user_fn)
 
 So async operations can suspend the calling fiber and resume them later.
 
-But the `user_fn` might very well contain a `pcall()` and execute our suspending
+But `user_fn` might very well contain a `pcall()` and execute our suspending
 async function inside it:
 
 [source,lua]
@@ -503,15 +800,9 @@ interoperability_ category):
 
 [quote, '<http://luajit.org/extensions.html#exceptions> (emphasis mine)']
 ____
-Lua errors can be caught on the C++ side with `catch(...)`. The corresponding
+Lua errors can be caught on the {cpp} side with `catch(...)`. The corresponding
 Lua error message *can be retrieved from the Lua stack*.
 ____
-
-NOTE: Writing this project in plain C would not be a way out to at least cut
-half of the problems. To do proper resource management in plain C we'd end up
-resorting to endless cascades of ``pcall()``s and it wouldn't be reliable as
-soon as it first hit a `LUA_ERRMEM`. {cpp} has working resource management tools
-for true exceptions. It is a “take it or leave” situation here.
 
 The final piece for our puzzle is related to async ops converting
 `std::error_code` into lua exceptions (i.e. `lua_error()`). The completion
@@ -596,18 +887,18 @@ function coroutine.resume(co, ...)
         error("cannot resume running coroutine", 2)
     end
 
-    local args = table.pack(...)
+    local args = {...}
     while true do
-        local ret = table.pack(raw_coroutine.resume(co, table.unpack(args)))
+        local ret = {raw_coroutine.resume(co, unpack(args))}
         if ret[1] == false then
-            return table.unpack(ret)
+            return unpack(ret)
         end
         if _G.this_fiber.native_yield then
             _G.busy_coroutines[co] = true
-            args = table.pack(raw_coroutine.yield(table.unpack(ret, 2)))
+            args = {raw_coroutine.yield(unpack(ret, 2))}
             _G.busy_coroutines[co] = nil
         else
-            return table.unpack(ret)
+            return unpack(ret)
         end
     end
 end
@@ -661,6 +952,8 @@ it has the nice property of not unwinding the stack so it can be examined from
 the error handler. A new lua thread is created to execute the uncaught-hook
 while it has the chance to examine the unchanged error'ed call stack.
 
+NOTE: The hook mechanism isn't implemented yet.
+
 == Functions that receive a lua callback
 
 There are plenty of functions that have a lua closure as a parameter
@@ -671,28 +964,6 @@ To avoid the C stack frame in the middle of the call-stack altogether, we
 implement (parts of) these functions in lua, not C. The problem is then how to
 expose sensitive raw resources that the C functions would use. One of the goals
 is to not let these resources escape elsewhere.
-
-// TODO (I'm not ready to invest such big effort on this early release, but
-// something like this would be useful anyway by the time the project is ready
-// to accommodate transpilers):
-//
-//Emilua will create lua closures by feeding the VM handcrafted luaJIT
-//bytecode. The bytecode allows us to access upvalues by index and, in turn, set
-//them from the native API with `lua_setupvalue()`. Two useful commands to examine
-//luaJIT bytecode are:
-//
-//[source,shell]
-//----
-//luajit -bl test.lua
-//luajit -b -t raw test.lua - | hexdump -C
-//----
-//
-//Supporting documentation can be found at:
-//
-//* <http://luajit.org/running.html>
-//* <http://wiki.luajit.org/Bytecode-2.0>
-//* <https://github.com/LuaJIT/LuaJIT/blob/v2.0/src/lj_bc.h>
-//* <https://github.com/LuaJIT/LuaJIT/blob/v2.0/src/lj_bcdump.h>
 
 A quick way to achieve it is by having a lua bootstrap function/chunk to create
 closures and later change their upvalues through C:
@@ -705,9 +976,10 @@ return function()
 end
 ----
 
-This approach is naive as luaJIT 2.x does not implement some lua functions as C
-functions and we cannot feed them as upvalues for the imported bytecode. For
-instance, we have this behaviour for `pcall()`:
+This approach is naive as luaJIT 2.x does not implement some lua functions
+(i.e. the sensitive raw resources that we want to keep private) as C functions
+and we cannot feed them as upvalues for the imported bytecode. For instance, we
+have this behaviour for `pcall()`:
 
 [source,cpp]
 ----
@@ -715,7 +987,7 @@ lua_pushcfunction(L, luaopen_base);
 lua_call(L, 0, 0);
 lua_getglobal(L, "pcall");
 lua_CFunction pcall_addr = lua_tocfunction(L, -1);
-assert(pcall_addr == nullptr); // :(
+assert(pcall_addr == nullptr); // :-(
 ----
 
 Therefore the lua bytecode won't be a closure with uninitialized upvalues per
@@ -745,6 +1017,9 @@ We use some C functions found only on Lua 5.2+ and/or LuaJIT:
 * `luaopen_jit()`
 * `luaopen_ffi()`
 * `LUAJIT_VERSION_SYM()`
+
+https://github.com/keplerproject/lua-compat-5.2[There are projects such as
+Kepler that offer a port of these functions to Lua 5.1].
 
 == 2GB addressing limit
 
@@ -788,48 +1063,6 @@ maxmcode=40960  -- in KB
 * We do print to `stderr`. Shouldn't we provide an embedded logger module
   already?
 
-[discrete]
-=== Error reporting in the presence of multiple `lua_State*` handles
-
-When your C function executes within the VM context, some functions might fail
-(e.g. `lua_createtable()` on `ENOMEM`) and throw exceptions (or call `longjmp()`
-on PUC-Rio VM). The question is: does the `lua_State*` in context matters? For
-instance:
-
-[source,c]
-----
-int my_func(lua_State* L)
-{
-    // Called within L's VM context
-
-    // An allocation failure here will use
-    // L's context to throw the exception
-    lua_State* coro = lua_newthread(L);
-
-    // An allocation failure here will use
-    // coro's context to throw the
-    // exception. Does it matter?
-    lua_createtable(coro, 0, 0);
-
-    // ...
-}
-----
-
-For the most part, I've really put effort into avoiding this scenario and
-restricting possible failures to be raised from the active VM context. However,
-this coding style is starting to get ridiculous and I gave up for some
-snippets. Usually I'd check source code, mailing lists and other sources and
-write my findings here on this document, but I'm tired right now and the
-research on this topic will have to be postponed to a later time. For now, I'm
-marking every snippet where an exception might be thrown to the “inactive”
-thread context with the following comment (`grep` it), so it's easy to revert
-the decision if needed be:
-
-[source]
-----
-// bfb6ca3a-dfcc-11ea-87d0-0242ac130003
-----
-
 == Extra caution to take when writing plug-ins
 
 Always keep in mind:
@@ -861,6 +1094,7 @@ proposal to integrate it in the core. There are no batteries included. And there
 shall be no committee-driven development.
 
 Likewise, we should be stuck in the current lua syntax (5.1 plus some extensions
-found in luaJIT 2.0.5{_}footnote:[<http://luajit.org/extensions.html#lua52>
-(`-DLUAJIT_ENABLE_LUA52COMPAT` will be included when I have time to build
-luaJIT).]) forever. If you want more syntax, use a transpiler.
+found in the beta branch of luaJIT
+2.1{_}footnote:[<http://luajit.org/extensions.html#lua52>
+(`-DLUAJIT_ENABLE_LUA52COMPAT`).]) forever. If you want more syntax, use a
+transpiler.
