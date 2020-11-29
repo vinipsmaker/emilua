@@ -391,7 +391,7 @@ static int spawn(lua_State* L)
 
     auto vm_ctx = get_vm_context(L).shared_from_this();
     auto new_fiber = lua_newthread(L);
-    init_new_coro_or_fiber_scope(new_fiber);
+    init_new_coro_or_fiber_scope(new_fiber, L);
 
     rawgetp(new_fiber, LUA_REGISTRYINDEX, &fiber_list_key);
     lua_pushthread(new_fiber);

@@ -49,7 +49,6 @@ function module_start_fn_bootstrap(root_scope, terminate_vm_with_cleanup_error,
                                    pcall, error, mark_module_as_loaded,
                                    start_fn)
     return function()
-        local globals = _G
         local ok, e = pcall(start_fn)
         do
             local cleanup_handlers = root_scope()
@@ -65,8 +64,7 @@ function module_start_fn_bootstrap(root_scope, terminate_vm_with_cleanup_error,
         if ok == false then
             error(e)
         end
-        mark_module_as_loaded(globals)
-        return globals
+        return mark_module_as_loaded()
     end
 end
 

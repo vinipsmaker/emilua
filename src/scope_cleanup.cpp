@@ -97,7 +97,7 @@ void init_scope_cleanup_module(lua_State* L)
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
-    init_new_coro_or_fiber_scope(L);
+    init_new_coro_or_fiber_scope(L, L);
 
     lua_pushliteral(L, "scope");
     int res = luaL_loadbuffer(L, reinterpret_cast<char*>(scope_bytecode),
@@ -127,17 +127,18 @@ void init_scope_cleanup_module(lua_State* L)
     lua_rawset(L, LUA_GLOBALSINDEX);
 }
 
-void init_new_coro_or_fiber_scope(lua_State* L)
+void init_new_coro_or_fiber_scope(lua_State* L, lua_State* from)
 {
-    rawgetp(L, LUA_REGISTRYINDEX, &scope_cleanup_handlers_key);
+    rawgetp(from, LUA_REGISTRYINDEX, &scope_cleanup_handlers_key);
     lua_pushthread(L);
-    lua_newtable(L);
+    lua_xmove(L, from, 1);
+    lua_newtable(from);
     {
-        lua_newtable(L);
-        lua_rawseti(L, -2, 1);
+        lua_newtable(from);
+        lua_rawseti(from, -2, 1);
     }
-    lua_rawset(L, -3);
-    lua_pop(L, 1);
+    lua_rawset(from, -3);
+    lua_pop(from, 1);
 }
 
 int unsafe_scope_push(lua_State* L)

@@ -49,10 +49,11 @@ static int mark_module_as_loaded(lua_State* L)
     lua_rawgeti(L, -1, FiberDataIndex::STACK);
     lua_rawgeti(L, -1, (int)lua_objlen(L, -1));
 
-    lua_pushvalue(L, 1); //< for some reason, LUA_GLOBALSINDEX isn't working here
+    lua_pushvalue(L, LUA_GLOBALSINDEX);
     lua_rawset(L, -6);
 
-    return 0;
+    lua_pushvalue(L, LUA_GLOBALSINDEX);
+    return 1;
 }
 
 static int require(lua_State* L)
@@ -308,6 +309,8 @@ static int require(lua_State* L)
             }
             assert(module_source);
 
+            lua_State* module_fiber = lua_newthread(L);
+
             rawgetp(L, LUA_REGISTRYINDEX, &module_start_fn_key);
             lua_pushcfunction(L, root_scope);
             lua_pushcfunction(L, terminate_vm_with_cleanup_error);
@@ -329,11 +332,12 @@ static int require(lua_State* L)
                 return lua_error(L);
             }
 
+            lua_pushvalue(L, -1);
+            lua_xmove(L, module_fiber, 1);
+
             // pushes module fiber's start-fn onto the stack
             lua_call(L, 6, 1);
 
-            lua_State* module_fiber = lua_newthread(L);
-            lua_insert(L, -2);
             lua_xmove(L, module_fiber, 1);
 
             // default_modules_key {{{
@@ -374,12 +378,14 @@ static int require(lua_State* L)
             push(L, ctx_str);
             lua_rawset(L, -3);
 
-            lua_setfenv(L, -2);
+            lua_xmove(L, module_fiber, 1);
+            lua_pushvalue(module_fiber, -1);
+            lua_replace(module_fiber, LUA_GLOBALSINDEX);
+            lua_setfenv(module_fiber, -3);
+            lua_remove(module_fiber, -2);
             // }}} default_modules_key
 
-            // bfb6ca3a-dfcc-11ea-87d0-0242ac130003 (cf. HACKING.adoc) {{{
-            init_new_coro_or_fiber_scope(module_fiber);
-            // }}}
+            init_new_coro_or_fiber_scope(module_fiber, L);
 
             // FiberDataIndex {{{
             rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
@@ -412,7 +418,8 @@ static int require(lua_State* L)
             lua_pushboolean(L, 1);
             lua_rawseti(L, -2, FiberDataIndex::INTERRUPTION_DISABLED);
 
-            lua_pushthread(L);
+            lua_pushthread(vm_ctx->current_fiber());
+            lua_xmove(vm_ctx->current_fiber(), L, 1);
             lua_rawseti(L, -2, FiberDataIndex::JOINER);
 
             // From now on to the rest of this function, every raised exception
@@ -698,10 +705,8 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
     lua_pushvalue(L, LUA_GLOBALSINDEX);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
-    lua_pushthread(L);
     lua_newtable(L);
-    lua_setfenv(L, -2);
-    lua_pop(L, 1);
+    lua_replace(L, LUA_GLOBALSINDEX);
 
     rawgetp(L, LUA_REGISTRYINDEX, &default_modules_key);
     lua_pushnil(L);

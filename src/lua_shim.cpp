@@ -178,7 +178,7 @@ void init_lua_shim_module(lua_State* L)
         lua_pushcfunction(
             L,
             [](lua_State* L) -> int {
-                init_new_coro_or_fiber_scope(L);
+                init_new_coro_or_fiber_scope(L, L);
                 return 0;
             });
         lua_pushcfunction(L, root_scope);

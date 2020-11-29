@@ -7,7 +7,7 @@ namespace emilua {
 extern char scope_cleanup_handlers_key;
 
 void init_scope_cleanup_module(lua_State* L);
-void init_new_coro_or_fiber_scope(lua_State* L);
+void init_new_coro_or_fiber_scope(lua_State* L, lua_State* from);
 
 // * Must be called through `lua_call` or from lua context.
 // * It doesn't sanitize environment. Matching push()/pop() must be ensured
