@@ -274,7 +274,6 @@ void vm_context::fiber_epilogue(int resume_result)
             }
 
             fiber_prologue(joiner);
-            reclaim_reserved_zone();
             int res = lua_resume(joiner, nret + 1);
             // I'm assuming the compiler will eliminate this tail recursive call
             // or else we may experience stack overflow on really really long
@@ -306,18 +305,6 @@ void vm_context::fiber_epilogue(int resume_result)
 void vm_context::notify_errmem()
 {
     lua_errmem = true;
-}
-
-void vm_context::enable_reserved_zone()
-{
-    // TODO: when per-VM allocator is ready
-    // it should be safe to be called multiple times in a row
-}
-
-void vm_context::reclaim_reserved_zone()
-{
-    // TODO: when per-VM allocator is ready
-    // this function may throw LUA_ERRMEM and call close()
 }
 
 void vm_context::notify_deadlock(std::string msg)

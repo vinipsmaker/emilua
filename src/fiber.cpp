@@ -101,10 +101,12 @@ static int fiber_join(lua_State* L)
 
                 vm_ctx->strand().post(
                     [vm_ctx,current_fiber]() {
-                        vm_ctx->fiber_prologue(current_fiber);
-                        lua_pushboolean(current_fiber, 0);
-                        push(current_fiber, errc::interrupted);
-                        vm_ctx->reclaim_reserved_zone();
+                        vm_ctx->fiber_prologue(
+                            current_fiber,
+                            [&]() {
+                                lua_pushboolean(current_fiber, 0);
+                                push(current_fiber, errc::interrupted);
+                            });
                         int res = lua_resume(current_fiber, 2);
                         vm_ctx->fiber_epilogue(res);
                     },

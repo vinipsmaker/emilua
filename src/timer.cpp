@@ -56,12 +56,12 @@ static int sleep_for(lua_State* L)
     handle->timer.async_wait(asio::bind_executor(
         vm_ctx->strand_using_defer(),
         [vm_ctx,current_fiber,handle](const boost::system::error_code &ec) {
-            vm_ctx->fiber_prologue(current_fiber);
             std::error_code std_ec = ec;
             if (handle->interrupted && ec == asio::error::operation_aborted)
                 std_ec = errc::interrupted;
-            push(current_fiber, std_ec);
-            vm_ctx->reclaim_reserved_zone();
+            vm_ctx->fiber_prologue(
+                current_fiber,
+                [&]() { push(current_fiber, std_ec); });
             int res = lua_resume(current_fiber, 1);
             vm_ctx->fiber_epilogue(res);
         }

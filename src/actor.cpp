@@ -557,9 +557,9 @@ static int chan_send(lua_State* L)
 
                     sender.vm_ctx->strand().post(
                         [vm_ctx=sender.vm_ctx, fiber=sender.fiber]() {
-                            vm_ctx->fiber_prologue(fiber);
-                            push(fiber, errc::interrupted);
-                            vm_ctx->reclaim_reserved_zone();
+                            vm_ctx->fiber_prologue(
+                                fiber,
+                                [&]() { push(fiber, errc::interrupted); });
                             int res = lua_resume(fiber, 1);
                             vm_ctx->fiber_epilogue(res);
                         },
@@ -590,11 +590,13 @@ static int chan_send(lua_State* L)
             vm_ctx->inbox.recv_fiber = nullptr;
             vm_ctx->inbox.work_guard.reset();
 
-            vm_ctx->fiber_prologue(recv_fiber);
-            lua_pushnil(recv_fiber);
-            lua_pushlightuserdata(recv_fiber, &sender.msg);
-            lua_pushcclosure(recv_fiber, deserializer_closure, 1);
-            vm_ctx->reclaim_reserved_zone();
+            vm_ctx->fiber_prologue(
+                recv_fiber,
+                [&]() {
+                    lua_pushnil(recv_fiber);
+                    lua_pushlightuserdata(recv_fiber, &sender.msg);
+                    lua_pushcclosure(recv_fiber, deserializer_closure, 1);
+                });
             int res = lua_resume(recv_fiber, 2);
             vm_ctx->fiber_epilogue(res);
 
@@ -603,7 +605,6 @@ static int chan_send(lua_State* L)
                 [vm_ctx=sender.vm_ctx, fiber=sender.fiber]() {
                     vm_ctx->fiber_prologue(fiber);
                     lua_pushnil(fiber);
-                    vm_ctx->reclaim_reserved_zone();
                     int res = lua_resume(fiber, 1);
                     vm_ctx->fiber_epilogue(res);
                 },
@@ -682,7 +683,6 @@ static int chan_recv(lua_State* L)
         sender.vm_ctx->strand().post(
             [vm_ctx=sender.vm_ctx, fiber=sender.fiber]() {
                 vm_ctx->fiber_prologue(fiber);
-                vm_ctx->reclaim_reserved_zone();
                 int res = lua_resume(fiber, 0);
                 vm_ctx->fiber_epilogue(res);
             },
@@ -713,9 +713,9 @@ static int chan_recv(lua_State* L)
 
             vm_ctx.strand().post(
                 [vm_ctx=vm_ctx.shared_from_this(), recv_fiber]() {
-                    vm_ctx->fiber_prologue(recv_fiber);
-                    push(recv_fiber, errc::interrupted);
-                    vm_ctx->reclaim_reserved_zone();
+                    vm_ctx->fiber_prologue(
+                        recv_fiber,
+                        [&]() { push(recv_fiber, errc::interrupted); });
                     int res = lua_resume(recv_fiber, 1);
                     vm_ctx->fiber_epilogue(res);
                 },
@@ -762,9 +762,9 @@ static int inbox_close(lua_State* L)
         vm_ctx.inbox.work_guard.reset();
 
         vm_ctx.strand().post([vm_ctx=vm_ctx.shared_from_this(), recv_fiber]() {
-            vm_ctx->fiber_prologue(recv_fiber);
-            push(recv_fiber, errc::channel_closed);
-            vm_ctx->reclaim_reserved_zone();
+            vm_ctx->fiber_prologue(
+                recv_fiber,
+                [&]() { push(recv_fiber, errc::channel_closed); });
             int res = lua_resume(recv_fiber, 1);
             vm_ctx->fiber_epilogue(res);
         }, std::allocator<void>{});

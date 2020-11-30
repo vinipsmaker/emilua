@@ -326,7 +326,6 @@ public:
     void fiber_resume(lua_State* fiber)
     {
         fiber_prologue(fiber);
-        reclaim_reserved_zone();
         int res = lua_resume(fiber, 0);
         fiber_epilogue(res);
     }
@@ -338,21 +337,46 @@ public:
         fiber_epilogue(res);
     }
 
+    /// The difference between normal and trivial APIs is that trivial functions
+    /// won't clear the interrupter. If your code hasn't set an interrupter in
+    /// the first place, then you're safe to use them. They also expect to only
+    /// be called to resume coroutines with 0 arguments pushed onto the stack.
     void fiber_prologue_trivial(lua_State* new_current_fiber);
     void fiber_epilogue(int resume_result);
 
+    template<class F>
+    void fiber_prologue(lua_State* new_current_fiber, F&& args_pusher)
+    {
+        fiber_prologue(new_current_fiber);
+
+        try {
+            args_pusher();
+        } catch (...) {
+            // On Lua errors, current exception should be empty. And
+            // `args_pusher` should only be calling Lua functions. It is an
+            // error to throw arbitrary exceptions from `args_pusher`.
+            assert(!static_cast<bool>(std::current_exception()));
+
+            notify_errmem();
+            close();
+            throw dead_vm_error{dead_vm_error::reason::mem};
+        }
+    }
+
+    /// Use this overload when you don't expect to push any argument onto the
+    /// stack.
     void fiber_prologue(lua_State* new_current_fiber)
     {
         fiber_prologue_trivial(new_current_fiber);
-        enable_reserved_zone();
 
+        // There is no need for a try-catch block here. Only throwing function
+        // in set_interrupter() is lua_rawseti(). lua_rawseti() shouldn't throw
+        // on LUA_ERRMEM for `nil` assignment.
         lua_pushnil(current_fiber_);
         set_interrupter(current_fiber_);
     }
 
     void notify_errmem();
-    void enable_reserved_zone();
-    void reclaim_reserved_zone();
 
     void notify_deadlock(std::string msg);
     void notify_cleanup_error(lua_State* coro);
@@ -568,9 +592,9 @@ inline actor_address::~actor_address()
         vm_ctx->inbox.recv_fiber = nullptr;
         vm_ctx->inbox.work_guard.reset();
 
-        vm_ctx->fiber_prologue(recv_fiber);
-        push(recv_fiber, errc::no_senders);
-        vm_ctx->reclaim_reserved_zone();
+        vm_ctx->fiber_prologue(
+            recv_fiber,
+            [&]() { push(recv_fiber, errc::no_senders); });
         int res = lua_resume(recv_fiber, 1);
         vm_ctx->fiber_epilogue(res);
     }, std::allocator<void>{});
@@ -606,9 +630,9 @@ inline inbox_t::sender_state::~sender_state()
         return;
 
     vm_ctx->strand().post([vm_ctx=vm_ctx, fiber=fiber]() {
-        vm_ctx->fiber_prologue(fiber);
-        push(fiber, errc::channel_closed);
-        vm_ctx->reclaim_reserved_zone();
+        vm_ctx->fiber_prologue(
+            fiber,
+            [&]() { push(fiber, errc::channel_closed); });
         int res = lua_resume(fiber, 1);
         vm_ctx->fiber_epilogue(res);
     }, std::allocator<void>{});
@@ -620,9 +644,9 @@ inbox_t::sender_state::operator=(inbox_t::sender_state&& o)
 {
     if (wake_on_destruct) {
         vm_ctx->strand().post([vm_ctx=vm_ctx, fiber=fiber]() {
-            vm_ctx->fiber_prologue(fiber);
-            push(fiber, errc::channel_closed);
-            vm_ctx->reclaim_reserved_zone();
+            vm_ctx->fiber_prologue(
+                fiber,
+                [&]() { push(fiber, errc::channel_closed); });
             int res = lua_resume(fiber, 1);
             vm_ctx->fiber_epilogue(res);
         }, std::allocator<void>{});

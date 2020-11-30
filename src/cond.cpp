@@ -84,9 +84,9 @@ static int cond_wait(lua_State* L)
 
             handle->pending.erase(it);
             vm_ctx->strand().post([vm_ctx,current_fiber]() {
-                vm_ctx->fiber_prologue(current_fiber);
-                push(current_fiber, errc::interrupted);
-                vm_ctx->reclaim_reserved_zone();
+                vm_ctx->fiber_prologue(
+                    current_fiber,
+                    [&]() { push(current_fiber, errc::interrupted); });
                 int res = lua_resume(current_fiber, 1);
                 vm_ctx->fiber_epilogue(res);
             }, std::allocator<void>{});
