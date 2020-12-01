@@ -34,7 +34,7 @@ static int fiber_join(lua_State* L)
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
-        lua_error(L);
+        return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &fiber_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
@@ -42,7 +42,7 @@ static int fiber_join(lua_State* L)
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
-        lua_error(L);
+        return lua_error(L);
     }
 
     if (!handle->fiber || handle->join_in_progress) {
@@ -50,12 +50,12 @@ static int fiber_join(lua_State* L)
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
-        lua_error(L);
+        return lua_error(L);
     }
 
     if (handle->fiber == vm_ctx.current_fiber()) {
         push(L, std::errc::resource_deadlock_would_occur);
-        lua_error(L);
+        return lua_error(L);
     }
 
     rawgetp(handle->fiber, LUA_REGISTRYINDEX, &fiber_list_key);
@@ -175,7 +175,7 @@ static int fiber_detach(lua_State* L)
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
-        lua_error(L);
+        return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &fiber_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
@@ -183,7 +183,7 @@ static int fiber_detach(lua_State* L)
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
-        lua_error(L);
+        return lua_error(L);
     }
 
     if (!handle->fiber || handle->join_in_progress) {
@@ -191,7 +191,7 @@ static int fiber_detach(lua_State* L)
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
-        lua_error(L);
+        return lua_error(L);
     }
 
     rawgetp(handle->fiber, LUA_REGISTRYINDEX, &fiber_list_key);
@@ -237,7 +237,7 @@ static int fiber_interrupt(lua_State* L)
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
-        lua_error(L);
+        return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &fiber_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
@@ -245,7 +245,7 @@ static int fiber_interrupt(lua_State* L)
         lua_pushliteral(L, "arg");
         lua_pushinteger(L, 1);
         lua_rawset(L, -3);
-        lua_error(L);
+        return lua_error(L);
     }
 
     if (!handle->fiber)
