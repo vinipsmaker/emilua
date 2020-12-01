@@ -24,7 +24,9 @@ struct sleep_for_operation: public pending_operation
 
     void cancel() noexcept override
     {
-        timer.cancel();
+        try {
+            timer.cancel();
+        } catch (const boost::system::system_error&) {}
     }
 
     asio::steady_timer timer;
@@ -59,7 +61,9 @@ static int sleep_for(lua_State* L)
             auto handle = reinterpret_cast<sleep_for_operation*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             handle->interrupted = true;
-            handle->timer.cancel();
+            try {
+                handle->timer.cancel();
+            } catch (const boost::system::system_error&) {}
             return 0;
         },
         1);
@@ -111,7 +115,9 @@ static int timer_wait(lua_State* L)
         [](lua_State* L) -> int {
             auto handle = reinterpret_cast<handle_type*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
-            handle->timer.cancel();
+            try {
+                handle->timer.cancel();
+            } catch (const boost::system::system_error&) {}
             return 0;
         },
         1);
@@ -196,9 +202,14 @@ static int timer_cancel(lua_State* L)
         return lua_error(L);
     }
 
-    auto n = handle->timer.cancel();
-    lua_pushinteger(L, n);
-    return 1;
+    try {
+        auto n = handle->timer.cancel();
+        lua_pushinteger(L, n);
+        return 1;
+    } catch (const boost::system::system_error& e) {
+        push(L, static_cast<std::error_code>(e.code()));
+        return lua_error(L);
+    }
 }
 
 static int timer_mt_index(lua_State* L)
