@@ -1,0 +1,80 @@
++++
+title = "steady_timer"
++++
+
+[source,lua]
+----
+local timer = require('steady_timer')
+local t = timer.new()
+
+spawn(function() print('Hello') end)
+
+t:expires_after(2000) --< 2 seconds
+t:wait()
+print('World')
+----
+
+A monotonic timer (i.e. the time points of the underlying clock cannot decrease
+as physical time moves forward) with millisecond-based
+precision. https://www.boost.org/doc/libs/1_66_0/doc/html/boost_asio/reference/steady_timer.html[As
+in Boost.Asio]:
+
+[quote]
+____
+A waitable timer is always in one of two states: "expired" or "not expired". If
+the `wait()` or `async_wait()` function is called on an expired timer, the wait
+operation will complete immediately.
+
+.Changing an active waitable timer's expiry time
+
+Changing the expiry time of a timer while there are pending asynchronous waits
+causes those wait operations to be cancelled.
+____
+
+Unfortunately the interface is rather simple/poor (e.g. only relative timeouts
+are supported). It won't be enough to satisfy users that need anything other
+than the basics.
+
+== Functions
+
+=== `new() -> steady_timer`
+
+[source,lua]
+----
+local t = steady_timer.new()
+----
+
+Constructor. Returns a new `steady_timer` object.
+
+=== `expires_after(self, msecs: number) -> number`
+
+Forward the call to
+https://www.boost.org/doc/libs/1_66_0/doc/html/boost_asio/reference/basic_waitable_timer/expires_after.html[the
+function with same name in Boost.Asio]:
+
+[quote]
+____
+Set the timer's expiry time relative to now. Any pending asynchronous wait
+operations will be cancelled. The handler for each cancelled operation will be
+invoked with the `boost::asio::error::operation_aborted` error code.
+
+.Return Value
+
+The number of asynchronous operations that were cancelled.
+____
+
+Expiry time is given in milliseconds.
+
+=== `wait(self)`
+
+Initiate a wait operation on the timer and blocks current fiber until one of the
+events occur:
+
+* The timer has expired.
+* The timer was cancelled, in which case it raises
+  `boost::asio::error::operation_aborted`.
+
+=== `cancel(self) -> number`
+
+Cancel any operations that are waiting on the timer. Returns the number of
+asynchronous operations that were cancelled.

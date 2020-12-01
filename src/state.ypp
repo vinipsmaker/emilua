@@ -199,6 +199,18 @@ static int require(lua_State* L)
                     rawgetp(L, LUA_REGISTRYINDEX, &json_key);
                     return 2;
                 }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("steady_timer"),
+                [&]() -> int {
+                    if (nparents != 0) {
+                        push(L, errc::module_not_found);
+                        return lua_error(L);
+                    }
+                    lua_pushboolean(L, 1);
+                    rawgetp(L, LUA_REGISTRYINDEX, &timer_key);
+                    return 2;
+                }
             )
         ),
         [&](std::string_view /*key*/) -> int {

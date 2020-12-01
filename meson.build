@@ -72,12 +72,12 @@ src = [
 ]
 
 bytecode_src = bytecode_gen.process(
-    'bytecode/sleep_for.lua',
     'bytecode/lua_shim.lua',
     'bytecode/actor.lua',
     'bytecode/fiber.lua',
     'bytecode/scope.lua',
     'bytecode/state.lua',
+    'bytecode/timer.lua',
     'bytecode/cond.lua',
     'bytecode/json.lua',
 )
