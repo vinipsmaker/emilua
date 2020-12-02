@@ -202,6 +202,7 @@ if get_option('enable_tests')
             'module13',
             'module14',
             'module15',
+            'module16',
             'non-portable/module1',
         ],
         'actor' : [
