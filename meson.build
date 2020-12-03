@@ -68,7 +68,8 @@ src = [
     'src/cond.cpp',
     'src/core.cpp',
     'src/json.cpp',
-    'src/main.cpp'
+    'src/main.cpp',
+    'src/ip.cpp',
 ]
 
 bytecode_src = bytecode_gen.process(

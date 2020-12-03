@@ -1,0 +1,7 @@
++++
+title = "ip"
++++
+
+== Types
+
+* link:../ip.address/[`address`].
