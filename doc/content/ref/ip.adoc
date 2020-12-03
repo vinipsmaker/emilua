@@ -5,3 +5,11 @@ title = "ip"
 == Types
 
 * link:../ip.address/[`address`].
+
+== Modules
+
+=== `tcp`
+
+Has the following types:
+
+* link:../ip.tcp.socket/[`socket`].

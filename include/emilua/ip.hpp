@@ -6,6 +6,7 @@ namespace emilua {
 
 extern char ip_key;
 extern char ip_address_mt_key;
+extern char ip_tcp_socket_mt_key;
 
 void init_ip(lua_State* L);
 

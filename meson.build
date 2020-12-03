@@ -81,6 +81,7 @@ bytecode_src = bytecode_gen.process(
     'bytecode/timer.lua',
     'bytecode/cond.lua',
     'bytecode/json.lua',
+    'bytecode/ip.lua',
 )
 
 re2c_src = re2c_gen.process(
