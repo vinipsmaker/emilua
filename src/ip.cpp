@@ -536,14 +536,8 @@ static int tcp_socket_connect(lua_State* L)
         return lua_error(L);
     }
 
-    boost::system::error_code ec;
     asio::ip::tcp::endpoint ep{
         *a, static_cast<std::uint16_t>(lua_tointeger(L, 3))};
-    s->open(ep.protocol(), ec); //< TODO: should we be doing this implicitly?
-    if (ec) {
-        push(L, static_cast<std::error_code>(ec));
-        return lua_error(L);
-    }
 
     lua_pushvalue(L, 1);
     lua_pushcclosure(
