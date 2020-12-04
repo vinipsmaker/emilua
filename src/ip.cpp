@@ -8,12 +8,16 @@ namespace emilua {
 
 extern unsigned char connect_bytecode[];
 extern std::size_t connect_bytecode_size;
+extern unsigned char accept_bytecode[];
+extern std::size_t accept_bytecode_size;
 
 char ip_key;
 char ip_address_mt_key;
 char ip_tcp_socket_mt_key;
+char ip_tcp_acceptor_mt_key;
 
 static char tcp_socket_connect_key;
+static char tcp_acceptor_accept_key;
 
 static int address_new(lua_State* L)
 {
@@ -605,6 +609,476 @@ static int tcp_socket_meta_index(lua_State* L)
     );
 }
 
+static int tcp_acceptor_new(lua_State* L)
+{
+    auto& vm_ctx = get_vm_context(L);
+    auto a = reinterpret_cast<asio::ip::tcp::acceptor*>(
+        lua_newuserdata(L, sizeof(asio::ip::tcp::acceptor))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_acceptor_mt_key);
+    int res = lua_setmetatable(L, -2);
+    assert(res); boost::ignore_unused(res);
+    new (a) asio::ip::tcp::acceptor{vm_ctx.strand().context()};
+    return 1;
+}
+
+static int tcp_acceptor_accept(lua_State* L)
+{
+    auto vm_ctx = get_vm_context(L).shared_from_this();
+    auto current_fiber = vm_ctx->current_fiber();
+    EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
+
+    auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
+        lua_touserdata(L, 1));
+    if (!acceptor || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_acceptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+
+    lua_pushvalue(L, 1);
+    lua_pushcclosure(
+        L,
+        [](lua_State* L) -> int {
+            auto a = reinterpret_cast<asio::ip::tcp::acceptor*>(
+                lua_touserdata(L, lua_upvalueindex(1)));
+            boost::system::error_code ignored_ec;
+            a->cancel(ignored_ec);
+            return 0;
+        },
+        1);
+    set_interrupter(L);
+
+    acceptor->async_accept(asio::bind_executor(
+        vm_ctx->strand_using_defer(),
+        [vm_ctx,current_fiber](const boost::system::error_code& ec,
+                               asio::ip::tcp::socket peer) {
+            std::error_code std_ec = ec;
+            vm_ctx->fiber_prologue(
+                current_fiber,
+                [&]() {
+                    if (ec == asio::error::operation_aborted) {
+                        rawgetp(current_fiber, LUA_REGISTRYINDEX,
+                                &fiber_list_key);
+                        lua_pushthread(current_fiber);
+                        lua_rawget(current_fiber, -2);
+                        lua_rawgeti(current_fiber, -1,
+                                    FiberDataIndex::INTERRUPTED);
+                        bool interrupted = lua_toboolean(current_fiber, -1);
+                        lua_pop(current_fiber, 3);
+                        if (interrupted)
+                            std_ec = errc::interrupted;
+                    }
+                    push(current_fiber, std_ec);
+                    if (ec) {
+                        lua_pushnil(current_fiber);
+                    } else {
+                        auto s = reinterpret_cast<asio::ip::tcp::socket*>(
+                            lua_newuserdata(
+                                current_fiber, sizeof(asio::ip::tcp::socket)
+                            )
+                        );
+                        rawgetp(current_fiber, LUA_REGISTRYINDEX,
+                                &ip_tcp_socket_mt_key);
+                        int res = lua_setmetatable(current_fiber, -2);
+                        assert(res); boost::ignore_unused(res);
+                        new (s) asio::ip::tcp::socket{std::move(peer)};
+                    }
+                });
+            int res = lua_resume(current_fiber, 2);
+            vm_ctx->fiber_epilogue(res);
+        }
+    ));
+
+    return lua_yield(L, 0);
+}
+
+static int tcp_acceptor_listen(lua_State* L)
+{
+    lua_settop(L, 2);
+    auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
+        lua_touserdata(L, 1));
+    if (!acceptor || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_acceptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+
+    switch (lua_type(L, 2)) {
+    default:
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 2);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    case LUA_TNIL: {
+        boost::system::error_code ec;
+        acceptor->listen(asio::socket_base::max_listen_connections, ec);
+        if (ec) {
+            push(L, static_cast<std::error_code>(ec));
+            return lua_error(L);
+        }
+        return 0;
+    }
+    case LUA_TNUMBER: {
+        boost::system::error_code ec;
+        acceptor->listen(lua_tointeger(L, 2), ec);
+        if (ec) {
+            push(L, static_cast<std::error_code>(ec));
+            return lua_error(L);
+        }
+        return 0;
+    }
+    }
+}
+
+static int tcp_acceptor_bind(lua_State* L)
+{
+    luaL_checktype(L, 3, LUA_TNUMBER);
+    auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
+        lua_touserdata(L, 1));
+    if (!acceptor || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_acceptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+
+    switch (lua_type(L, 2)) {
+    default:
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 2);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    case LUA_TUSERDATA: {
+        auto addr = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 2));
+        if (!addr || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument);
+            lua_pushliteral(L, "arg");
+            lua_pushinteger(L, 2);
+            lua_rawset(L, -3);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument);
+            lua_pushliteral(L, "arg");
+            lua_pushinteger(L, 2);
+            lua_rawset(L, -3);
+            return lua_error(L);
+        }
+
+        boost::system::error_code ec;
+        acceptor->bind(asio::ip::tcp::endpoint(*addr, lua_tointeger(L, 3)), ec);
+        if (ec) {
+            push(L, static_cast<std::error_code>(ec));
+            return lua_error(L);
+        }
+        return 0;
+    }
+    case LUA_TSTRING: {
+        boost::system::error_code ec;
+        auto addr = asio::ip::make_address(lua_tostring(L, 2), ec);
+        if (ec) {
+            push(L, static_cast<std::error_code>(ec));
+            return lua_error(L);
+        }
+        acceptor->bind(asio::ip::tcp::endpoint(addr, lua_tointeger(L, 3)), ec);
+        if (ec) {
+            push(L, static_cast<std::error_code>(ec));
+            return lua_error(L);
+        }
+        return 0;
+    }
+    }
+}
+
+static int tcp_acceptor_open(lua_State* L)
+{
+    lua_settop(L, 2);
+    auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
+        lua_touserdata(L, 1));
+    if (!acceptor || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_acceptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+
+    switch (lua_type(L, 2)) {
+    default:
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 2);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    case LUA_TUSERDATA: {
+        auto addr = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 2));
+        if (!addr || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument);
+            lua_pushliteral(L, "arg");
+            lua_pushinteger(L, 2);
+            lua_rawset(L, -3);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument);
+            lua_pushliteral(L, "arg");
+            lua_pushinteger(L, 2);
+            lua_rawset(L, -3);
+            return lua_error(L);
+        }
+
+        boost::system::error_code ec;
+        acceptor->open(asio::ip::tcp::endpoint{*addr, 0}.protocol(), ec);
+        if (ec) {
+            push(L, static_cast<std::error_code>(ec));
+            return lua_error(L);
+        }
+        return 0;
+    }
+    case LUA_TSTRING:
+        return dispatch_table::dispatch(
+            hana::make_tuple(
+                hana::make_pair(
+                    BOOST_HANA_STRING("v4"),
+                    [&]() -> int {
+                        boost::system::error_code ec;
+                        acceptor->open(asio::ip::tcp::v4(), ec);
+                        if (ec) {
+                            push(L, static_cast<std::error_code>(ec));
+                            return lua_error(L);
+                        }
+                        return 0;
+                    }
+                ),
+                hana::make_pair(
+                    BOOST_HANA_STRING("v6"),
+                    [&]() -> int {
+                        boost::system::error_code ec;
+                        acceptor->open(asio::ip::tcp::v6(), ec);
+                        if (ec) {
+                            push(L, static_cast<std::error_code>(ec));
+                            return lua_error(L);
+                        }
+                        return 0;
+                    }
+                )
+            ),
+            [&](std::string_view /*key*/) -> int {
+                push(L, std::errc::invalid_argument);
+                lua_pushliteral(L, "arg");
+                lua_pushvalue(L, 2);
+                lua_rawset(L, -3);
+                return lua_error(L);
+            },
+            tostringview(L, 2)
+        );
+    }
+}
+
+static int tcp_acceptor_close(lua_State* L)
+{
+    auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
+        lua_touserdata(L, 1));
+    if (!acceptor || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_acceptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+
+    boost::system::error_code ec;
+    acceptor->close(ec);
+    if (ec) {
+        push(L, static_cast<std::error_code>(ec));
+        return lua_error(L);
+    }
+    return 0;
+}
+
+static int tcp_acceptor_cancel(lua_State* L)
+{
+    auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
+        lua_touserdata(L, 1));
+    if (!acceptor || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_acceptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+
+    boost::system::error_code ec;
+    acceptor->cancel(ec);
+    if (ec) {
+        push(L, static_cast<std::error_code>(ec));
+        return lua_error(L);
+    }
+    return 0;
+}
+
+inline int tcp_acceptor_is_open(lua_State* L)
+{
+    auto a = reinterpret_cast<asio::ip::tcp::acceptor*>(lua_touserdata(L, 1));
+    lua_pushboolean(L, a->is_open());
+    return 1;
+}
+
+inline int tcp_acceptor_local_address(lua_State* L)
+{
+    auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
+        lua_touserdata(L, 1));
+    boost::system::error_code ec;
+    auto ep = acceptor->local_endpoint(ec);
+    if (ec) {
+        push(L, static_cast<std::error_code>(ec));
+        return lua_error(L);
+    }
+    auto addr = reinterpret_cast<asio::ip::address*>(
+        lua_newuserdata(L, sizeof(asio::ip::address))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+    int res = lua_setmetatable(L, -2);
+    assert(res); boost::ignore_unused(res);
+    new (addr) asio::ip::address{ep.address()};
+    return 1;
+}
+
+inline int tcp_acceptor_local_port(lua_State* L)
+{
+    auto a = reinterpret_cast<asio::ip::tcp::acceptor*>(lua_touserdata(L, 1));
+    boost::system::error_code ec;
+    auto ep = a->local_endpoint(ec);
+    if (ec) {
+        push(L, static_cast<std::error_code>(ec));
+        return lua_error(L);
+    }
+    lua_pushinteger(L, ep.port());
+    return 1;
+}
+
+static int tcp_acceptor_meta_index(lua_State* L)
+{
+    return dispatch_table::dispatch(
+        hana::make_tuple(
+            hana::make_pair(
+                BOOST_HANA_STRING("accept"),
+                [](lua_State* L) -> int {
+                    rawgetp(L, LUA_REGISTRYINDEX, &tcp_acceptor_accept_key);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("listen"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, tcp_acceptor_listen);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("bind"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, tcp_acceptor_bind);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("open"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, tcp_acceptor_open);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("close"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, tcp_acceptor_close);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("cancel"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, tcp_acceptor_cancel);
+                    return 1;
+                }
+            ),
+            hana::make_pair(BOOST_HANA_STRING("is_open"), tcp_acceptor_is_open),
+            hana::make_pair(
+                BOOST_HANA_STRING("local_address"), tcp_acceptor_local_address),
+            hana::make_pair(
+                BOOST_HANA_STRING("local_port"), tcp_acceptor_local_port)
+        ),
+        [](std::string_view /*key*/, lua_State* L) -> int {
+            push(L, errc::bad_index);
+            lua_pushliteral(L, "index");
+            lua_pushvalue(L, 2);
+            lua_rawset(L, -3);
+            return lua_error(L);
+        },
+        tostringview(L, 2),
+        L
+    );
+}
+
 void init_ip(lua_State* L)
 {
     lua_pushlightuserdata(L, &ip_key);
@@ -651,6 +1125,16 @@ void init_ip(lua_State* L)
 
                 lua_pushliteral(L, "new");
                 lua_pushcfunction(L, tcp_socket_new);
+                lua_rawset(L, -3);
+            }
+            lua_rawset(L, -3);
+
+            lua_pushliteral(L, "acceptor");
+            {
+                lua_createtable(L, /*narr=*/0, /*nrec=*/1);
+
+                lua_pushliteral(L, "new");
+                lua_pushcfunction(L, tcp_acceptor_new);
                 lua_rawset(L, -3);
             }
             lua_rawset(L, -3);
@@ -713,12 +1197,39 @@ void init_ip(lua_State* L)
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
+    lua_pushlightuserdata(L, &ip_tcp_acceptor_mt_key);
+    {
+        lua_createtable(L, /*narr=*/0, /*nrec=*/3);
+
+        lua_pushliteral(L, "__metatable");
+        lua_pushliteral(L, "ip.tcp.acceptor");
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__index");
+        lua_pushcfunction(L, tcp_acceptor_meta_index);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__gc");
+        lua_pushcfunction(L, finalizer<asio::ip::tcp::acceptor>);
+        lua_rawset(L, -3);
+    }
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
     lua_pushlightuserdata(L, &tcp_socket_connect_key);
     int res = luaL_loadbuffer(L, reinterpret_cast<char*>(connect_bytecode),
                               connect_bytecode_size, nullptr);
     assert(res == 0); boost::ignore_unused(res);
     lua_pushcfunction(L, lua_error);
     lua_pushcfunction(L, tcp_socket_connect);
+    lua_call(L, 2, 1);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &tcp_acceptor_accept_key);
+    res = luaL_loadbuffer(L, reinterpret_cast<char*>(accept_bytecode),
+                          accept_bytecode_size, nullptr);
+    assert(res == 0); boost::ignore_unused(res);
+    lua_pushcfunction(L, lua_error);
+    lua_pushcfunction(L, tcp_acceptor_accept);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 }

@@ -13,3 +13,4 @@ title = "ip"
 Has the following types:
 
 * link:../ip.tcp.socket/[`socket`].
+* link:../ip.tcp.acceptor/[`acceptor`].

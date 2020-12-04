@@ -24,8 +24,23 @@ connect_bytecode = string.dump(connect_bootstrap, true)
 f = io.open(OUTPUT, 'wb')
 f:write(connect_bytecode)
 f:close()
-
 connect_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
+
+local function accept_bootstrap(error, native)
+    return function(...)
+        local e, v = native(...)
+        if e then
+            error(e)
+        end
+        return v
+    end
+end
+
+accept_bytecode = string.dump(accept_bootstrap, true)
+f = io.open(OUTPUT, 'wb')
+f:write(accept_bytecode)
+f:close()
+accept_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
 
 f = io.open(OUTPUT, 'wb')
 
@@ -41,4 +56,15 @@ f:write(connect_cdef)
 f:write('};')
 f:write(string.format('std::size_t connect_bytecode_size = %i;',
                       #connect_bytecode))
+
+f:write([[
+unsigned char accept_bytecode[] = {
+]])
+
+f:write(accept_cdef)
+
+f:write('};')
+f:write(string.format('std::size_t accept_bytecode_size = %i;',
+                      #accept_bytecode))
+
 f:write('} // namespace emilua')
