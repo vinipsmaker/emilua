@@ -42,6 +42,22 @@ f:write(accept_bytecode)
 f:close()
 accept_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
 
+local function resolve_bootstrap(error, native)
+    return function(...)
+        local e, v = native(...)
+        if e then
+            error(e)
+        end
+        return v
+    end
+end
+
+resolve_bytecode = string.dump(resolve_bootstrap, true)
+f = io.open(OUTPUT, 'wb')
+f:write(resolve_bytecode)
+f:close()
+resolve_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
+
 f = io.open(OUTPUT, 'wb')
 
 f:write([[
@@ -66,5 +82,15 @@ f:write(accept_cdef)
 f:write('};')
 f:write(string.format('std::size_t accept_bytecode_size = %i;',
                       #accept_bytecode))
+
+f:write([[
+unsigned char resolve_bytecode[] = {
+]])
+
+f:write(resolve_cdef)
+
+f:write('};')
+f:write(string.format('std::size_t resolve_bytecode_size = %i;',
+                      #resolve_bytecode))
 
 f:write('} // namespace emilua')

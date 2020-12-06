@@ -10,14 +10,18 @@ extern unsigned char connect_bytecode[];
 extern std::size_t connect_bytecode_size;
 extern unsigned char accept_bytecode[];
 extern std::size_t accept_bytecode_size;
+extern unsigned char resolve_bytecode[];
+extern std::size_t resolve_bytecode_size;
 
 char ip_key;
 char ip_address_mt_key;
 char ip_tcp_socket_mt_key;
 char ip_tcp_acceptor_mt_key;
+char ip_tcp_resolver_mt_key;
 
 static char tcp_socket_connect_key;
 static char tcp_acceptor_accept_key;
+static char tcp_resolver_resolve_key;
 
 static int address_new(lua_State* L)
 {
@@ -1079,11 +1083,219 @@ static int tcp_acceptor_meta_index(lua_State* L)
     );
 }
 
+static int tcp_resolver_new(lua_State* L)
+{
+    auto& vm_ctx = get_vm_context(L);
+    auto r = reinterpret_cast<asio::ip::tcp::resolver*>(
+        lua_newuserdata(L, sizeof(asio::ip::tcp::resolver))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_resolver_mt_key);
+    int res = lua_setmetatable(L, -2);
+    assert(res); boost::ignore_unused(res);
+    new (r) asio::ip::tcp::resolver{vm_ctx.strand().context()};
+    return 1;
+}
+
+static int tcp_resolver_resolve(lua_State* L)
+{
+    lua_settop(L, 4);
+    luaL_checktype(L, 2, LUA_TSTRING);
+    luaL_checktype(L, 3, LUA_TSTRING);
+
+    auto vm_ctx = get_vm_context(L).shared_from_this();
+    auto current_fiber = vm_ctx->current_fiber();
+    EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
+
+    auto resolver = reinterpret_cast<asio::ip::tcp::resolver*>(
+        lua_touserdata(L, 1));
+    if (!resolver || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_resolver_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+
+    // Lua BitOp underlying type is int32
+    std::int32_t flags;
+    switch (lua_type(L, 4)) {
+    default:
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 4);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    case LUA_TNIL:
+        flags = 0;
+        break;
+    case LUA_TNUMBER:
+        flags = lua_tointeger(L, 4);
+    }
+
+    lua_pushvalue(L, 1);
+    lua_pushcclosure(
+        L,
+        [](lua_State* L) -> int {
+            auto r = reinterpret_cast<asio::ip::tcp::resolver*>(
+                lua_touserdata(L, lua_upvalueindex(1)));
+            r->cancel();
+            return 0;
+        },
+        1);
+    set_interrupter(L);
+
+    resolver->async_resolve(
+        tostringview(L, 2),
+        tostringview(L, 3),
+        static_cast<asio::ip::tcp::resolver::flags>(flags),
+        asio::bind_executor(
+            vm_ctx->strand_using_defer(),
+            [vm_ctx,current_fiber](
+                const boost::system::error_code& ec,
+                asio::ip::tcp::resolver::results_type results
+            ) {
+                std::error_code std_ec = ec;
+                vm_ctx->fiber_prologue(
+                    current_fiber,
+                    [&]() {
+                        if (ec == asio::error::operation_aborted) {
+                            rawgetp(current_fiber, LUA_REGISTRYINDEX,
+                                    &fiber_list_key);
+                            lua_pushthread(current_fiber);
+                            lua_rawget(current_fiber, -2);
+                            lua_rawgeti(current_fiber, -1,
+                                        FiberDataIndex::INTERRUPTED);
+                            bool interrupted = lua_toboolean(current_fiber, -1);
+                            lua_pop(current_fiber, 3);
+                            if (interrupted)
+                                std_ec = errc::interrupted;
+                        }
+                        push(current_fiber, std_ec);
+                        if (ec) {
+                            lua_pushnil(current_fiber);
+                        } else {
+                            lua_createtable(current_fiber,
+                                            /*narr=*/results.size(),
+                                            /*nrec=*/0);
+                            lua_pushliteral(current_fiber, "ep_addr");
+                            lua_pushliteral(current_fiber, "ep_port");
+                            lua_pushliteral(current_fiber, "host_name");
+                            lua_pushliteral(current_fiber, "service_name");
+
+                            int i = 1;
+                            for (const auto& res: results) {
+                                lua_createtable(current_fiber,
+                                                /*narr=*/0, /*nrec=*/4);
+
+                                lua_pushvalue(current_fiber, -1 -4);
+                                auto a = reinterpret_cast<asio::ip::address*>(
+                                    lua_newuserdata(
+                                        current_fiber, sizeof(asio::ip::address)
+                                    )
+                                );
+                                rawgetp(current_fiber, LUA_REGISTRYINDEX,
+                                        &ip_address_mt_key);
+                                lua_setmetatable(current_fiber, -2);
+                                new (a) asio::ip::address{
+                                    res.endpoint().address()
+                                };
+                                lua_rawset(current_fiber, -3);
+
+                                lua_pushvalue(current_fiber, -1 -3);
+                                lua_pushinteger(current_fiber,
+                                                res.endpoint().port());
+                                lua_rawset(current_fiber, -3);
+
+                                lua_pushvalue(current_fiber, -1 -2);
+                                push(current_fiber, res.host_name());
+                                lua_rawset(current_fiber, -3);
+
+                                lua_pushvalue(current_fiber, -1 -1);
+                                push(current_fiber, res.service_name());
+                                lua_rawset(current_fiber, -3);
+
+                                lua_rawseti(current_fiber, -6, i++);
+                            }
+                            lua_pop(current_fiber, 4);
+                        }
+                    });
+                int res = lua_resume(current_fiber, 2);
+                vm_ctx->fiber_epilogue(res);
+            }
+        )
+    );
+
+    return lua_yield(L, 0);
+}
+
+static int tcp_resolver_cancel(lua_State* L)
+{
+    auto resolver = reinterpret_cast<asio::ip::tcp::resolver*>(
+        lua_touserdata(L, 1));
+    if (!resolver || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_resolver_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+
+    resolver->cancel();
+    return 0;
+}
+
+static int tcp_resolver_meta_index(lua_State* L)
+{
+    return dispatch_table::dispatch(
+        hana::make_tuple(
+            hana::make_pair(
+                BOOST_HANA_STRING("resolve"),
+                [](lua_State* L) -> int {
+                    rawgetp(L, LUA_REGISTRYINDEX, &tcp_resolver_resolve_key);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("cancel"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, tcp_resolver_cancel);
+                    return 1;
+                }
+            )
+        ),
+        [](std::string_view /*key*/, lua_State* L) -> int {
+            push(L, errc::bad_index);
+            lua_pushliteral(L, "index");
+            lua_pushvalue(L, 2);
+            lua_rawset(L, -3);
+            return lua_error(L);
+        },
+        tostringview(L, 2),
+        L
+    );
+}
+
 void init_ip(lua_State* L)
 {
     lua_pushlightuserdata(L, &ip_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/2);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/3);
 
         lua_pushliteral(L, "address");
         {
@@ -1115,9 +1327,43 @@ void init_ip(lua_State* L)
         }
         lua_rawset(L, -3);
 
+        lua_pushliteral(L, "resolver_flag");
+        {
+            lua_createtable(L, /*narr=*/0, /*nrec=*/7);
+
+            lua_pushliteral(L, "address_configured");
+            lua_pushinteger(L, asio::ip::resolver_base::address_configured);
+            lua_rawset(L, -3);
+
+            lua_pushliteral(L, "all_matching");
+            lua_pushinteger(L, asio::ip::resolver_base::all_matching);
+            lua_rawset(L, -3);
+
+            lua_pushliteral(L, "canonical_name");
+            lua_pushinteger(L, asio::ip::resolver_base::canonical_name);
+            lua_rawset(L, -3);
+
+            lua_pushliteral(L, "numeric_host");
+            lua_pushinteger(L, asio::ip::resolver_base::numeric_host);
+            lua_rawset(L, -3);
+
+            lua_pushliteral(L, "numeric_service");
+            lua_pushinteger(L, asio::ip::resolver_base::numeric_service);
+            lua_rawset(L, -3);
+
+            lua_pushliteral(L, "passive");
+            lua_pushinteger(L, asio::ip::resolver_base::passive);
+            lua_rawset(L, -3);
+
+            lua_pushliteral(L, "v4_mapped");
+            lua_pushinteger(L, asio::ip::resolver_base::v4_mapped);
+            lua_rawset(L, -3);
+        }
+        lua_rawset(L, -3);
+
         lua_pushliteral(L, "tcp");
         {
-            lua_createtable(L, /*narr=*/0, /*nrec=*/1);
+            lua_createtable(L, /*narr=*/0, /*nrec=*/3);
 
             lua_pushliteral(L, "socket");
             {
@@ -1135,6 +1381,16 @@ void init_ip(lua_State* L)
 
                 lua_pushliteral(L, "new");
                 lua_pushcfunction(L, tcp_acceptor_new);
+                lua_rawset(L, -3);
+            }
+            lua_rawset(L, -3);
+
+            lua_pushliteral(L, "resolver");
+            {
+                lua_createtable(L, /*narr=*/0, /*nrec=*/1);
+
+                lua_pushliteral(L, "new");
+                lua_pushcfunction(L, tcp_resolver_new);
                 lua_rawset(L, -3);
             }
             lua_rawset(L, -3);
@@ -1215,6 +1471,24 @@ void init_ip(lua_State* L)
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
+    lua_pushlightuserdata(L, &ip_tcp_resolver_mt_key);
+    {
+        lua_createtable(L, /*narr=*/0, /*nrec=*/3);
+
+        lua_pushliteral(L, "__metatable");
+        lua_pushliteral(L, "ip.tcp.resolver");
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__index");
+        lua_pushcfunction(L, tcp_resolver_meta_index);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__gc");
+        lua_pushcfunction(L, finalizer<asio::ip::tcp::resolver>);
+        lua_rawset(L, -3);
+    }
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
     lua_pushlightuserdata(L, &tcp_socket_connect_key);
     int res = luaL_loadbuffer(L, reinterpret_cast<char*>(connect_bytecode),
                               connect_bytecode_size, nullptr);
@@ -1230,6 +1504,15 @@ void init_ip(lua_State* L)
     assert(res == 0); boost::ignore_unused(res);
     lua_pushcfunction(L, lua_error);
     lua_pushcfunction(L, tcp_acceptor_accept);
+    lua_call(L, 2, 1);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &tcp_resolver_resolve_key);
+    res = luaL_loadbuffer(L, reinterpret_cast<char*>(resolve_bytecode),
+                          resolve_bytecode_size, nullptr);
+    assert(res == 0); boost::ignore_unused(res);
+    lua_pushcfunction(L, lua_error);
+    lua_pushcfunction(L, tcp_resolver_resolve);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 }

@@ -14,3 +14,8 @@ Has the following types:
 
 * link:../ip.tcp.socket/[`socket`].
 * link:../ip.tcp.acceptor/[`acceptor`].
+* link:../ip.tcp.resolver/[`resolver`].
+
+=== Other modules
+
+* link:../ip.resolver_flag/[`resolver_flag`].
