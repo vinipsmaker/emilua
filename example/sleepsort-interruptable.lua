@@ -1,4 +1,5 @@
 local sleep_for = require('sleep_for')
+local ip = require('ip')
 
 local numbers = {8, 42, 38, 111, 2, 39, 1}
 
@@ -21,8 +22,13 @@ local sleeper = spawn(function()
 end)
 
 local sigwaiter = spawn(function()
-    local sigusr1 = signals.new(signals.SIGUSR1)
-    sigusr1:wait()
+    local a = ip.tcp.acceptor.new()
+    a:open('v4')
+    a:bind(ip.address.loopback_v4(), 0)
+    a:listen()
+    print('Connect into ' .. tostring(a.local_address) .. ':' .. a.local_port ..
+          ' to cancel sleep-sort')
+    a:accept()
     sleeper:interrupt()
 end)
 
