@@ -1,6 +1,10 @@
 option(
     'disable_color', type : 'boolean', value : false,
-    description : 'Whether to disable builtin color support on terminal output. The builtin color support will auto-detect if stdout/stderr is a color capable terminal, but still allow you to override auto-detection through env vars. Builtin color support is used to print error messages, for instance.'
+    description : 'Whether to disable builtin color support on terminal' +
+        ' output. The builtin color support will auto-detect if stdout/stderr' +
+        ' is a color capable terminal, but still allow you to override' +
+        ' auto-detection through env vars. Builtin color support is used to' +
+        ' print error messages, for instance.'
 )
 option(
     'enable_tests', type : 'boolean',

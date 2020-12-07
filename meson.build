@@ -272,7 +272,7 @@ if get_option('enable_tests')
 # auto-detected (this is, in itself, another test)
                      'EMILUA_COLORS=',
                      'EMILUA_BIN=' + emilua_bin.full_path(),
-                     'AWK_BIN=' + gawk.path(),
+                     'AWK_BIN=' + gawk.full_path(),
                  ])
         endforeach
     endforeach
