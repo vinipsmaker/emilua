@@ -142,7 +142,7 @@ void init_mutex_module(lua_State* L)
         lua_createtable(L, /*narr=*/0, /*nrec=*/3);
 
         lua_pushliteral(L, "__metatable");
-        lua_pushlightuserdata(L, nullptr);
+        lua_pushliteral(L, "mutex");
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__index");

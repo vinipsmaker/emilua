@@ -515,7 +515,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
         lua_createtable(L, /*narr=*/0, /*nrec=*/4);
 
         lua_pushliteral(L, "__metatable");
-        lua_pushlightuserdata(L, nullptr);
+        lua_pushliteral(L, "ecat");
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__eq");

@@ -231,7 +231,7 @@ void init_cond_module(lua_State* L)
         lua_createtable(L, /*narr=*/0, /*nrec=*/3);
 
         lua_pushliteral(L, "__metatable");
-        lua_pushlightuserdata(L, nullptr);
+        lua_pushliteral(L, "cond");
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__index");
