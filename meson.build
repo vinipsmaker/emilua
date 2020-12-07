@@ -15,6 +15,7 @@ boost = dependency(
     modules : ['thread'],
     static : true
 )
+ssl = dependency('openssl', version : '>=1.1.1')
 find_program('xxd')
 bytecode_gen = generator(
     find_program(
@@ -69,6 +70,7 @@ src = [
     'src/core.cpp',
     'src/json.cpp',
     'src/main.cpp',
+    'src/tls.cpp',
     'src/ip.cpp',
 ]
 
@@ -81,6 +83,7 @@ bytecode_src = bytecode_gen.process(
     'bytecode/timer.lua',
     'bytecode/cond.lua',
     'bytecode/json.lua',
+    'bytecode/tls.lua',
     'bytecode/ip.lua',
 )
 
@@ -94,7 +97,7 @@ emilua_bin = executable(
     bytecode_src,
     re2c_src,
     cpp_pch : 'meson/pchheader.hpp',
-    dependencies : [boost, luajit, curses],
+    dependencies : [boost, luajit, ssl, curses],
     include_directories : incdir
 )
 

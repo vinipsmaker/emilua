@@ -1,0 +1,36 @@
++++
+title = "tls.ctx"
++++
+
+== Functions
+
+=== `new(method: string) -> tls.ctx`
+
+Constructor.
+
+`method` must be one of:
+
+* `"sslv2"`
+* `"sslv2_client"`
+* `"sslv2_server"`
+* `"sslv3"`
+* `"sslv3_client"`
+* `"sslv3_server"`
+* `"tlsv1"`
+* `"tlsv1_client"`
+* `"tlsv1_server"`
+* `"sslv23"`
+* `"sslv23_client"`
+* `"sslv23_server"`
+* `"tlsv11"`
+* `"tlsv11_client"`
+* `"tlsv11_server"`
+* `"tlsv12"`
+* `"tlsv12_client"`
+* `"tlsv12_server"`
+* `"tlsv13"`
+* `"tlsv13_client"`
+* `"tlsv13_server"`
+* `"tls"`
+* `"tls_client"`
+* `"tls_server"`

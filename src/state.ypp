@@ -13,6 +13,7 @@
 #include <emilua/timer.hpp>
 #include <emilua/cond.hpp>
 #include <emilua/json.hpp>
+#include <emilua/tls.hpp>
 #include <emilua/ip.hpp>
 
 namespace emilua {
@@ -222,6 +223,18 @@ static int require(lua_State* L)
                     }
                     lua_pushboolean(L, 1);
                     rawgetp(L, LUA_REGISTRYINDEX, &ip_key);
+                    return 2;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("tls"),
+                [&]() -> int {
+                    if (nparents != 0) {
+                        push(L, errc::module_not_found);
+                        return lua_error(L);
+                    }
+                    lua_pushboolean(L, 1);
+                    rawgetp(L, LUA_REGISTRYINDEX, &tls_key);
                     return 2;
                 }
             )
@@ -722,6 +735,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
     init_timer(L);
     init_json_module(L);
     init_ip(L);
+    init_tls(L);
     // }}}
 
     // default_modules_key {{{

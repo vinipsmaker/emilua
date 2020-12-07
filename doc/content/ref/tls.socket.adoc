@@ -1,0 +1,40 @@
++++
+title = "tls.socket"
++++
+
+[source,lua]
+----
+tls_ctx = tls.ctx.new('tlsv13')
+
+local resolver = ip.tcp.resolver.new()
+local addr = resolver:resolve('www.example.com', '')[1].ep_addr
+
+local s = ip.tcp.socket.new()
+s:connect(addr, 443)
+s = tls.socket.new(s, tls_ctx)
+s:client_handshake()
+s = http.socket.new(s)
+
+local req = http.request.new()
+local res = http.response.new()
+req.headers.host = 'www.example.com'
+
+s:write_request(req)
+s:read_response(res)
+----
+
+== Functions
+
+=== `new(sock: ip.tcp.socket, tls_ctx: tls.ctx) -> tls.socket`
+
+Constructor.
+
+=== `client_handshake(self)`
+
+Perform the TLS client handshake and suspend current fiber until operation
+finishes.
+
+=== `server_handshake(self)`
+
+Perform the TLS server handshake and suspend current fiber until operation
+finishes.
