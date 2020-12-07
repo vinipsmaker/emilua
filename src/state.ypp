@@ -704,10 +704,19 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
 
     lua_pushcfunction(L, luaopen_base);
     lua_call(L, 0, 0);
+    lua_pushcfunction(L, luaopen_string);
+    lua_call(L, 0, 0);
     lua_pushcfunction(L, luaopen_table);
+    lua_call(L, 0, 0);
+    lua_pushcfunction(L, luaopen_math);
     lua_call(L, 0, 0);
     lua_pushcfunction(L, luaopen_bit);
     lua_call(L, 0, 0);
+    lua_pushcfunction(L, luaopen_jit);
+    lua_call(L, 0, 0);
+    lua_pushcfunction(L, luaopen_ffi);
+    lua_call(L, 0, 1);
+    lua_setglobal(L, LUA_FFILIBNAME);
 
     lua_pushlightuserdata(L, &raw_unpack_key);
     lua_pushliteral(L, "unpack");
