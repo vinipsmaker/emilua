@@ -3,7 +3,7 @@
 #include <emilua/core.hpp>
 
 #define EMILUA_IMPL_INITIAL_FIBER_DATA_CAPACITY 9
-#define EMILUA_IMPL_INITIAL_MODULE_FIBER_DATA_CAPACITY 7
+#define EMILUA_IMPL_INITIAL_MODULE_FIBER_DATA_CAPACITY 8
 
 // EMILUA_IMPL_INITIAL_MODULE_FIBER_DATA_CAPACITY currently takes into
 // consideration:
@@ -15,6 +15,7 @@
 // * JOINER
 // * STATUS
 // * SOURCE_PATH
+// * LOCAL_STORAGE
 
 namespace emilua {
 

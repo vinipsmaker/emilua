@@ -460,6 +460,13 @@ static int require(lua_State* L)
             lua_xmove(vm_ctx->current_fiber(), L, 1);
             lua_rawseti(L, -2, FiberDataIndex::JOINER);
 
+            lua_pushthread(vm_ctx->current_fiber());
+            lua_xmove(vm_ctx->current_fiber(), L, 1);
+            lua_rawget(L, -4);
+            lua_rawgeti(L, -1, FiberDataIndex::LOCAL_STORAGE);
+            lua_rawseti(L, -3, FiberDataIndex::LOCAL_STORAGE);
+            lua_pop(L, 1);
+
             // From now on to the rest of this function, every raised exception
             // must kill the whole VM or else we risk leaking a handle
             lua_rawset(L, -3);
@@ -686,6 +693,9 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
 
         lua_pushboolean(L, 0);
         lua_rawseti(L, -2, FiberDataIndex::JOINER);
+
+        lua_newtable(L);
+        lua_rawseti(L, -2, FiberDataIndex::LOCAL_STORAGE);
 
         lua_rawset(L, -3);
         lua_pop(L, 1);
