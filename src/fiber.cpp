@@ -534,6 +534,30 @@ inline int this_fiber_local(lua_State* L)
     return 1;
 }
 
+inline int this_fiber_is_main(lua_State* L)
+{
+    auto& vm_ctx = get_vm_context(L);
+
+    rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
+    lua_pushthread(vm_ctx.current_fiber());
+    lua_xmove(vm_ctx.current_fiber(), L, 1);
+    lua_rawget(L, -2);
+    lua_rawgeti(L, -1, FiberDataIndex::LEAF);
+    int has_leaf;
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        has_leaf = false;
+        break;
+    case LUA_TBOOLEAN:
+        has_leaf = true;
+        break;
+    default:
+        assert(false);
+    }
+    lua_pushboolean(L, has_leaf);
+    return 1;
+}
+
 inline int this_fiber_id(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
@@ -581,12 +605,7 @@ static int this_fiber_meta_index(lua_State* L)
                 }
             ),
             hana::make_pair(BOOST_HANA_STRING("local_"), this_fiber_local),
-            hana::make_pair(
-                BOOST_HANA_STRING("is_main"),
-                [](lua_State* L) -> int {
-                    return luaL_error(L, "unimplemented");
-                }
-            ),
+            hana::make_pair(BOOST_HANA_STRING("is_main"), this_fiber_is_main),
             hana::make_pair(BOOST_HANA_STRING("id"), this_fiber_id)
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
