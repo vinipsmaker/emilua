@@ -561,7 +561,27 @@ inline int this_fiber_is_main(lua_State* L)
 inline int this_fiber_id(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
-    lua_pushfstring(L, "%p", vm_ctx.current_fiber());
+    void* id;
+
+    rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
+    lua_pushthread(vm_ctx.current_fiber());
+    lua_xmove(vm_ctx.current_fiber(), L, 1);
+    lua_rawget(L, -2);
+    lua_rawgeti(L, -1, FiberDataIndex::LEAF);
+    int has_leaf; //< i.e. it is a module fiber
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        has_leaf = false;
+        break;
+    case LUA_TBOOLEAN:
+        has_leaf = true;
+        break;
+    default:
+        assert(false);
+    }
+    id = (has_leaf ? vm_ctx.L() : vm_ctx.current_fiber());
+
+    lua_pushfstring(L, "%p", id);
     return 1;
 }
 
