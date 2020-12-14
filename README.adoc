@@ -84,7 +84,10 @@ This will download the extra dependencies:
 
 == LICENSE
 
-Boost Software License.
+* C/C++ source code under Boost Software License.
+* Lua code (including snippets scattered through the documentation) distributed
+  in this repo is released as public domain.
+* Submodules and dependencies have their own licensing terms.
 
 == ROADMAP
 
