@@ -40,6 +40,7 @@ extern "C" {
         return lua_error((L));
 
 namespace boost::hana {}
+namespace boost::http {}
 
 namespace emilua {
 
@@ -47,6 +48,7 @@ using namespace std::literals::string_view_literals;
 namespace outcome = BOOST_OUTCOME_V2_NAMESPACE;
 namespace asio = boost::asio;
 namespace hana = boost::hana;
+namespace http = boost::http;
 
 extern bool stdout_has_color;
 extern char raw_unpack_key;

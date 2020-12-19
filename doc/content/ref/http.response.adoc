@@ -1,0 +1,46 @@
++++
+title = "http.response"
++++
+
+Represents an HTTP response. This extra level of indirection — as opposed to as,
+for instance, making it part of `http.socket` — makes it easier to map semantics
+such as HTTP pipelining w/o imposing even more confusing state machines.
+
+== Functions
+
+=== `new() -> http.response`
+
+Constructor.
+
+== Attributes
+
+=== `status: number`
+
+The HTTP status code.
+
+=== `reason: string`
+
+The HTTP reason phrase.
+
+=== `headers: http.headers`
+
+The HTTP headers.
+
+.See also:
+
+* link:../http.headers[`http.headers`].
+
+=== `body: string`
+
+The HTTP body.
+
+That's a clunky abstraction actually. It'll be replaced in a future release for
+a proper byte span abstraction (e.g. Go's slices).
+
+=== `trailers: http.headers`
+
+The HTTP trailers.
+
+.See also:
+
+* link:../http.headers[`http.headers`].

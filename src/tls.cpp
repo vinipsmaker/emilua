@@ -175,13 +175,13 @@ static int socket_handshake(lua_State* L)
             auto s = reinterpret_cast<TlsSocket*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
-            s->socket.next_layer().cancel(ignored_ec);
+            s->next_layer().cancel(ignored_ec);
             return 0;
         },
         1);
     set_interrupter(L);
 
-    s->socket.async_handshake(HANDSHAKE, asio::bind_executor(
+    s->async_handshake(HANDSHAKE, asio::bind_executor(
         vm_ctx->strand_using_defer(),
         [vm_ctx,current_fiber](const boost::system::error_code& ec) {
             std::error_code std_ec = ec;

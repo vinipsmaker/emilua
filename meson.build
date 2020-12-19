@@ -2,6 +2,7 @@ project('emilua', 'cpp', default_options : ['cpp_std=c++17'])
 
 conf = configuration_data()
 conf.set10('ENABLE_COLOR', not get_option('disable_color'))
+conf.set10('ENABLE_HTTP', get_option('enable_http'))
 configure_file(
     input : 'meson/config.h.in',
     output : 'config.h',
@@ -50,12 +51,12 @@ if get_option('enable_tests')
     gawk = find_program('gawk')
 endif
 
-incdir = include_directories([
+incdir = [
     '3rd/trial.protocol/include',
     '3rd/CLI11/include',
     '3rd/fmt/include',
     'include'
-])
+]
 
 src = [
     '3rd/fmt/src/format.cc',
@@ -74,7 +75,7 @@ src = [
     'src/ip.cpp',
 ]
 
-bytecode_src = bytecode_gen.process(
+bytecode_src = [
     'bytecode/lua_shim.lua',
     'bytecode/actor.lua',
     'bytecode/fiber.lua',
@@ -85,20 +86,26 @@ bytecode_src = bytecode_gen.process(
     'bytecode/json.lua',
     'bytecode/tls.lua',
     'bytecode/ip.lua',
-)
+]
 
-re2c_src = re2c_gen.process(
+re2c_src = [
     'src/state.ypp',
-)
+]
+
+if get_option('enable_http')
+    incdir += '3rd/boost.http/include'
+    src += 'src/http.cpp'
+    bytecode_src += 'bytecode/http.lua'
+endif
 
 emilua_bin = executable(
     'emilua',
     src,
-    bytecode_src,
-    re2c_src,
+    bytecode_gen.process(bytecode_src),
+    re2c_gen.process(re2c_src),
     cpp_pch : 'meson/pchheader.hpp',
     dependencies : [boost, luajit, ssl, curses],
-    include_directories : incdir
+    include_directories : include_directories(incdir)
 )
 
 if get_option('enable_tests')

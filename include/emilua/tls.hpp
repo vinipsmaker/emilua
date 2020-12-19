@@ -6,8 +6,9 @@
 #pragma once
 
 #include <boost/asio/ssl/context.hpp>
-#include <boost/asio/ssl/stream.hpp>
 #include <boost/asio/ip/tcp.hpp>
+
+#include <boost/beast/ssl/ssl_stream.hpp>
 
 #include <emilua/core.hpp>
 
@@ -17,16 +18,40 @@ extern char tls_key;
 extern char tls_ctx_mt_key;
 extern char tls_socket_mt_key;
 
-struct TlsSocket
+class TlsSocket
+    : private std::shared_ptr<asio::ssl::context>
+    , public boost::beast::ssl_stream<asio::ip::tcp::socket>
 {
+public:
+    // TODO: fix bug in Boost.Http and remove this workaround
+    using lowest_layer_type = asio::ip::tcp::socket;
+
     TlsSocket(asio::ip::tcp::socket& socket,
               std::shared_ptr<asio::ssl::context> tls_context)
-        : socket{std::move(socket), *tls_context}
-        , tls_context{std::move(tls_context)}
+        : std::shared_ptr<asio::ssl::context>{std::move(tls_context)}
+        , boost::beast::ssl_stream<asio::ip::tcp::socket>{
+            std::move(socket),
+            *static_cast<std::shared_ptr<asio::ssl::context>&>(*this)}
     {}
 
-    asio::ssl::stream<asio::ip::tcp::socket> socket;
-    std::shared_ptr<asio::ssl::context> tls_context;
+    TlsSocket(TlsSocket&&) = default;
+
+    // TODO: fix bug in Boost.Http and remove this workaround
+    lowest_layer_type& lowest_layer()
+    {
+        return next_layer();
+    }
+
+    // TODO: fix bug in Boost.Http and remove this workaround
+    bool is_open() const
+    {
+        return next_layer().is_open();
+    }
+
+    std::shared_ptr<asio::ssl::context>& tls_context()
+    {
+        return *this;
+    }
 };
 
 void init_tls(lua_State* L);
