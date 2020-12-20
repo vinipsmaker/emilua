@@ -264,9 +264,6 @@ if get_option('enable_tests')
             'json13',
             'json14',
         ],
-        'programs' : [
-            'sleepsort',
-        ]
     }
 
     foreach suite, t : tests
