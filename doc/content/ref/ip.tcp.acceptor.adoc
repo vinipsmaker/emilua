@@ -6,6 +6,7 @@ title = "ip.tcp.acceptor"
 ----
 local a = ip.tcp.acceptor.new()
 a:open('v4')
+a:set_option('reuse_address', true)
 a:bind('127.0.0.1', 8080)
 a:listen()
 
@@ -23,12 +24,40 @@ end
 
 Constructor.
 
-=== `open(self , address_family: string|ip.address)`
+=== `open(self, address_family: string|ip.address)`
 
 Open the acceptor.
 
 `address_family` can be either `"v4"` or `"v6"`. If you provide an `ip.address`
 object, the appropriate value will be inferred.
+
+=== `set_option(self, opt: string, val)`
+
+Set an option on the acceptor.
+
+Currently available options are:
+
+`"reuse_address"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/reuse_address.html[Check
+Boost.Asio documentation].
+
+`"enable_connection_aborted"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/enable_connection_aborted.html[Check
+Boost.Asio documentation].
+
+=== `get_option(self, opt: string) -> value`
+
+Get an option from the acceptor.
+
+Currently available options are:
+
+`"reuse_address"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/reuse_address.html[Check
+Boost.Asio documentation].
+
+`"enable_connection_aborted"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/enable_connection_aborted.html[Check
+Boost.Asio documentation].
 
 === `bind(self, addr: ip.address|string, port: number)`
 

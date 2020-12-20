@@ -955,6 +955,129 @@ static int tcp_acceptor_close(lua_State* L)
     return 0;
 }
 
+static int tcp_acceptor_set_option(lua_State* L)
+{
+    lua_settop(L, 3);
+    luaL_checktype(L, 2, LUA_TSTRING);
+
+    auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
+        lua_touserdata(L, 1));
+    if (!acceptor || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_acceptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+
+    boost::system::error_code ec;
+    return dispatch_table::dispatch(
+        hana::make_tuple(
+            hana::make_pair(
+                BOOST_HANA_STRING("reuse_address"),
+                [&]() -> int {
+                    luaL_checktype(L, 3, LUA_TBOOLEAN);
+                    asio::socket_base::reuse_address o(lua_toboolean(L, 3));
+                    acceptor->set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("enable_connection_aborted"),
+                [&]() -> int {
+                    luaL_checktype(L, 3, LUA_TBOOLEAN);
+                    asio::socket_base::enable_connection_aborted o(
+                        lua_toboolean(L, 3)
+                    );
+                    acceptor->set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
+            )
+        ),
+        [L](std::string_view /*key*/) -> int {
+            push(L, std::errc::not_supported);
+            return lua_error(L);
+        },
+        tostringview(L, 2)
+    );
+}
+
+static int tcp_acceptor_get_option(lua_State* L)
+{
+    luaL_checktype(L, 2, LUA_TSTRING);
+
+    auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
+        lua_touserdata(L, 1));
+    if (!acceptor || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_acceptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+
+    boost::system::error_code ec;
+    return dispatch_table::dispatch(
+        hana::make_tuple(
+            hana::make_pair(
+                BOOST_HANA_STRING("reuse_address"),
+                [&]() -> int {
+                    asio::socket_base::reuse_address o;
+                    acceptor->get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushboolean(L, o.value());
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("enable_connection_aborted"),
+                [&]() -> int {
+                    asio::socket_base::enable_connection_aborted o;
+                    acceptor->get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushboolean(L, o.value());
+                    return 1;
+                }
+            )
+        ),
+        [L](std::string_view /*key*/) -> int {
+            push(L, std::errc::not_supported);
+            return lua_error(L);
+        },
+        tostringview(L, 2)
+    );
+}
+
 static int tcp_acceptor_cancel(lua_State* L)
 {
     auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
@@ -1060,6 +1183,20 @@ static int tcp_acceptor_meta_index(lua_State* L)
                 BOOST_HANA_STRING("close"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, tcp_acceptor_close);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("set_option"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, tcp_acceptor_set_option);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("get_option"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, tcp_acceptor_get_option);
                     return 1;
                 }
             ),

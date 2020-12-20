@@ -15,6 +15,7 @@ end
 
 local acceptor = ip.tcp.acceptor.new()
 acceptor:open('v4')
+acceptor:set_option('reuse_address', true)
 acceptor:bind(ip.address.loopback_v4(), 8080)
 acceptor:listen()
 
