@@ -168,21 +168,21 @@ image::/emilua/read_request_state.png[]
 `"empty"`::
 This is the initial state. It means that the request object wasn't read yet.
 
-`"message-ready"`::
+`"message_ready"`::
 This state is reached from the `"empty"` state, once you ask for a new message.
 +
 No more `read_request()` actions can be issued from this state.
 +
 From this state, you can issue the `read_some()` action. The state will change
-to `"body-ready"` once all body was read. In streaming connections
+to `"body_ready"` once all body was read. In streaming connections
 (e.g. HTTP/1.1 chunked entities), this condition (body fully received) might
 never happen.
 +
 Once this state is reached, you can safely use the read start line and the
 headers.
 
-`"body-ready"`::
-This state is reached from the `"message-ready"`, once the http producer (e.g.
+`"body_ready"`::
+This state is reached from the `"message_ready"`, once the http producer (e.g.
 embedded server) fully received the message body.
 +
 From this state, you can only issue the `read_some()` action.
@@ -196,7 +196,7 @@ It means the message is complete and you can no longer issue another
 response). This is a different/special value, because the “something else to do”
 might not be related to read actions.
 +
-It can be reached from `"body-ready"` state, after all trailers have been
+It can be reached from `"body_ready"` state, after all trailers have been
 received. It's safe to assume that all message data is available by the time
 this state is reached.
 
@@ -211,28 +211,28 @@ This is the initial state.
 There are two ways to interpret this state. It might mean that the response
 object wasn't read yet.
 +
-Another interpretation is that it was reached from the `"body-ready"` state
+Another interpretation is that it was reached from the `"body_ready"` state
 (directly — through a call to `read_some()` — or indirectly — through a call to
 `read_response()`), after all trailers have been received. It's safe to assume
 that all message data is available if this is the case.
 +
 At this state, you can only issue a `read_response()` action.
 
-`"message-ready"`::
+`"message_ready"`::
 This state is reached from the `"empty"` state, once you ask for a new message.
 +
 No more `read_response()` actions can be issued from this state.
 +
 From this state, you can issue the `read_some()` action. The state will change
-to `"body-ready"` once all body was read. In streaming connections
+to `"body_ready"` once all body was read. In streaming connections
 (e.g. HTTP/1.1 chunked entities), this condition (body fully received) might
 never happen.
 +
 Once this state is reached, you can safely use the read start line and the
 headers.
 
-`"body-ready"`::
-This state is reached from the `"message-ready"`, once the http producer
+`"body_ready"`::
+This state is reached from the `"message_ready"`, once the http producer
 (e.g. an http client) fully received the message body.
 +
 From this state, you can only issue the `read_some()` action.
@@ -259,14 +259,14 @@ continue is supported/used in this HTTP transaction). Even if continue was
 requested it's optional to issue a continue action and only required if you need
 the request's body.
 
-`"continue-issued"`::
+`"continue_issued"`::
 This state is reached from the `"empty"` state, once you issue a continue
 action.
 +
 No more continue actions can be issued from this state.
 
-`"metadata-issued"`::
-This state can be reached either from `"empty"` or `"continue-issued"`.
+`"metadata_issued"`::
+This state can be reached either from `"empty"` or `"continue_issued"`.
 +
 It happens when the metadata (start line + header section) is issued (through
 `write_response_metadata()`).
@@ -293,7 +293,7 @@ It means that the request object hasn't been sent yet.
 +
 At this state, you can only issue the metadata.
 
-`"metadata-issued"`::
+`"metadata_issued"`::
 This state can be reached from `"empty"`.
 +
 It happens when the metadata (start line + header section) is issued (through

@@ -1966,10 +1966,10 @@ inline int socket_read_state(lua_State* L)
         ret = "empty";
         break;
     case http::read_state::message_ready:
-        ret = "message-ready";
+        ret = "message_ready";
         break;
     case http::read_state::body_ready:
-        ret = "body-ready";
+        ret = "body_ready";
         break;
     case http::read_state::finished:
         ret = "finished";
@@ -1989,10 +1989,10 @@ inline int socket_write_state(lua_State* L)
         ret = "empty";
         break;
     case http::write_state::continue_issued:
-        ret = "continue-issued";
+        ret = "continue_issued";
         break;
     case http::write_state::metadata_issued:
-        ret = "metadata-issued";
+        ret = "metadata_issued";
         break;
     case http::write_state::finished:
         ret = "finished";
