@@ -40,6 +40,7 @@ extern std::size_t require_bytecode_size;
 static char default_modules_key;
 static char module_start_fn_key;
 static char loaded_modules_key;
+static char ffi_module_key;
 
 static int println(lua_State* L)
 {
@@ -138,6 +139,29 @@ static int require(lua_State* L)
 
     return dispatch_table::dispatch(
         hana::make_tuple(
+            hana::make_pair(
+                BOOST_HANA_STRING(LUA_FFILIBNAME),
+                [&]() -> int {
+                    if (nparents != 0) {
+                        push(L, errc::module_not_found);
+                        return lua_error(L);
+                    }
+
+                    lua_pushboolean(L, 1);
+
+                    rawgetp(L, LUA_REGISTRYINDEX, &ffi_module_key);
+                    if (lua_type(L, -1) == LUA_TNIL) {
+                        lua_pop(L, 1);
+                        lua_pushcfunction(L, luaopen_ffi);
+                        lua_call(L, 0, 1);
+                        lua_pushlightuserdata(L, &ffi_module_key);
+                        lua_pushvalue(L, -2);
+                        lua_rawset(L, LUA_REGISTRYINDEX);
+                    }
+
+                    return 2;
+                }
+            ),
             hana::make_pair(
                 BOOST_HANA_STRING("sleep_for"),
                 [&]() -> int {
@@ -747,9 +771,6 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx, int& exit_code,
     lua_call(L, 0, 0);
     lua_pushcfunction(L, luaopen_jit);
     lua_call(L, 0, 0);
-    lua_pushcfunction(L, luaopen_ffi);
-    lua_call(L, 0, 1);
-    lua_setglobal(L, LUA_FFILIBNAME);
 
     lua_pushlightuserdata(L, &raw_unpack_key);
     lua_pushliteral(L, "unpack");
