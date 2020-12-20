@@ -1,0 +1,153 @@
++++
+title = "Modules"
++++
+
+Emilua has its own module system. It may look familiar, and indeed it is the
+intention. Given the fact that other libraries on the wild will have
+incompatible execution models, compatibility with existing lua libraries is not
+a concern (although it is most likely to just work for libraries w/o advanced
+needs).
+
+The module system is highly inspired by the Rust packaging system. The two
+languages, however, are too different and these differences impact the module
+system as well. To import a module in dynamic languages such as lua, Python and
+JavaScript, it is to evaluate/execute source code. Rust doesn't have this
+constraint and Rust gets just fine with a lot of static analysis. The two
+languages live in separate worlds. Finally, the module system is also inspired
+by what Python does.
+
+A module system is meant to isolate pieces of code, symbols and names. One
+module should not interfere with each other. And a module can have dependencies
+on other modules to reuse code. So, there is the need for private members and
+exported members. Lua has all features we need — closures, nested scopes,
+environments, global scope as a table — to implement a module system easily.
+
+== Quick-start
+
+The things you need to know to get started:
+
+* `require()` is a free function receiving a string with the module id and
+  returning the module. Two imports to the same module will only evaluate it
+  once. The result is cached per running VM instance.
+* Every file you write is a module.
+* Global names will be exported for modules that import your module.
+* Modules can also be directories. In this case, a file named `main.lua` will be
+  searched and imported in that directory. `main.lua` can import any other
+  module inside its directory.
+* Cyclic references are unsupported and will raise an error on import.
+* You can use the syntax `require('../foobar')` to import a sibling module named
+  `foobar`.
+
+=== Small example
+
+File `src/main.lua`:
+
+[source,lua]
+----
+local server = require('server')
+
+local hostname = '127.0.0.1'
+local port = 3000
+
+local s = server.new(function(sock, req, res)
+  res.headers = {
+    ['content-type'] = 'text/plain'
+  }
+  res.body = 'Hello World\n'
+  sock:write_response(res)
+end)
+
+s:listen(hostname, port)
+----
+
+File `src/server.lua`:
+
+[source,lua]
+----
+local ip = require('ip')
+local http = require('http')
+
+local mt = {}
+mt.__index = mt
+
+function new(handler)
+  return setmetatable({ handler = handler }, mt)
+end
+
+function mt:listen(hostname, port)
+  local acceptor = ip.tcp.acceptor.new()
+  acceptor:open(ip.address.new(hostname))
+  acceptor:bind(hostname, port)
+  acceptor:listen()
+  spawn(function()
+    while true do
+      local s = http.socket.new(acceptor:accept())
+      spawn(function()
+        local req = http.request.new()
+        local res = http.response.new()
+
+        while true do
+          s:read_request(req)
+          res.status = 200
+          res.reason = 'OK'
+          res.headers = nil
+          res.body = nil
+          res.trailers = nil
+          self.handler(s, req, res)
+        end
+      end)
+    end
+  end):detach()
+end
+----
+
+== Big modules
+
+A typical project structure may look as follows:
+
+----
+src
+├── main.lua
+├── my_module
+│   ├── error.lua
+│   ├── main.lua
+│   ├── util.lua
+│   └── worker.lua
+└── util.lua
+----
+
+In this synthetic example, there is the project scope whose root begins at
+`src/main.lua` — the root module.
+
+In the root module, it is forbidden to use `require('../')` statements as there
+is no parent module. Any name the `src/main.lua` file ``require()``s will be
+searched on the `src` directory. For instance, if `src/main.lua` contains
+`require('util')`, emilua will use the `src/util.lua` file to define the
+importing module.
+
+But modules may grow and can be further split into files within a directory by
+itself. That was the case for the `my_module`. The `main.lua` file in that
+directory will be searched for, and, once found, evaluated. If
+`src/my_module/main.lua` contains more `require()` calls, files within that
+directory (`src/my_module`) will be searched for.
+
+For instance, if `src/my_module/main.lua` contains `require('worker')`, the file
+`src/my_module/worker.lua` will be searched for. Any file (except for
+`main.lua`) within `src/my_module` can import other files from the same
+directory (i.e. their siblings) using the `require('../')` form
+(`src/my_module/main.lua` siblings live in the directory above, `src`). For
+instance, `src/my_module/worker.lua` and `src/my_module/util.lua` may both want
+to use the same error type (possibly private) to that module —
+`src/my_module/error.lua`. In this case, all they need to contain is the call
+`require('../error')`. And because they are defined by files (not directories by
+themselves), they don't have children modules and can't use the usual
+`require('')` call (i.e. the call argument must start with `../`).
+
+Any number of super levels is allowed (e.g. `require('../../../../foobar')`).
+
+== Misc
+
+You might be interested in restricting the filenames of your modules to the set
+discovered by Boost developers over the years:
+
+* https://www.boost.org/development/requirements.html#Directory_structure
