@@ -16,7 +16,11 @@ end
 local acceptor = ip.tcp.acceptor.new()
 acceptor:open('v4')
 acceptor:set_option('reuse_address', true)
-acceptor:bind(ip.address.loopback_v4(), 8080)
+if not pcall(function() acceptor:bind(ip.address.loopback_v4(), 8080) end) then
+    acceptor:bind(ip.address.loopback_v4(), 0)
+end
+print('Listening on ' .. tostring(acceptor.local_address) .. ':' ..
+      acceptor.local_port)
 acceptor:listen()
 
 while true do
@@ -25,21 +29,23 @@ while true do
         local req = http.request.new()
         local res = http.response.new()
 
-        sock:read_request(req)
-        sock:write_response_continue()
-
-        print(req.method)
-        print(req.target)
-        print_headers(req.headers)
-
-        while sock.read_state ~= 'finished' do
-            req.body = nil --< discard unused data
-            sock:read_some(req)
-        end
-
         res.status = 200
         res.reason = 'OK'
-        res.body = 'Found\n'
-        sock:write_response(res)
-    end)
+        res.body = 'Hello World\n'
+
+        while true do
+            sock:read_request(req)
+            sock:write_response_continue()
+
+            print(req.method .. ' ' .. req.target)
+            print_headers(req.headers)
+
+            while sock.read_state ~= 'finished' do
+                req.body = nil --< discard unused data
+                sock:read_some(req)
+            end
+
+            sock:write_response(res)
+        end
+    end):detach()
 end
