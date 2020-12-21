@@ -185,6 +185,14 @@ void vm_context::fiber_epilogue(int resume_result)
         break;
     case 0: //< finished without errors
     case LUA_ERRRUN: { //< a runtime error
+#ifndef NDEBUG
+        if (resume_result == LUA_ERRRUN &&
+            lua_type(current_fiber_, -1) == LUA_TSTRING) {
+            assert(tostringview(current_fiber_, -1) !=
+                   "cannot resume non-suspended coroutine");
+        }
+#endif // NDEBUG
+
         rawgetp(current_fiber_, LUA_REGISTRYINDEX, &fiber_list_key);
 
         lua_pushthread(current_fiber_);
