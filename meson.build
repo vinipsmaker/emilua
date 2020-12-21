@@ -264,6 +264,12 @@ if get_option('enable_tests')
             'json13',
             'json14',
         ],
+        'http' : [
+            'http1',
+            'http2',
+            'http3',
+            'http4',
+        ],
     }
 
     foreach suite, t : tests
