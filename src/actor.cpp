@@ -820,8 +820,9 @@ static int spawn_vm(lua_State* L)
     }
 
     try {
-        auto new_vm_ctx = emilua::make_vm(vm_ctx.strand().context(), dummy,
-                                          module, emilua::ContextType::worker);
+        auto new_vm_ctx = emilua::make_vm(vm_ctx.strand().context(),
+                                          vm_ctx.app_context, dummy, module,
+                                          emilua::ContextType::worker);
 
         auto buf = reinterpret_cast<actor_address*>(
             lua_newuserdata(L, sizeof(actor_address))

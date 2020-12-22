@@ -77,10 +77,11 @@ int main(int argc, char *argv[])
     }
 
     int exit_code = 0;
+    auto appctx = std::make_shared<emilua::app_context>();
     asio::io_context ioctx{main_ctx_concurrency_hint};
 
     try {
-        auto vm_ctx = emilua::make_vm(ioctx, exit_code, filename,
+        auto vm_ctx = emilua::make_vm(ioctx, appctx, exit_code, filename,
                                       emilua::ContextType::main);
         vm_ctx->strand().post([vm_ctx]() {
             vm_ctx->fiber_resume_trivial(vm_ctx->L());

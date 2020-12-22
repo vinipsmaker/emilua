@@ -21,6 +21,7 @@ enum ContextType: lua_Integer
 };
 
 std::shared_ptr<vm_context> make_vm(boost::asio::io_context& ioctx,
+                                    std::shared_ptr<emilua::app_context> appctx,
                                     int& exit_code,
                                     std::filesystem::path entry_point,
                                     ContextType lua_context);

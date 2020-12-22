@@ -129,7 +129,7 @@ public:
 };
 } // namespace detail
 
-class service: public boost::asio::io_context::service
+class app_context
 {
 private:
     struct path_hash
@@ -141,16 +141,9 @@ private:
     };
 
 public:
-    using key_type = service;
-    explicit service(boost::asio::io_context& ctx)
-        : boost::asio::io_context::service(ctx)
-    {}
-
     std::unordered_map<std::filesystem::path, std::string, path_hash>
         modules_cache_registry;
     std::mutex modules_cache_registry_mtx;
-
-    static boost::asio::io_context::id id;
 };
 
 class dead_vm_error: public std::runtime_error
@@ -285,7 +278,8 @@ public:
 class vm_context: public std::enable_shared_from_this<vm_context>
 {
 public:
-    vm_context(boost::asio::io_context::strand strand);
+    vm_context(std::shared_ptr<app_context> appctx,
+               boost::asio::io_context::strand strand);
     ~vm_context();
 
     vm_context(const vm_context&) = delete;
@@ -394,6 +388,8 @@ public:
         pending_operation,
         boost::intrusive::constant_time_size<false>
     > pending_operations;
+
+    const std::shared_ptr<app_context> app_context;
 
 private:
     boost::asio::io_context::strand strand_;
