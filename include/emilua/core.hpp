@@ -15,6 +15,7 @@
 #include <boost/outcome/policy/all_narrow.hpp>
 #include <boost/outcome/policy/terminate.hpp>
 
+#include <condition_variable>
 #include <system_error>
 #include <string_view>
 #include <filesystem>
@@ -144,6 +145,10 @@ public:
     std::unordered_map<std::filesystem::path, std::string, path_hash>
         modules_cache_registry;
     std::mutex modules_cache_registry_mtx;
+
+    std::size_t extra_threads_count = 0;
+    std::mutex extra_threads_count_mtx;
+    std::condition_variable extra_threads_count_empty_cond;
 };
 
 class dead_vm_error: public std::runtime_error
@@ -390,6 +395,9 @@ public:
     > pending_operations;
 
     const std::shared_ptr<app_context> app_context;
+
+    // can be empty
+    std::weak_ptr<asio::io_context> ioctxref;
 
 private:
     boost::asio::io_context::strand strand_;

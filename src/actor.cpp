@@ -3,6 +3,9 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
+#include <optional>
+#include <thread>
+
 #include <emilua/actor.hpp>
 #include <emilua/state.hpp>
 #include <emilua/fiber.hpp>
@@ -808,6 +811,32 @@ static int inbox_gc(lua_State* L)
 static int spawn_vm(lua_State* L)
 {
     luaL_checktype(L, 1, LUA_TSTRING);
+
+    bool inherit_ctx = true;
+    int concurrency_hint = BOOST_ASIO_CONCURRENCY_HINT_SAFE;
+
+    switch (lua_type(L, 2)) {
+    default:
+        push(L, std::errc::invalid_argument);
+        lua_pushliteral(L, "arg");
+        lua_pushinteger(L, 2);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    case LUA_TNONE:
+    case LUA_TNIL:
+        break;
+    case LUA_TTABLE:
+        lua_getfield(L, 2, "inherit_ctx");
+        if (lua_type(L, -1) == LUA_TBOOLEAN)
+            inherit_ctx = lua_toboolean(L, -1);
+        lua_getfield(L, 2, "concurrency_hint");
+        if (lua_type(L, -1) == LUA_TNUMBER) {
+            int user_concurrency_hint = lua_tointeger(L, -1);
+            if (user_concurrency_hint == 1)
+                concurrency_hint = 1;
+        }
+    }
+
     auto& vm_ctx = get_vm_context(L);
     auto module = tostringview(L, 1);
     if (module == ".") {
@@ -819,10 +848,47 @@ static int spawn_vm(lua_State* L)
         module = tostringview(L, -1);
     }
 
+    // * `work_guard` must live until we call strand.post()
+    // * `work_guard` must be init'ed before we even spawn the thread to call
+    //   ioctx.run()
+    std::shared_ptr<asio::io_context> new_ioctx = nullptr;
+    std::optional<asio::executor_work_guard<asio::io_context::executor_type>>
+        work_guard = std::nullopt;
+
+    if (!inherit_ctx) {
+        new_ioctx = std::make_shared<asio::io_context>(concurrency_hint);
+        work_guard.emplace(new_ioctx->get_executor());
+
+        {
+            std::unique_lock<std::mutex> lk{
+                vm_ctx.app_context->extra_threads_count_mtx};
+            // must happen before we return from this function (i.e. before the
+            // control returns to the runtime)
+            ++vm_ctx.app_context->extra_threads_count;
+        }
+        std::thread{[appctx=vm_ctx.app_context,new_ioctx]() {
+            for (;;) {
+                try {
+                    new_ioctx->run();
+                    break;
+                } catch (const emilua::dead_vm_error&) {
+                    continue;
+                }
+            }
+
+            std::unique_lock<std::mutex> lk{appctx->extra_threads_count_mtx};
+            --appctx->extra_threads_count;
+            if (appctx->extra_threads_count == 0)
+                appctx->extra_threads_count_empty_cond.notify_all();
+        }}.detach();
+    }
+
     try {
-        auto new_vm_ctx = emilua::make_vm(vm_ctx.strand().context(),
-                                          vm_ctx.app_context, dummy, module,
-                                          emilua::ContextType::worker);
+        auto new_vm_ctx = emilua::make_vm(
+            new_ioctx ? *new_ioctx : vm_ctx.strand().context(),
+            vm_ctx.app_context, dummy, module,
+            emilua::ContextType::worker);
+        new_vm_ctx->ioctxref = new_ioctx;
 
         auto buf = reinterpret_cast<actor_address*>(
             lua_newuserdata(L, sizeof(actor_address))
@@ -847,6 +913,51 @@ static int spawn_vm(lua_State* L)
         lua_pushstring(L, e.what());
         return lua_error(L);
     }
+}
+
+static int spawn_ctx_threads(lua_State* L)
+{
+    luaL_checktype(L, 1, LUA_TNUMBER);
+
+    auto& vm_ctx = get_vm_context(L);
+    auto nthrds = lua_tointeger(L, 1);
+
+    if (nthrds <= 0)
+        return 0;
+
+    {
+        std::unique_lock<std::mutex> lk{
+            vm_ctx.app_context->extra_threads_count_mtx};
+        // must happen before we return from this function (i.e. before the
+        // control returns to the runtime)
+        vm_ctx.app_context->extra_threads_count += nthrds;
+    }
+    for (;nthrds > 0 ; --nthrds) {
+        std::thread{
+            [
+                appctx=vm_ctx.app_context,
+                &ioctx=vm_ctx.strand().context(),
+                guard=vm_ctx.ioctxref.lock()
+            ]() {
+                for (;;) {
+                    try {
+                        // doesn't need a work guard
+                        ioctx.run();
+                        break;
+                    } catch (const emilua::dead_vm_error&) {
+                        continue;
+                    }
+                }
+
+                std::unique_lock<std::mutex> lk{
+                    appctx->extra_threads_count_mtx};
+                --appctx->extra_threads_count;
+                if (appctx->extra_threads_count == 0)
+                    appctx->extra_threads_count_empty_cond.notify_all();
+            }
+        }.detach();
+    }
+    return 0;
 }
 
 static int tx_chan_mt_eq(lua_State* L)
@@ -926,6 +1037,10 @@ void init_actor_module(lua_State* L)
 {
     lua_pushliteral(L, "spawn_vm");
     lua_pushcfunction(L, spawn_vm);
+    lua_rawset(L, LUA_GLOBALSINDEX);
+
+    lua_pushliteral(L, "spawn_ctx_threads");
+    lua_pushcfunction(L, spawn_ctx_threads);
     lua_rawset(L, LUA_GLOBALSINDEX);
 
     lua_pushlightuserdata(L, &tx_chan_mt_key);

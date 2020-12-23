@@ -1,12 +1,15 @@
+#include <condition_variable>
 #include <system_error>
 #include <string_view>
 #include <filesystem>
 #include <iostream>
+#include <optional>
 #include <fstream>
 #include <variant>
 #include <cstdio>
 #include <atomic>
 #include <memory>
+#include <thread>
 #include <deque>
 #include <mutex>
 #include <new>

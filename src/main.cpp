@@ -100,5 +100,11 @@ int main(int argc, char *argv[])
         }
     }
 
+    {
+        std::unique_lock<std::mutex> lk{appctx->extra_threads_count_mtx};
+        while (appctx->extra_threads_count > 0)
+            appctx->extra_threads_count_empty_cond.wait(lk);
+    }
+
     return exit_code;
 }
