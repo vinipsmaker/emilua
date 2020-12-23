@@ -7,6 +7,8 @@
 
 #include <boost/beast/core/stream_traits.hpp>
 
+#include <boost/hana.hpp>
+
 #include <emilua/dispatch_table.hpp>
 #include <emilua/fiber.hpp>
 #include <emilua/http.hpp>
