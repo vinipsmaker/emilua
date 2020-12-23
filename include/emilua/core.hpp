@@ -21,6 +21,7 @@
 #include <filesystem>
 #include <variant>
 #include <atomic>
+#include <deque>
 #include <mutex>
 
 extern "C" {
