@@ -159,6 +159,7 @@ void vm_context::close()
 
 void vm_context::fiber_prologue_trivial(lua_State* new_current_fiber)
 {
+    assert(strand_.running_in_this_thread());
     if (!valid_)
         throw dead_vm_error{};
 
