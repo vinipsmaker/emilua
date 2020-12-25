@@ -264,13 +264,18 @@ if get_option('enable_tests')
             'json13',
             'json14',
         ],
-        'http' : [
-            'http1',
-            'http2',
-            'http3',
-            'http4',
-        ],
     }
+
+    if get_option('enable_http')
+        tests +=  {
+            'http' : [
+                'http1',
+                'http2',
+                'http3',
+                'http4',
+            ]
+        }
+    endif
 
     foreach suite, t : tests
         foreach t : t
