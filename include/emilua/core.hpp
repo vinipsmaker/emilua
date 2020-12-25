@@ -143,6 +143,9 @@ private:
     };
 
 public:
+    app_context() = default;
+    app_context(const app_context&) = delete;
+
     std::unordered_map<std::filesystem::path, std::string, path_hash>
         modules_cache_registry;
     std::mutex modules_cache_registry_mtx;
