@@ -29,9 +29,9 @@ char error_code_mt_key;
 char error_category_mt_key;
 } // namespace detail
 
-vm_context::vm_context(std::shared_ptr<emilua::app_context> appctx,
+vm_context::vm_context(emilua::app_context& appctx,
                        asio::io_context::strand strand)
-    : app_context(std::move(appctx))
+    : app_context(appctx)
     , strand_(std::move(strand))
     , valid_(true)
     , lua_errmem(false)

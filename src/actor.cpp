@@ -861,12 +861,12 @@ static int spawn_vm(lua_State* L)
 
         {
             std::unique_lock<std::mutex> lk{
-                vm_ctx.app_context->extra_threads_count_mtx};
+                vm_ctx.app_context.extra_threads_count_mtx};
             // must happen before we return from this function (i.e. before the
             // control returns to the runtime)
-            ++vm_ctx.app_context->extra_threads_count;
+            ++vm_ctx.app_context.extra_threads_count;
         }
-        std::thread{[appctx=vm_ctx.app_context,new_ioctx]() mutable {
+        std::thread{[&appctx=vm_ctx.app_context,new_ioctx]() mutable {
             for (;;) {
                 try {
                     new_ioctx->run();
@@ -878,10 +878,10 @@ static int spawn_vm(lua_State* L)
 
             new_ioctx.reset();
 
-            std::unique_lock<std::mutex> lk{appctx->extra_threads_count_mtx};
-            --appctx->extra_threads_count;
-            if (appctx->extra_threads_count == 0)
-                appctx->extra_threads_count_empty_cond.notify_all();
+            std::unique_lock<std::mutex> lk{appctx.extra_threads_count_mtx};
+            --appctx.extra_threads_count;
+            if (appctx.extra_threads_count == 0)
+                appctx.extra_threads_count_empty_cond.notify_all();
         }}.detach();
     }
 
@@ -929,15 +929,15 @@ static int spawn_ctx_threads(lua_State* L)
 
     {
         std::unique_lock<std::mutex> lk{
-            vm_ctx.app_context->extra_threads_count_mtx};
+            vm_ctx.app_context.extra_threads_count_mtx};
         // must happen before we return from this function (i.e. before the
         // control returns to the runtime)
-        vm_ctx.app_context->extra_threads_count += nthrds;
+        vm_ctx.app_context.extra_threads_count += nthrds;
     }
     for (;nthrds > 0 ; --nthrds) {
         std::thread{
             [
-                appctx=vm_ctx.app_context,
+                &appctx=vm_ctx.app_context,
                 &ioctx=vm_ctx.strand().context(),
                 guard=vm_ctx.ioctxref.lock()
             ]() mutable {
@@ -953,11 +953,10 @@ static int spawn_ctx_threads(lua_State* L)
 
                 guard.reset();
 
-                std::unique_lock<std::mutex> lk{
-                    appctx->extra_threads_count_mtx};
-                --appctx->extra_threads_count;
-                if (appctx->extra_threads_count == 0)
-                    appctx->extra_threads_count_empty_cond.notify_all();
+                std::unique_lock<std::mutex> lk{appctx.extra_threads_count_mtx};
+                --appctx.extra_threads_count;
+                if (appctx.extra_threads_count == 0)
+                    appctx.extra_threads_count_empty_cond.notify_all();
             }
         }.detach();
     }

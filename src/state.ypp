@@ -351,7 +351,7 @@ static int require(lua_State* L)
 
             std::optional<std::reference_wrapper<std::string>> module_source;
             {
-                auto& service = *vm_ctx->app_context;
+                auto& service = vm_ctx->app_context;
                 [[maybe_unused]]
                 std::lock_guard guard{service.modules_cache_registry_mtx};
                 auto it = service.modules_cache_registry.find(module_path);
@@ -529,7 +529,7 @@ static int require(lua_State* L)
 }
 
 std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
-                                    std::shared_ptr<emilua::app_context> appctx,
+                                    emilua::app_context& appctx,
                                     int& exit_code,
                                     fs::path entry_point,
                                     ContextType lua_context)
@@ -548,7 +548,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
         entry_point = std::filesystem::absolute(std::move(entry_point));
 
     asio::io_context::strand strand{ioctx};
-    auto state = std::make_shared<vm_context>(std::move(appctx), strand);
+    auto state = std::make_shared<vm_context>(appctx, strand);
     assert(state->valid());
 
     lua_State* L = state->L();
@@ -857,7 +857,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
 
     std::optional<std::reference_wrapper<std::string>> module_source;
     {
-        auto& service = *state->app_context;
+        auto& service = state->app_context;
         [[maybe_unused]]
         std::lock_guard guard{service.modules_cache_registry_mtx};
         auto it = service.modules_cache_registry.find(entry_point);

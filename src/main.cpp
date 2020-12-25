@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
     }
 
     int exit_code = 0;
-    auto appctx = std::make_shared<emilua::app_context>();
+    emilua::app_context appctx;
     asio::io_context ioctx{main_ctx_concurrency_hint};
 
     try {
@@ -101,9 +101,9 @@ int main(int argc, char *argv[])
     }
 
     {
-        std::unique_lock<std::mutex> lk{appctx->extra_threads_count_mtx};
-        while (appctx->extra_threads_count > 0)
-            appctx->extra_threads_count_empty_cond.wait(lk);
+        std::unique_lock<std::mutex> lk{appctx.extra_threads_count_mtx};
+        while (appctx.extra_threads_count > 0)
+            appctx.extra_threads_count_empty_cond.wait(lk);
     }
 
     return exit_code;

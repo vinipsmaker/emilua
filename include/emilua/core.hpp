@@ -287,8 +287,7 @@ public:
 class vm_context: public std::enable_shared_from_this<vm_context>
 {
 public:
-    vm_context(std::shared_ptr<app_context> appctx,
-               boost::asio::io_context::strand strand);
+    vm_context(app_context& appctx, boost::asio::io_context::strand strand);
     ~vm_context();
 
     vm_context(const vm_context&) = delete;
@@ -398,7 +397,7 @@ public:
         boost::intrusive::constant_time_size<false>
     > pending_operations;
 
-    const std::shared_ptr<app_context> app_context;
+    app_context& app_context;
 
     // can be empty
     std::weak_ptr<asio::io_context> ioctxref;
