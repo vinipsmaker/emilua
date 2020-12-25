@@ -866,7 +866,7 @@ static int spawn_vm(lua_State* L)
             // control returns to the runtime)
             ++vm_ctx.app_context->extra_threads_count;
         }
-        std::thread{[appctx=vm_ctx.app_context,new_ioctx]() {
+        std::thread{[appctx=vm_ctx.app_context,new_ioctx]() mutable {
             for (;;) {
                 try {
                     new_ioctx->run();
@@ -875,6 +875,8 @@ static int spawn_vm(lua_State* L)
                     continue;
                 }
             }
+
+            new_ioctx.reset();
 
             std::unique_lock<std::mutex> lk{appctx->extra_threads_count_mtx};
             --appctx->extra_threads_count;
@@ -938,7 +940,7 @@ static int spawn_ctx_threads(lua_State* L)
                 appctx=vm_ctx.app_context,
                 &ioctx=vm_ctx.strand().context(),
                 guard=vm_ctx.ioctxref.lock()
-            ]() {
+            ]() mutable {
                 for (;;) {
                     try {
                         // doesn't need a work guard
@@ -948,6 +950,8 @@ static int spawn_ctx_threads(lua_State* L)
                         continue;
                     }
                 }
+
+                guard.reset();
 
                 std::unique_lock<std::mutex> lk{
                     appctx->extra_threads_count_mtx};
