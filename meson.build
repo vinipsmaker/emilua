@@ -93,6 +93,9 @@ re2c_src = [
 ]
 
 if get_option('enable_http')
+    warning('HTTP support is still experimental.' +
+            ' Please report any bugs you find.')
+
     incdir += '3rd/boost.http/include'
     src += 'src/http.cpp'
     bytecode_src += 'bytecode/http.lua'
