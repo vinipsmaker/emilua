@@ -12,7 +12,7 @@ Features:
   fiber local storage, assert-like scheduling constraints, ...).
 * Integrates with Lua builtins (i.e. you can mix up fibers and coroutines,
   modules, ...).
-* IO (HTTP, WebSocket).
+* HTTP{_}footnote:[WebSocket planned for next releases.].
 * Actor API (each VM is an actor and you can spawn many of them to be scheduled
   through the same (or a new) thread pool).
 * Native JSON module.
@@ -55,8 +55,8 @@ end
 
 == Dependencies
 
-* Meson.
-* {cpp}17.
+* Meson 0.55.0 or later.
+* {cpp}17 compiler.
 * LuaJIT.
 * Boost.Asio (and other Boost libraries as well).
 * `re2c`.
@@ -84,10 +84,13 @@ This will download the extra dependencies:
 
 == LICENSE
 
-* C/C++ source code under Boost Software License.
+* C/{cpp} source code under Boost Software License.
 * Lua code (including snippets scattered through the documentation) distributed
   in this repo is released as public domain.
 * Submodules and dependencies have their own licensing terms.
+* I haven't decided on the license for the documentation yet and I'll require
+  copyright attribution (so I can change the license to my choosing) on any
+  contribution here until I decide a good license.
 
 == ROADMAP
 
