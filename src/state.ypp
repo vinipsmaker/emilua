@@ -647,7 +647,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
             [](lua_State* L) -> int {
                 luaL_checktype(L, 1, LUA_TTABLE);
                 luaL_checktype(L, 2, LUA_TTABLE);
-                lua_pushliteral(L, "val");
+                lua_pushliteral(L, "code");
                 lua_pushvalue(L, -1);
                 lua_rawget(L, 1);
                 lua_pushvalue(L, -2);
@@ -672,7 +672,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
             L,
             [](lua_State* L) -> int {
                 luaL_checktype(L, 1, LUA_TTABLE);
-                lua_pushliteral(L, "val");
+                lua_pushliteral(L, "code");
                 lua_rawget(L, 1);
                 if (lua_type(L, -1) != LUA_TNUMBER) {
                     push(L, std::errc::invalid_argument);

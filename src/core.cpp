@@ -349,7 +349,7 @@ void push(lua_State* L, const std::error_code& ec)
 
     lua_createtable(L, /*narr=*/0, /*nrec=*/2);
 
-    lua_pushliteral(L, "val");
+    lua_pushliteral(L, "code");
     lua_pushinteger(L, ec.value());
     lua_rawset(L, -3);
 
@@ -377,7 +377,7 @@ std::variant<std::string_view, std::error_code> inspect_errobj(lua_State* L)
     case LUA_TTABLE: {
         int ev;
         std::error_category* cat;
-        lua_pushliteral(L, "val");
+        lua_pushliteral(L, "code");
         lua_rawget(L, -2);
         if (lua_type(L, -1) != LUA_TNUMBER) {
             lua_pop(L, 1);
