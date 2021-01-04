@@ -82,6 +82,23 @@ This will download the extra dependencies:
 * CLI11.
 * Trial.Protocol.
 
+== BUILD
+
+[source,bash]
+----
+$ mkdir build
+$ cd build
+$ meson ..
+$ ninja
+----
+
+An `emilua` binary will be generated. Copy it to your `$PATH`.
+
+You can also pass options when you invoke `meson`. One of the options is `-D
+enable_http=true`.
+
+It's encouraged that you build luajit with `-DLUAJIT_ENABLE_LUA52COMPAT`.
+
 == LICENSE
 
 * C/{cpp} source code under Boost Software License.
@@ -91,6 +108,25 @@ This will download the extra dependencies:
 * I haven't decided on the license for the documentation yet and I'll require
   copyright attribution (so I can change the license to my choosing) on any
   contribution here until I decide a good license.
+
+== Documentation
+
+You need to have `asciidoctor` and `hugo`. Then, just run inside the `doc`
+directory:
+
+[source,bash]
+----
+$ hugo server
+----
+
+== Tests
+
+[source,bash]
+----
+$ ninja test
+----
+
+You also need to have GNU AWK installed to run the tests.
 
 == ROADMAP
 
