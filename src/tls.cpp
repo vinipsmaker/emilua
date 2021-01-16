@@ -179,7 +179,7 @@ static int socket_handshake(lua_State* L)
             return 0;
         },
         1);
-    set_interrupter(L);
+    set_interrupter(L, *vm_ctx);
 
     s->async_handshake(HANDSHAKE, asio::bind_executor(
         vm_ctx->strand_using_defer(),

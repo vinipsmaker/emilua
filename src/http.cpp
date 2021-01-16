@@ -810,7 +810,7 @@ int socket_close<TlsSocket>(lua_State* L)
             return 0;
         },
         1);
-    set_interrupter(L);
+    set_interrupter(L, *vm_ctx);
 
     ++s->nbusy;
     s->socket.next_layer().async_shutdown(asio::bind_executor(
@@ -936,7 +936,7 @@ static int socket_read_request(lua_State* L)
             return 0;
         },
         1);
-    set_interrupter(L);
+    set_interrupter(L, *vm_ctx);
 
     ++s->nbusy;
     (*m)->busy = true;
@@ -1036,7 +1036,7 @@ static int socket_write_response(lua_State* L)
             return 0;
         },
         1);
-    set_interrupter(L);
+    set_interrupter(L, *vm_ctx);
 
     ++s->nbusy;
     (*m)->busy = true;
@@ -1108,7 +1108,7 @@ static int socket_write_response_continue(lua_State* L)
             return 0;
         },
         1);
-    set_interrupter(L);
+    set_interrupter(L, *vm_ctx);
 
     ++s->nbusy;
     s->socket.async_write_response_continue(asio::bind_executor(
@@ -1205,7 +1205,7 @@ static int socket_write_response_metadata(lua_State* L)
             return 0;
         },
         1);
-    set_interrupter(L);
+    set_interrupter(L, *vm_ctx);
 
     ++s->nbusy;
     (*m)->busy = true;
@@ -1314,7 +1314,7 @@ static int socket_write(lua_State* L)
             return 0;
         },
         1);
-    set_interrupter(L);
+    set_interrupter(L, *vm_ctx);
 
     auto sched_op = [&](auto& msg) {
         ++s->nbusy;
@@ -1427,7 +1427,7 @@ static int socket_write_trailers(lua_State* L)
             return 0;
         },
         1);
-    set_interrupter(L);
+    set_interrupter(L, *vm_ctx);
 
     auto sched_op = [&](auto& msg) {
         ++s->nbusy;
@@ -1503,7 +1503,7 @@ static int socket_write_end_of_message(lua_State* L)
             return 0;
         },
         1);
-    set_interrupter(L);
+    set_interrupter(L, *vm_ctx);
 
     ++s->nbusy;
     s->socket.async_write_end_of_message(asio::bind_executor(
@@ -1600,7 +1600,7 @@ static int socket_write_request(lua_State* L)
             return 0;
         },
         1);
-    set_interrupter(L);
+    set_interrupter(L, *vm_ctx);
 
     ++s->nbusy;
     (*m)->busy = true;
@@ -1699,7 +1699,7 @@ static int socket_write_request_metadata(lua_State* L)
             return 0;
         },
         1);
-    set_interrupter(L);
+    set_interrupter(L, *vm_ctx);
 
     ++s->nbusy;
     (*m)->busy = true;
@@ -1798,7 +1798,7 @@ static int socket_read_response(lua_State* L)
             return 0;
         },
         1);
-    set_interrupter(L);
+    set_interrupter(L, *vm_ctx);
 
     ++s->nbusy;
     (*m)->busy = true;
@@ -1908,7 +1908,7 @@ static int socket_read_some(lua_State* L)
             return 0;
         },
         1);
-    set_interrupter(L);
+    set_interrupter(L, *vm_ctx);
 
     auto sched_op = [&](auto& msg) {
         ++s->nbusy;

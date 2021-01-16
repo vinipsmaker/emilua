@@ -564,7 +564,7 @@ static int tcp_socket_connect(lua_State* L)
             return 0;
         },
         1);
-    set_interrupter(L);
+    set_interrupter(L, *vm_ctx);
 
     s->async_connect(ep, asio::bind_executor(
         vm_ctx->strand_using_defer(),
@@ -667,7 +667,7 @@ static int tcp_acceptor_accept(lua_State* L)
             return 0;
         },
         1);
-    set_interrupter(L);
+    set_interrupter(L, *vm_ctx);
 
     acceptor->async_accept(asio::bind_executor(
         vm_ctx->strand_using_defer(),
@@ -1293,7 +1293,7 @@ static int tcp_resolver_resolve(lua_State* L)
             return 0;
         },
         1);
-    set_interrupter(L);
+    set_interrupter(L, *vm_ctx);
 
     resolver->async_resolve(
         tostringview(L, 2),

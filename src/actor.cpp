@@ -580,7 +580,7 @@ static int chan_send(lua_State* L)
         },
         2
     );
-    set_interrupter(L);
+    set_interrupter(L, vm_ctx);
 
     sender.wake_on_destruct = true;
     dest_vm_ctx->strand().post(
@@ -734,7 +734,7 @@ static int chan_recv(lua_State* L)
         },
         0
     );
-    set_interrupter(L);
+    set_interrupter(L, vm_ctx);
 
     vm_ctx.inbox.recv_fiber = vm_ctx.current_fiber();
     vm_ctx.inbox.work_guard = vm_ctx.shared_from_this();

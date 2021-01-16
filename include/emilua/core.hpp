@@ -187,9 +187,9 @@ private:
     int code;
 };
 
-void set_interrupter(lua_State* L);
-
 class vm_context;
+
+void set_interrupter(lua_State* L, vm_context& vm_ctx);
 
 struct actor_address
 {
@@ -382,7 +382,7 @@ public:
         // in set_interrupter() is lua_rawseti(). lua_rawseti() shouldn't throw
         // on LUA_ERRMEM for `nil` assignment.
         lua_pushnil(current_fiber_);
-        set_interrupter(current_fiber_);
+        set_interrupter(current_fiber_, *this);
     }
 
     void notify_errmem();

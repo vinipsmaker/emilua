@@ -120,7 +120,7 @@ static int fiber_join(lua_State* L)
                 return 0;
             },
             3);
-        set_interrupter(L);
+        set_interrupter(L, vm_ctx);
 
         handle->join_in_progress = true;
 

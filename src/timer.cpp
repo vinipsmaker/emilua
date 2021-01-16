@@ -72,7 +72,7 @@ static int sleep_for(lua_State* L)
             return 0;
         },
         1);
-    set_interrupter(L);
+    set_interrupter(L, *vm_ctx);
 
     vm_ctx->pending_operations.push_back(*handle);
 
@@ -128,7 +128,7 @@ static int timer_wait(lua_State* L)
             return 0;
         },
         1);
-    set_interrupter(L);
+    set_interrupter(L, *vm_ctx);
 
     handle->timer.async_wait(asio::bind_executor(
         vm_ctx->strand_using_defer(),

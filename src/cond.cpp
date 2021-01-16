@@ -98,7 +98,7 @@ static int cond_wait(lua_State* L)
             return 0;
         },
         2);
-    set_interrupter(L);
+    set_interrupter(L, mutex_handle->vm_ctx);
 
     cond_handle->pending.emplace_back(mutex_handle->vm_ctx.current_fiber());
 

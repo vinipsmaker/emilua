@@ -419,12 +419,14 @@ std::string errobj_to_string(std::variant<std::string_view, std::error_code> o)
     );
 }
 
-void set_interrupter(lua_State* L)
+void set_interrupter(lua_State* L, vm_context& vm_ctx)
 {
+    auto current_fiber = vm_ctx.current_fiber();
     bool interruption_disabled;
 
     rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
-    lua_pushthread(L);
+    lua_pushthread(current_fiber);
+    lua_xmove(current_fiber, L, 1);
     lua_rawget(L, -2);
     lua_rawgeti(L, -1, FiberDataIndex::INTERRUPTION_DISABLED);
     switch (lua_type(L, -1)) {

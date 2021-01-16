@@ -198,6 +198,7 @@ if get_option('enable_tests')
             'coroutine_resume4',
             'coroutine_resume5',
             'coroutine_resume6',
+            'coroutine_resume7',
             'pcall1',
             'xpcall1',
         ],
