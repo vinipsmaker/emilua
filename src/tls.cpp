@@ -78,8 +78,7 @@ static int tls_ctx_new(lua_State* L)
             lua_newuserdata(L, sizeof(std::shared_ptr<asio::ssl::context>))
         );
         rawgetp(L, LUA_REGISTRYINDEX, &tls_ctx_mt_key);
-        int res = lua_setmetatable(L, -2);
-        assert(res); boost::ignore_unused(res);
+        setmetatable(L, -2);
         new (c) std::shared_ptr<asio::ssl::context>{std::move(ctx)};
         return 1;
     } catch (const boost::system::system_error& e) {
@@ -132,13 +131,11 @@ static int tls_socket_new(lua_State* L)
         lua_newuserdata(L, sizeof(TlsSocket))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &tls_socket_mt_key);
-    int res = lua_setmetatable(L, -2);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, -2);
     new (s) TlsSocket{*tcp_s, *c};
 
     lua_pushnil(L);
-    res = lua_setmetatable(L, 1);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, 1);
     tcp_s->asio::ip::tcp::socket::~socket();
 
     return 1;

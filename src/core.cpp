@@ -358,12 +358,12 @@ void push(lua_State* L, const std::error_code& ec)
         *reinterpret_cast<const std::error_category**>(
             lua_newuserdata(L, sizeof(void*))) = &ec.category();
         rawgetp(L, LUA_REGISTRYINDEX, &detail::error_category_mt_key);
-        lua_setmetatable(L, -2);
+        setmetatable(L, -2);
     }
     lua_rawset(L, -3);
 
     rawgetp(L, LUA_REGISTRYINDEX, &detail::error_code_mt_key);
-    lua_setmetatable(L, -2);
+    setmetatable(L, -2);
 }
 
 std::variant<std::string_view, std::error_code> inspect_errobj(lua_State* L)

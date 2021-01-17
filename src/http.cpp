@@ -95,8 +95,7 @@ static int request_new(lua_State* L)
         lua_newuserdata(L, sizeof(std::shared_ptr<Request>))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &http_request_mt_key);
-    int res = lua_setmetatable(L, -2);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, -2);
     new (r) std::shared_ptr<Request>{std::make_shared<Request>()};
     return 1;
 }
@@ -107,8 +106,7 @@ static int response_new(lua_State* L)
         lua_newuserdata(L, sizeof(std::shared_ptr<Response>))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &http_response_mt_key);
-    int res = lua_setmetatable(L, -2);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, -2);
     new (r) std::shared_ptr<Response>{std::make_shared<Response>()};
     return 1;
 }
@@ -150,13 +148,11 @@ static int socket_new(lua_State* L)
             L, sizeof(Socket<T>)
         ));
         rawgetp(L, LUA_REGISTRYINDEX, get_http_mt_key<T>::get());
-        int res = lua_setmetatable(L, -2);
-        assert(res); boost::ignore_unused(res);
+        setmetatable(L, -2);
         new (s) Socket<T>{std::move(s1)};
 
         lua_pushnil(L);
-        res = lua_setmetatable(L, 1);
-        assert(res); boost::ignore_unused(res);
+        setmetatable(L, 1);
         s1.~T();
     };
     if (tcp_sock) make(*tcp_sock);
@@ -189,8 +185,7 @@ inline int message_headers(lua_State* L)
     ) = ORIGIN;
 
     rawgetp(L, LUA_REGISTRYINDEX, &headers_mt_key);
-    int res = lua_setmetatable(L, -2);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, -2);
 
     lua_createtable(L, /*narr=*/1, /*nrec=*/0);
     lua_pushvalue(L, 1);

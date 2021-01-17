@@ -98,7 +98,7 @@ void init_scope_cleanup_module(lua_State* L)
         lua_pushliteral(L, "k");
         lua_rawset(L, -3);
 
-        lua_setmetatable(L, -2);
+        setmetatable(L, -2);
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 

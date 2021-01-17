@@ -436,8 +436,7 @@ static int spawn(lua_State* L)
             lua_newuserdata(L, sizeof(fiber_handle))
         );
         rawgetp(L, LUA_REGISTRYINDEX, &fiber_mt_key);
-        int res = lua_setmetatable(L, -2);
-        assert(res); boost::ignore_unused(res);
+        setmetatable(L, -2);
         new (buf) fiber_handle{new_fiber};
     }
 
@@ -723,7 +722,7 @@ void init_fiber_module(lua_State* L)
             });
         lua_rawset(L, -3);
     }
-    lua_setmetatable(L, -2);
+    setmetatable(L, -2);
     lua_rawset(L, LUA_GLOBALSINDEX);
 }
 

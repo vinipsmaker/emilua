@@ -87,7 +87,7 @@ static int into_array(lua_State* L)
     if (lua_gettop(L) == 0) {
         lua_newtable(L);
         rawgetp(L, LUA_REGISTRYINDEX, &json_array_mt_key);
-        lua_setmetatable(L, -2);
+        setmetatable(L, -2);
         return 1;
     }
 
@@ -114,7 +114,7 @@ static int into_array(lua_State* L)
     }
 
     rawgetp(L, LUA_REGISTRYINDEX, &json_array_mt_key);
-    lua_setmetatable(L, 1);
+    setmetatable(L, 1);
     lua_pushvalue(L, 1);
     return 1;
 }
@@ -321,7 +321,7 @@ static int decode(lua_State* L)
                 path.emplace_back(std::in_place_type<array_key_type>, 0);
 
                 rawgetp(L, LUA_REGISTRYINDEX, &json_array_mt_key);
-                lua_setmetatable(L, -2);
+                setmetatable(L, -2);
             } else {
                 path.emplace_back(std::in_place_type<std::string>);
             }
@@ -534,8 +534,7 @@ static int writer_generate(lua_State* L)
 
     lua_pushlstring(L, jw->buffer.data(), jw->buffer.size());
     lua_pushnil(L);
-    int res = lua_setmetatable(L, 1);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, 1);
     jw->~json_writer();
     return 1;
 }
@@ -625,8 +624,7 @@ static int writer_new(lua_State* L)
         lua_newuserdata(L, sizeof(json_writer))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &writer_mt_key);
-    int res = lua_setmetatable(L, -2);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, -2);
     new (jw) json_writer{};
     return 1;
 }
@@ -646,7 +644,7 @@ void init_json_module(lua_State* L)
             *reinterpret_cast<const std::error_category**>(
                 lua_newuserdata(L, sizeof(void*))) = &json::error_category();
             rawgetp(L, LUA_REGISTRYINDEX, &detail::error_category_mt_key);
-            lua_setmetatable(L, -2);
+            setmetatable(L, -2);
         }
         lua_rawset(L, -3);
 
@@ -655,7 +653,7 @@ void init_json_module(lua_State* L)
             *reinterpret_cast<const std::error_category**>(
                 lua_newuserdata(L, sizeof(void*))) = &json_category();
             rawgetp(L, LUA_REGISTRYINDEX, &detail::error_category_mt_key);
-            lua_setmetatable(L, -2);
+            setmetatable(L, -2);
         }
         lua_rawset(L, -3);
 
@@ -701,7 +699,7 @@ void init_json_module(lua_State* L)
                 lua_rawset(L, -3);
             }
 
-            lua_setmetatable(L, -2);
+            setmetatable(L, -2);
         }
         lua_rawset(L, -3);
 

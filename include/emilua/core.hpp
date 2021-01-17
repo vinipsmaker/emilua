@@ -415,6 +415,12 @@ private:
 
 vm_context& get_vm_context(lua_State* L);
 
+inline void setmetatable(lua_State* L, int index)
+{
+    int res = lua_setmetatable(L, index);
+    assert(res); boost::ignore_unused(res);
+}
+
 void push(lua_State* L, const std::error_code& ec);
 
 inline void push(lua_State* L, std::errc ec)

@@ -36,8 +36,7 @@ static int address_new(lua_State* L)
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
-    int res = lua_setmetatable(L, -2);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, -2);
     switch (lua_type(L, 1)) {
     case LUA_TNIL:
         new (a) asio::ip::address{};
@@ -70,8 +69,7 @@ static int address_any_v4(lua_State* L)
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
-    int res = lua_setmetatable(L, -2);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, -2);
     new (a) asio::ip::address{asio::ip::address_v4::any()};
     return 1;
 }
@@ -82,8 +80,7 @@ static int address_any_v6(lua_State* L)
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
-    int res = lua_setmetatable(L, -2);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, -2);
     new (a) asio::ip::address{asio::ip::address_v6::any()};
     return 1;
 }
@@ -94,8 +91,7 @@ static int address_loopback_v4(lua_State* L)
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
-    int res = lua_setmetatable(L, -2);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, -2);
     new (a) asio::ip::address{asio::ip::address_v4::loopback()};
     return 1;
 }
@@ -106,8 +102,7 @@ static int address_loopback_v6(lua_State* L)
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
-    int res = lua_setmetatable(L, -2);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, -2);
     new (a) asio::ip::address{asio::ip::address_v6::loopback()};
     return 1;
 }
@@ -118,8 +113,7 @@ static int address_broadcast_v4(lua_State* L)
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
-    int res = lua_setmetatable(L, -2);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, -2);
     new (a) asio::ip::address{asio::ip::address_v4::broadcast()};
     return 1;
 }
@@ -147,8 +141,7 @@ static int address_to_v6(lua_State* L)
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
-    int res = lua_setmetatable(L, -2);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, -2);
     new (ret) asio::ip::address{
         asio::ip::make_address_v6(asio::ip::v4_mapped, a->to_v4())
     };
@@ -179,8 +172,7 @@ static int address_to_v4(lua_State* L)
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
-    int res = lua_setmetatable(L, -2);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, -2);
     try {
         new (ret) asio::ip::address{
             asio::ip::make_address_v4(asio::ip::v4_mapped, a->to_v6())
@@ -503,8 +495,7 @@ static int tcp_socket_new(lua_State* L)
         lua_newuserdata(L, sizeof(asio::ip::tcp::socket))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_socket_mt_key);
-    int res = lua_setmetatable(L, -2);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, -2);
     new (a) asio::ip::tcp::socket{vm_ctx.strand().context()};
     return 1;
 }
@@ -626,8 +617,7 @@ static int tcp_acceptor_new(lua_State* L)
         lua_newuserdata(L, sizeof(asio::ip::tcp::acceptor))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_acceptor_mt_key);
-    int res = lua_setmetatable(L, -2);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, -2);
     new (a) asio::ip::tcp::acceptor{vm_ctx.strand().context()};
     return 1;
 }
@@ -700,8 +690,7 @@ static int tcp_acceptor_accept(lua_State* L)
                         );
                         rawgetp(current_fiber, LUA_REGISTRYINDEX,
                                 &ip_tcp_socket_mt_key);
-                        int res = lua_setmetatable(current_fiber, -2);
-                        assert(res); boost::ignore_unused(res);
+                        setmetatable(current_fiber, -2);
                         new (s) asio::ip::tcp::socket{std::move(peer)};
                     }
                 });
@@ -1129,8 +1118,7 @@ inline int tcp_acceptor_local_address(lua_State* L)
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
-    int res = lua_setmetatable(L, -2);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, -2);
     new (addr) asio::ip::address{ep.address()};
     return 1;
 }
@@ -1233,8 +1221,7 @@ static int tcp_resolver_new(lua_State* L)
         lua_newuserdata(L, sizeof(asio::ip::tcp::resolver))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_resolver_mt_key);
-    int res = lua_setmetatable(L, -2);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, -2);
     new (r) asio::ip::tcp::resolver{vm_ctx.strand().context()};
     return 1;
 }
@@ -1346,7 +1333,7 @@ static int tcp_resolver_resolve(lua_State* L)
                                 );
                                 rawgetp(current_fiber, LUA_REGISTRYINDEX,
                                         &ip_address_mt_key);
-                                lua_setmetatable(current_fiber, -2);
+                                setmetatable(current_fiber, -2);
                                 new (a) asio::ip::address{
                                     res.endpoint().address()
                                 };

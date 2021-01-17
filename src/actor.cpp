@@ -78,8 +78,7 @@ int deserializer_closure(lua_State* L)
             lua_newuserdata(L, sizeof(actor_address))
         );
         rawgetp(L, LUA_REGISTRYINDEX, &tx_chan_mt_key);
-        int res = lua_setmetatable(L, -2);
-        assert(res); boost::ignore_unused(res);
+        setmetatable(L, -2);
         new (buf) actor_address{std::move(a)};
     };
 
@@ -645,8 +644,7 @@ static int tx_chan_close(lua_State* L)
     }
 
     rawgetp(L, LUA_REGISTRYINDEX, &closed_tx_chan_mt_key);
-    int res = lua_setmetatable(L, 1);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, 1);
     handle->~actor_address();
     return 0;
 }
@@ -896,8 +894,7 @@ static int spawn_vm(lua_State* L)
             lua_newuserdata(L, sizeof(actor_address))
         );
         rawgetp(L, LUA_REGISTRYINDEX, &tx_chan_mt_key);
-        int res = lua_setmetatable(L, -2);
-        assert(res); boost::ignore_unused(res);
+        setmetatable(L, -2);
         new (buf) actor_address{*new_vm_ctx};
 
         new_vm_ctx->strand().post([new_vm_ctx]() {
@@ -1167,8 +1164,7 @@ void init_actor_module(lua_State* L)
         lua_pushlightuserdata(L, &inbox_key);
         lua_newuserdata(L, sizeof(char));
         rawgetp(L, LUA_REGISTRYINDEX, &inbox_mt_key);
-        int res = lua_setmetatable(L, -2);
-        assert(res); boost::ignore_unused(res);
+        setmetatable(L, -2);
         lua_rawset(L, LUA_REGISTRYINDEX);
     }
 }

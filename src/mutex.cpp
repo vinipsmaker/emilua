@@ -133,8 +133,7 @@ static int mutex_new(lua_State* L)
         lua_newuserdata(L, sizeof(mutex_handle))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &mutex_mt_key);
-    int res = lua_setmetatable(L, -2);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, -2);
     new (buf) mutex_handle{vm_ctx};
     return 1;
 }
@@ -177,7 +176,7 @@ void init_mutex_module(lua_State* L)
             });
         lua_rawset(L, -3);
     }
-    lua_setmetatable(L, -2);
+    setmetatable(L, -2);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &mutex_mt_key);

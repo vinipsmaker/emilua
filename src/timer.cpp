@@ -264,8 +264,7 @@ static int timer_new(lua_State* L)
         lua_newuserdata(L, sizeof(handle_type))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &timer_mt_key);
-    int res = lua_setmetatable(L, -2);
-    assert(res); boost::ignore_unused(res);
+    setmetatable(L, -2);
     new (buf) handle_type{vm_ctx.strand().context()};
     return 1;
 }
