@@ -423,9 +423,48 @@ inline void setmetatable(lua_State* L, int index)
 
 void push(lua_State* L, const std::error_code& ec);
 
-inline void push(lua_State* L, std::errc ec)
+namespace detail {
+
+template<class T>
+void push(lua_State* L, std::string_view key, T v)
 {
-    return push(L, make_error_code(ec));
+    static constexpr auto arg_pusher = hana::overload(
+        [](lua_State* L, int v) { lua_pushinteger(L, v); },
+        [](lua_State* L, lua_Integer v) { lua_pushinteger(L, v); },
+        [](lua_State* L, lua_Number v) { lua_pushnumber(L, v); },
+        [](lua_State* L, bool v) { lua_pushboolean(L, v ? 1 : 0); },
+        [](lua_State* L, const char* v) {lua_pushstring(L, v); },
+        [](lua_State* L, std::string_view v) {
+            lua_pushlstring(L, v.data(), v.size());
+        }
+    );
+
+    lua_pushlstring(L, key.data(), key.size());
+    arg_pusher(L, v);
+    lua_rawset(L, -3);
+}
+
+template<class T, class... Args>
+void push(lua_State* L, std::string_view key, T v, Args&&... args)
+{
+    push(L, key, v);
+    push(L, std::forward<Args>(args)...);
+}
+
+} // namespace detail
+
+template<class... Args>
+void push(lua_State* L, const std::error_code& ec, Args&&... args)
+{
+    static_assert(sizeof...(args) % 2 == 0);
+    push(L, ec);
+    detail::push(L, std::forward<Args>(args)...);
+}
+
+template<class... Args>
+inline void push(lua_State* L, std::errc ec, Args&&... args)
+{
+    return push(L, make_error_code(ec), std::forward<Args>(args)...);
 }
 
 // gets value from top of the stack

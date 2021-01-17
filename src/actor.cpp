@@ -180,18 +180,12 @@ static int chan_send(lua_State* L)
     auto& vm_ctx = get_vm_context(L);
     auto handle = reinterpret_cast<actor_address*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &tx_chan_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -628,18 +622,12 @@ static int tx_chan_close(lua_State* L)
 {
     auto handle = reinterpret_cast<actor_address*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &tx_chan_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -653,18 +641,12 @@ static int chan_recv(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
     if (!lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &inbox_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -743,18 +725,12 @@ static int inbox_close(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
     if (!lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &inbox_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -815,10 +791,7 @@ static int spawn_vm(lua_State* L)
 
     switch (lua_type(L, 2)) {
     default:
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     case LUA_TNONE:
     case LUA_TNIL:
@@ -983,10 +956,7 @@ static int tx_chan_mt_index(lua_State* L)
         lua_pushcfunction(L, tx_chan_close);
         return 1;
     } else {
-        push(L, errc::bad_index);
-        lua_pushliteral(L, "index");
-        lua_pushvalue(L, 2);
-        lua_rawset(L, -3);
+        push(L, errc::bad_index, "index", 2);
         return lua_error(L);
     }
 }
@@ -1007,10 +977,7 @@ static int closed_tx_chan_mt_index(lua_State* L)
         lua_pushcfunction(L, [](lua_State*) -> int { return 0; });
         return 1;
     } else {
-        push(L, errc::bad_index);
-        lua_pushliteral(L, "index");
-        lua_pushvalue(L, 2);
-        lua_rawset(L, -3);
+        push(L, errc::bad_index, "index", 2);
         return lua_error(L);
     }
 }
@@ -1025,10 +992,7 @@ static int inbox_mt_index(lua_State* L)
         lua_pushcfunction(L, inbox_close);
         return 1;
     } else {
-        push(L, errc::bad_index);
-        lua_pushliteral(L, "index");
-        lua_pushvalue(L, 2);
-        lua_rawset(L, -3);
+        push(L, errc::bad_index, "index", 2);
         return lua_error(L);
     }
 }

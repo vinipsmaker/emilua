@@ -35,26 +35,17 @@ static int fiber_join(lua_State* L)
 
     auto handle = reinterpret_cast<fiber_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &fiber_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
     if (!handle->fiber || handle->join_in_progress) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -176,26 +167,17 @@ static int fiber_detach(lua_State* L)
 {
     auto handle = reinterpret_cast<fiber_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &fiber_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
     if (!handle->fiber || handle->join_in_progress) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -238,18 +220,12 @@ static int fiber_interrupt(lua_State* L)
     auto& vm_ctx = get_vm_context(L);
     auto handle = reinterpret_cast<fiber_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &fiber_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -331,10 +307,7 @@ static int fiber_meta_index(lua_State* L)
             hana::make_pair(BOOST_HANA_STRING("joinable"), fiber_joinable)
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index);
-            lua_pushliteral(L, "index");
-            lua_pushvalue(L, 2);
-            lua_rawset(L, -3);
+            push(L, errc::bad_index, "index", 2);
             return lua_error(L);
         },
         tostringview(L, 2),
@@ -633,10 +606,7 @@ static int this_fiber_meta_index(lua_State* L)
             hana::make_pair(BOOST_HANA_STRING("id"), this_fiber_id)
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index);
-            lua_pushliteral(L, "index");
-            lua_pushvalue(L, 2);
-            lua_rawset(L, -3);
+            push(L, errc::bad_index, "index", 2);
             return lua_error(L);
         },
         tostringview(L, 2),

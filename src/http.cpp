@@ -116,10 +116,7 @@ static int socket_new(lua_State* L)
     lua_settop(L, 1);
 
     if (!lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -132,10 +129,7 @@ static int socket_new(lua_State* L)
     } else {
         rawgetp(L, LUA_REGISTRYINDEX, &tls_socket_mt_key);
         if (!lua_rawequal(L, -1, -3)) {
-            push(L, std::errc::invalid_argument);
-            lua_pushliteral(L, "arg");
-            lua_pushinteger(L, 1);
-            lua_rawset(L, -3);
+            push(L, std::errc::invalid_argument, "arg", 1);
             return lua_error(L);
         }
         tls_sock = reinterpret_cast<decltype(tls_sock)>(lua_touserdata(L, 1));
@@ -219,10 +213,7 @@ static int request_meta_index(lua_State* L)
                 message_headers<headers_origin::request_trailers>)
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index);
-            lua_pushliteral(L, "index");
-            lua_pushvalue(L, 2);
-            lua_rawset(L, -3);
+            push(L, errc::bad_index, "index", 2);
             return lua_error(L);
         },
         tostringview(L, 2),
@@ -285,20 +276,14 @@ inline int message_newheaders(lua_State* L)
     Headers& headers = headers_getter[hana::int_c<static_cast<int>(ORIGIN)>](L);
     switch (lua_type(L, 3)) {
     default:
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 3);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 3);
         return lua_error(L);
     case LUA_TNIL:
         headers.clear();
         break;
     case LUA_TTABLE:
         if (lua_getmetatable(L, 3)) {
-            push(L, std::errc::invalid_argument);
-            lua_pushliteral(L, "arg");
-            lua_pushinteger(L, 3);
-            lua_rawset(L, -3);
+            push(L, std::errc::invalid_argument, "arg", 3);
             return lua_error(L);
         }
 
@@ -352,10 +337,7 @@ inline int message_newbody(lua_State* L)
 {
     switch (lua_type(L, 3)) {
     default:
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 3);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 3);
         return lua_error(L);
     case LUA_TSTRING: {
         luaL_checktype(L, 3, LUA_TSTRING);
@@ -389,10 +371,7 @@ static int request_meta_newindex(lua_State* L)
                 message_newheaders<headers_origin::request_trailers>)
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index);
-            lua_pushliteral(L, "index");
-            lua_pushvalue(L, 2);
-            lua_rawset(L, -3);
+            push(L, errc::bad_index, "index", 2);
             return lua_error(L);
         },
         tostringview(L, 2),
@@ -431,10 +410,7 @@ static int response_meta_index(lua_State* L)
                 message_headers<headers_origin::response_trailers>)
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index);
-            lua_pushliteral(L, "index");
-            lua_pushvalue(L, 2);
-            lua_rawset(L, -3);
+            push(L, errc::bad_index, "index", 2);
             return lua_error(L);
         },
         tostringview(L, 2),
@@ -476,10 +452,7 @@ static int response_meta_newindex(lua_State* L)
                 message_newheaders<headers_origin::response_trailers>)
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index);
-            lua_pushliteral(L, "index");
-            lua_pushvalue(L, 2);
-            lua_rawset(L, -3);
+            push(L, errc::bad_index, "index", 2);
             return lua_error(L);
         },
         tostringview(L, 2),
@@ -583,10 +556,7 @@ static int headers_meta_newindex(lua_State* L)
 
     switch (lua_type(L, 3)) {
     default:
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 3);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 3);
         return lua_error(L);
     case LUA_TNIL: {
         auto range = headers->equal_range(key);
@@ -607,10 +577,7 @@ static int headers_meta_newindex(lua_State* L)
     }
     case LUA_TTABLE: {
         if (lua_getmetatable(L, 3)) {
-            push(L, std::errc::invalid_argument);
-            lua_pushliteral(L, "arg");
-            lua_pushinteger(L, 3);
-            lua_rawset(L, -3);
+            push(L, std::errc::invalid_argument, "arg", 3);
             return lua_error(L);
         }
 
@@ -642,18 +609,12 @@ static int headers_next(lua_State* L)
     lua_settop(L, 2);
     auto origin = reinterpret_cast<headers_origin*>(lua_touserdata(L, 1));
     if (!origin || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &headers_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -694,10 +655,7 @@ static int headers_next(lua_State* L)
 
     switch (lua_type(L, 2)) {
     default:
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     case LUA_TNIL:
         begin = headers->begin();
@@ -743,18 +701,12 @@ int socket_close<asio::ip::tcp::socket>(lua_State* L)
     auto s = reinterpret_cast<Socket<asio::ip::tcp::socket>*>(
         lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &http_socket_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -779,18 +731,12 @@ int socket_close<TlsSocket>(lua_State* L)
 
     auto s = reinterpret_cast<Socket<TlsSocket>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &https_socket_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -850,18 +796,12 @@ static int socket_lock_client_to_http10(lua_State* L)
 {
     auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, get_http_mt_key<T>::get());
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -880,43 +820,28 @@ static int socket_read_request(lua_State* L)
 
     auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, get_http_mt_key<T>::get());
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
     auto m = reinterpret_cast<std::shared_ptr<Request>*>(lua_touserdata(L, 2));
     if (!m || !lua_getmetatable(L, 2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &http_request_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     }
 
     if ((*m)->busy) {
-        push(L, std::errc::device_or_resource_busy);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::device_or_resource_busy, "arg", 2);
         return lua_error(L);
     }
 
@@ -980,43 +905,28 @@ static int socket_write_response(lua_State* L)
 
     auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, get_http_mt_key<T>::get());
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
     auto m = reinterpret_cast<std::shared_ptr<Response>*>(lua_touserdata(L, 2));
     if (!m || !lua_getmetatable(L, 2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &http_response_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     }
 
     if ((*m)->busy) {
-        push(L, std::errc::device_or_resource_busy);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::device_or_resource_busy, "arg", 2);
         return lua_error(L);
     }
 
@@ -1077,18 +987,12 @@ static int socket_write_response_continue(lua_State* L)
 
     auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, get_http_mt_key<T>::get());
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -1149,43 +1053,28 @@ static int socket_write_response_metadata(lua_State* L)
 
     auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, get_http_mt_key<T>::get());
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
     auto m = reinterpret_cast<std::shared_ptr<Response>*>(lua_touserdata(L, 2));
     if (!m || !lua_getmetatable(L, 2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &http_response_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     }
 
     if ((*m)->busy) {
-        push(L, std::errc::device_or_resource_busy);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::device_or_resource_busy, "arg", 2);
         return lua_error(L);
     }
 
@@ -1248,26 +1137,17 @@ static int socket_write(lua_State* L)
 
     auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, get_http_mt_key<T>::get());
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
     if (!lua_getmetatable(L, 2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     }
 
@@ -1280,10 +1160,7 @@ static int socket_write(lua_State* L)
     } else {
         rawgetp(L, LUA_REGISTRYINDEX, &http_response_mt_key);
         if (!lua_rawequal(L, -1, -3)) {
-            push(L, std::errc::invalid_argument);
-            lua_pushliteral(L, "arg");
-            lua_pushinteger(L, 2);
-            lua_rawset(L, -3);
+            push(L, std::errc::invalid_argument, "arg", 2);
             return lua_error(L);
         }
         res = reinterpret_cast<decltype(res)>(lua_touserdata(L, 2));
@@ -1291,10 +1168,7 @@ static int socket_write(lua_State* L)
     assert(req || res);
 
     if ((req && (*req)->busy) || (res && (*res)->busy)) {
-        push(L, std::errc::device_or_resource_busy);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::device_or_resource_busy, "arg", 2);
         return lua_error(L);
     }
 
@@ -1361,26 +1235,17 @@ static int socket_write_trailers(lua_State* L)
 
     auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, get_http_mt_key<T>::get());
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
     if (!lua_getmetatable(L, 2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     }
 
@@ -1393,10 +1258,7 @@ static int socket_write_trailers(lua_State* L)
     } else {
         rawgetp(L, LUA_REGISTRYINDEX, &http_response_mt_key);
         if (!lua_rawequal(L, -1, -3)) {
-            push(L, std::errc::invalid_argument);
-            lua_pushliteral(L, "arg");
-            lua_pushinteger(L, 2);
-            lua_rawset(L, -3);
+            push(L, std::errc::invalid_argument, "arg", 2);
             return lua_error(L);
         }
         res = reinterpret_cast<decltype(res)>(lua_touserdata(L, 2));
@@ -1404,10 +1266,7 @@ static int socket_write_trailers(lua_State* L)
     assert(req || res);
 
     if ((req && (*req)->busy) || (res && (*res)->busy)) {
-        push(L, std::errc::device_or_resource_busy);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::device_or_resource_busy, "arg", 2);
         return lua_error(L);
     }
 
@@ -1472,18 +1331,12 @@ static int socket_write_end_of_message(lua_State* L)
 
     auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, get_http_mt_key<T>::get());
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -1544,43 +1397,28 @@ static int socket_write_request(lua_State* L)
 
     auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, get_http_mt_key<T>::get());
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
     auto m = reinterpret_cast<std::shared_ptr<Request>*>(lua_touserdata(L, 2));
     if (!m || !lua_getmetatable(L, 2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &http_request_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     }
 
     if ((*m)->busy) {
-        push(L, std::errc::device_or_resource_busy);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::device_or_resource_busy, "arg", 2);
         return lua_error(L);
     }
 
@@ -1643,43 +1481,28 @@ static int socket_write_request_metadata(lua_State* L)
 
     auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, get_http_mt_key<T>::get());
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
     auto m = reinterpret_cast<std::shared_ptr<Request>*>(lua_touserdata(L, 2));
     if (!m || !lua_getmetatable(L, 2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &http_request_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     }
 
     if ((*m)->busy) {
-        push(L, std::errc::device_or_resource_busy);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::device_or_resource_busy, "arg", 2);
         return lua_error(L);
     }
 
@@ -1742,43 +1565,28 @@ static int socket_read_response(lua_State* L)
 
     auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, get_http_mt_key<T>::get());
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
     auto m = reinterpret_cast<std::shared_ptr<Response>*>(lua_touserdata(L, 2));
     if (!m || !lua_getmetatable(L, 2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &http_response_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     }
 
     if ((*m)->busy) {
-        push(L, std::errc::device_or_resource_busy);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::device_or_resource_busy, "arg", 2);
         return lua_error(L);
     }
 
@@ -1842,26 +1650,17 @@ static int socket_read_some(lua_State* L)
 
     auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, get_http_mt_key<T>::get());
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
     if (!lua_getmetatable(L, 2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     }
 
@@ -1874,10 +1673,7 @@ static int socket_read_some(lua_State* L)
     } else {
         rawgetp(L, LUA_REGISTRYINDEX, &http_response_mt_key);
         if (!lua_rawequal(L, -1, -3)) {
-            push(L, std::errc::invalid_argument);
-            lua_pushliteral(L, "arg");
-            lua_pushinteger(L, 2);
-            lua_rawset(L, -3);
+            push(L, std::errc::invalid_argument, "arg", 2);
             return lua_error(L);
         }
         res = reinterpret_cast<decltype(res)>(lua_touserdata(L, 2));
@@ -1885,10 +1681,7 @@ static int socket_read_some(lua_State* L)
     assert(req || res);
 
     if ((req && (*req)->busy) || (res && (*res)->busy)) {
-        push(L, std::errc::device_or_resource_busy);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::device_or_resource_busy, "arg", 2);
         return lua_error(L);
     }
 
@@ -2004,10 +1797,7 @@ inline int socket_is_write_response_native_stream(lua_State* L)
 {
     auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
     if (s->socket.read_state() == http::read_state::empty) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -2131,10 +1921,7 @@ static int socket_meta_index(lua_State* L)
                 socket_is_write_response_native_stream<T>)
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index);
-            lua_pushliteral(L, "index");
-            lua_pushvalue(L, 2);
-            lua_rawset(L, -3);
+            push(L, errc::bad_index, "index", 2);
             return lua_error(L);
         },
         tostringview(L, 2),

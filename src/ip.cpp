@@ -54,10 +54,7 @@ static int address_new(lua_State* L)
     }
     default:
         static_assert(std::is_trivially_destructible_v<asio::ip::address>);
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     return 1;
@@ -122,18 +119,12 @@ static int address_to_v6(lua_State* L)
 {
     auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
     if (!lua_rawequal(L, -1, -2) || !a->is_v4()) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -153,18 +144,12 @@ static int address_to_v4(lua_State* L)
 {
     auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
     if (!lua_rawequal(L, -1, -2) || !a->is_v6()) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -225,10 +210,7 @@ inline int address_is_link_local(lua_State* L)
 {
     auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a->is_v6()) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -240,10 +222,7 @@ inline int address_is_multicast_global(lua_State* L)
 {
     auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a->is_v6()) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -255,10 +234,7 @@ inline int address_is_multicast_link_local(lua_State* L)
 {
     auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a->is_v6()) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -270,10 +246,7 @@ inline int address_is_multicast_node_local(lua_State* L)
 {
     auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a->is_v6()) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -285,10 +258,7 @@ inline int address_is_multicast_org_local(lua_State* L)
 {
     auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a->is_v6()) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -300,10 +270,7 @@ inline int address_is_multicast_site_local(lua_State* L)
 {
     auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a->is_v6()) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -315,10 +282,7 @@ inline int address_is_site_local(lua_State* L)
 {
     auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a->is_v6()) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -330,10 +294,7 @@ inline int address_is_v4_mapped(lua_State* L)
 {
     auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a->is_v6()) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -345,10 +306,7 @@ inline int address_scope_id_get(lua_State* L)
 {
     auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a->is_v6()) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -408,10 +366,7 @@ static int address_meta_index(lua_State* L)
             hana::make_pair(BOOST_HANA_STRING("scope_id"), address_scope_id_get)
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index);
-            lua_pushliteral(L, "index");
-            lua_pushvalue(L, 2);
-            lua_rawset(L, -3);
+            push(L, errc::bad_index, "index", 2);
             return lua_error(L);
         },
         tostringview(L, 2),
@@ -425,10 +380,7 @@ inline int address_scope_id_set(lua_State* L)
 
     auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a->is_v6()) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -445,10 +397,7 @@ static int address_meta_newindex(lua_State* L)
             hana::make_pair(BOOST_HANA_STRING("scope_id"), address_scope_id_set)
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index);
-            lua_pushliteral(L, "index");
-            lua_pushvalue(L, 2);
-            lua_rawset(L, -3);
+            push(L, errc::bad_index, "index", 2);
             return lua_error(L);
         },
         tostringview(L, 2),
@@ -509,35 +458,23 @@ static int tcp_socket_connect(lua_State* L)
 
     auto s = reinterpret_cast<asio::ip::tcp::socket*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_socket_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
     auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 2));
     if (!a || !lua_getmetatable(L, 2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     }
 
@@ -599,10 +536,7 @@ static int tcp_socket_meta_index(lua_State* L)
             )
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index);
-            lua_pushliteral(L, "index");
-            lua_pushvalue(L, 2);
-            lua_rawset(L, -3);
+            push(L, errc::bad_index, "index", 2);
             return lua_error(L);
         },
         tostringview(L, 2),
@@ -631,18 +565,12 @@ static int tcp_acceptor_accept(lua_State* L)
     auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
         lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_acceptor_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -708,27 +636,18 @@ static int tcp_acceptor_listen(lua_State* L)
     auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
         lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_acceptor_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
     switch (lua_type(L, 2)) {
     default:
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     case LUA_TNIL: {
         boost::system::error_code ec;
@@ -757,43 +676,28 @@ static int tcp_acceptor_bind(lua_State* L)
     auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
         lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_acceptor_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
     switch (lua_type(L, 2)) {
     default:
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     case LUA_TUSERDATA: {
         auto addr = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 2));
         if (!addr || !lua_getmetatable(L, 2)) {
-            push(L, std::errc::invalid_argument);
-            lua_pushliteral(L, "arg");
-            lua_pushinteger(L, 2);
-            lua_rawset(L, -3);
+            push(L, std::errc::invalid_argument, "arg", 2);
             return lua_error(L);
         }
         rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
         if (!lua_rawequal(L, -1, -2)) {
-            push(L, std::errc::invalid_argument);
-            lua_pushliteral(L, "arg");
-            lua_pushinteger(L, 2);
-            lua_rawset(L, -3);
+            push(L, std::errc::invalid_argument, "arg", 2);
             return lua_error(L);
         }
 
@@ -828,43 +732,28 @@ static int tcp_acceptor_open(lua_State* L)
     auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
         lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_acceptor_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
     switch (lua_type(L, 2)) {
     default:
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     case LUA_TUSERDATA: {
         auto addr = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 2));
         if (!addr || !lua_getmetatable(L, 2)) {
-            push(L, std::errc::invalid_argument);
-            lua_pushliteral(L, "arg");
-            lua_pushinteger(L, 2);
-            lua_rawset(L, -3);
+            push(L, std::errc::invalid_argument, "arg", 2);
             return lua_error(L);
         }
         rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
         if (!lua_rawequal(L, -1, -2)) {
-            push(L, std::errc::invalid_argument);
-            lua_pushliteral(L, "arg");
-            lua_pushinteger(L, 2);
-            lua_rawset(L, -3);
+            push(L, std::errc::invalid_argument, "arg", 2);
             return lua_error(L);
         }
 
@@ -905,10 +794,7 @@ static int tcp_acceptor_open(lua_State* L)
                 )
             ),
             [&](std::string_view /*key*/) -> int {
-                push(L, std::errc::invalid_argument);
-                lua_pushliteral(L, "arg");
-                lua_pushvalue(L, 2);
-                lua_rawset(L, -3);
+                push(L, std::errc::invalid_argument, "arg", 2);
                 return lua_error(L);
             },
             tostringview(L, 2)
@@ -921,18 +807,12 @@ static int tcp_acceptor_close(lua_State* L)
     auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
         lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_acceptor_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -953,18 +833,12 @@ static int tcp_acceptor_set_option(lua_State* L)
     auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
         lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_acceptor_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -1015,18 +889,12 @@ static int tcp_acceptor_get_option(lua_State* L)
     auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
         lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_acceptor_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -1073,18 +941,12 @@ static int tcp_acceptor_cancel(lua_State* L)
     auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
         lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_acceptor_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -1203,10 +1065,7 @@ static int tcp_acceptor_meta_index(lua_State* L)
                 BOOST_HANA_STRING("local_port"), tcp_acceptor_local_port)
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index);
-            lua_pushliteral(L, "index");
-            lua_pushvalue(L, 2);
-            lua_rawset(L, -3);
+            push(L, errc::bad_index, "index", 2);
             return lua_error(L);
         },
         tostringview(L, 2),
@@ -1239,18 +1098,12 @@ static int tcp_resolver_resolve(lua_State* L)
     auto resolver = reinterpret_cast<asio::ip::tcp::resolver*>(
         lua_touserdata(L, 1));
     if (!resolver || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_resolver_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -1258,10 +1111,7 @@ static int tcp_resolver_resolve(lua_State* L)
     std::int32_t flags;
     switch (lua_type(L, 4)) {
     default:
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 4);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 4);
         return lua_error(L);
     case LUA_TNIL:
         flags = 0;
@@ -1371,18 +1221,12 @@ static int tcp_resolver_cancel(lua_State* L)
     auto resolver = reinterpret_cast<asio::ip::tcp::resolver*>(
         lua_touserdata(L, 1));
     if (!resolver || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_resolver_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -1410,10 +1254,7 @@ static int tcp_resolver_meta_index(lua_State* L)
             )
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index);
-            lua_pushliteral(L, "index");
-            lua_pushvalue(L, 2);
-            lua_rawset(L, -3);
+            push(L, errc::bad_index, "index", 2);
             return lua_error(L);
         },
         tostringview(L, 2),

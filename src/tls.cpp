@@ -65,10 +65,7 @@ static int tls_ctx_new(lua_State* L)
         tostringview(L, 1)
     );
     if (!method) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushvalue(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     try {
@@ -93,18 +90,12 @@ static int tls_socket_new(lua_State* L)
 
     auto tcp_s = reinterpret_cast<asio::ip::tcp::socket*>(lua_touserdata(L, 1));
     if (!tcp_s || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_socket_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -112,18 +103,12 @@ static int tls_socket_new(lua_State* L)
         lua_touserdata(L, 2)
     );
     if (!c || !lua_getmetatable(L, 2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &tls_ctx_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     }
 
@@ -150,18 +135,12 @@ static int socket_handshake(lua_State* L)
 
     auto s = reinterpret_cast<TlsSocket*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &tls_socket_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -227,10 +206,7 @@ static int tls_socket_meta_index(lua_State* L)
             )
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index);
-            lua_pushliteral(L, "index");
-            lua_pushvalue(L, 2);
-            lua_rawset(L, -3);
+            push(L, errc::bad_index, "index", 2);
             return lua_error(L);
         },
         tostringview(L, 2),

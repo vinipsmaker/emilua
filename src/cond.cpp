@@ -26,36 +26,24 @@ static int cond_wait(lua_State* L)
     auto cond_handle = reinterpret_cast<struct cond_handle*>(
         lua_touserdata(L, 1));
     if (!cond_handle || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &cond_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
     auto mutex_handle = reinterpret_cast<struct mutex_handle*>(
         lua_touserdata(L, 2));
     if (!mutex_handle || !lua_getmetatable(L, 2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &mutex_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     }
 
@@ -122,18 +110,12 @@ static int cond_notify_one(lua_State* L)
 {
     auto handle = reinterpret_cast<cond_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &cond_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -153,18 +135,12 @@ static int cond_notify_all(lua_State* L)
 {
     auto handle = reinterpret_cast<cond_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
     rawgetp(L, LUA_REGISTRYINDEX, &cond_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument);
-        lua_pushliteral(L, "arg");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
@@ -205,10 +181,7 @@ static int cond_mt_index(lua_State* L)
             )
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index);
-            lua_pushliteral(L, "index");
-            lua_pushvalue(L, 2);
-            lua_rawset(L, -3);
+            push(L, errc::bad_index, "index", 2);
             return lua_error(L);
         },
         tostringview(L, 2),
@@ -247,10 +220,7 @@ void init_cond_module(lua_State* L)
                     lua_pushcfunction(L, cond_new);
                     return 1;
                 } else {
-                    push(L, errc::bad_index);
-                    lua_pushliteral(L, "index");
-                    lua_pushvalue(L, 2);
-                    lua_rawset(L, -3);
+                    push(L, errc::bad_index, "index", 2);
                     return lua_error(L);
                 }
             });

@@ -624,10 +624,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
                     );
                     return 1;
                 } else {
-                    push(L, errc::bad_index);
-                    lua_pushliteral(L, "index");
-                    lua_pushvalue(L, 2);
-                    lua_rawset(L, -3);
+                    push(L, errc::bad_index, "index", 2);
                     return lua_error(L);
                 }
             }
