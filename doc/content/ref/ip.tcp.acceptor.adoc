@@ -116,6 +116,6 @@ Whether the acceptor is open.
 
 The local address endpoint of the acceptor.
 
-=== `local_port: ip.address`
+=== `local_port: number`
 
 The local port endpoint of the acceptor.
