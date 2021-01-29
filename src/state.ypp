@@ -377,14 +377,6 @@ static int require(lua_State* L)
                         it = service.modules_cache_registry
                             .emplace(module_path, std::move(contents))
                             .first;
-                    } catch (const std::ios_base::failure&) {
-                        // Alternatively, we could push `e.code()`, but a
-                        // generic "iostream error" message doesn't convey any
-                        // error reason either. Maybe when implementations start
-                        // to include error codes other than
-                        // std::io_errc::stream we can revisit this decision.
-                        push(L, errc::failed_to_load_module);
-                        return lua_error(L);
                     } catch (const std::system_error& e) {
                         push(L, e.code());
                         return lua_error(L);
@@ -863,28 +855,26 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
         std::lock_guard guard{service.modules_cache_registry_mtx};
         auto it = service.modules_cache_registry.find(entry_point);
         if (it == service.modules_cache_registry.end()) {
-            try {
-                std::string contents;
-                std::ifstream in{entry_point, std::ios::in | std::ios::binary};
-                in.exceptions(std::ios_base::badbit | std::ios_base::failbit |
-                              std::ios_base::eofbit);
-                {
-                    char buf[1];
-                    in.read(buf, 1);
-                }
-                in.seekg(0, std::ios::end);
-                contents.resize(in.tellg());
-                in.seekg(0, std::ios::beg);
-                in.read(&contents[0], contents.size());
-                in.close();
-
-                // TODO: store bytecode instead source
-                it = service.modules_cache_registry
-                    .emplace(entry_point, std::move(contents))
-                    .first;
-            } catch (const std::ios_base::failure&) {
-                throw exception{errc::failed_to_load_module};
+            // Throwing block {{{
+            std::string contents;
+            std::ifstream in{entry_point, std::ios::in | std::ios::binary};
+            in.exceptions(std::ios_base::badbit | std::ios_base::failbit |
+                          std::ios_base::eofbit);
+            {
+                char buf[1];
+                in.read(buf, 1);
             }
+            in.seekg(0, std::ios::end);
+            contents.resize(in.tellg());
+            in.seekg(0, std::ios::beg);
+            in.read(&contents[0], contents.size());
+            in.close();
+
+            // TODO: store bytecode instead source
+            it = service.modules_cache_registry
+                .emplace(entry_point, std::move(contents))
+                .first;
+            // }}}
         }
         module_source = it->second;
     }

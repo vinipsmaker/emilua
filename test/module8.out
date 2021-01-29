@@ -1,4 +1,4 @@
-Main fiber from VM 0x1 panicked: 'Error when opening/loading module file (maybe invalid lua syntax)'
+Main fiber from VM 0x1 panicked: 'Input/output error'
 stack traceback:
 	[string "?"]: in function 'require'
 	input.lua:3: in main chunk

@@ -552,7 +552,6 @@ enum class errc {
     root_cannot_import_parent,
     cyclic_import,
     leaf_cannot_import_child,
-    failed_to_load_module,
     only_main_fiber_may_import,
     bad_root_context,
     bad_index,

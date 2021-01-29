@@ -1,0 +1,7 @@
+= CHANGELOG
+
+== 0.2
+
+* Remove `failed_to_load_module` error code. Now you should see `"iostream
+  error"` or other more informative error reasons upon a failed module load.
+* Numeric values for error codes changed.

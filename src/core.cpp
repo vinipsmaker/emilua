@@ -534,9 +534,6 @@ std::string category_impl::message(int value) const noexcept
             " current module (and it is partially loaded already)";
     case static_cast<int>(errc::leaf_cannot_import_child):
         return "A leaf module cannot import child modules";
-    case static_cast<int>(errc::failed_to_load_module):
-        return "Error when opening/loading module file (maybe invalid lua"
-            " syntax)";
     case static_cast<int>(errc::only_main_fiber_may_import):
         return "You can only import modules from the main fiber";
     case static_cast<int>(errc::bad_root_context):
