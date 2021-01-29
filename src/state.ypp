@@ -363,6 +363,10 @@ static int require(lua_State* L)
                         in.exceptions(std::ios_base::badbit |
                                       std::ios_base::failbit |
                                       std::ios_base::eofbit);
+                        {
+                            char buf[1];
+                            in.read(buf, 1);
+                        }
                         in.seekg(0, std::ios::end);
                         contents.resize(in.tellg());
                         in.seekg(0, std::ios::beg);
@@ -864,6 +868,10 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
                 std::ifstream in{entry_point, std::ios::in | std::ios::binary};
                 in.exceptions(std::ios_base::badbit | std::ios_base::failbit |
                               std::ios_base::eofbit);
+                {
+                    char buf[1];
+                    in.read(buf, 1);
+                }
                 in.seekg(0, std::ios::end);
                 contents.resize(in.tellg());
                 in.seekg(0, std::ios::beg);
