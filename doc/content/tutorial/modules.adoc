@@ -31,8 +31,8 @@ The things you need to know to get started:
   once. The result is cached per running VM instance.
 * Every file you write is a module.
 * Global names will be exported for modules that import your module.
-* Modules can also be directories. In this case, a file named `main.lua` will be
-  searched and imported in that directory. `main.lua` can import any other
+* Modules can also be directories. In this case, a file named `init.lua` will be
+  searched and imported in that directory. `init.lua` can import any other
   module inside its directory.
 * Cyclic references are unsupported and will raise an error on import.
 * You can use the syntax `require('../foobar')` to import a sibling module named
@@ -40,7 +40,7 @@ The things you need to know to get started:
 
 === Small example
 
-File `src/main.lua`:
+File `src/init.lua`:
 
 [source,lua]
 ----
@@ -107,35 +107,35 @@ A typical project structure may look as follows:
 
 ----
 src
-├── main.lua
+├── init.lua
 ├── my_module
 │   ├── error.lua
-│   ├── main.lua
+│   ├── init.lua
 │   ├── util.lua
 │   └── worker.lua
 └── util.lua
 ----
 
 In this synthetic example, there is the project scope whose root begins at
-`src/main.lua` — the root module.
+`src/init.lua` — the root module.
 
 In the root module, it is forbidden to use `require('../')` statements as there
-is no parent module. Any name the `src/main.lua` file ``require()``s will be
-searched on the `src` directory. For instance, if `src/main.lua` contains
+is no parent module. Any name the `src/init.lua` file ``require()``s will be
+searched on the `src` directory. For instance, if `src/init.lua` contains
 `require('util')`, emilua will use the `src/util.lua` file to define the
 importing module.
 
 But modules may grow and can be further split into files within a directory by
-itself. That was the case for the `my_module`. The `main.lua` file in that
+itself. That was the case for the `my_module`. The `init.lua` file in that
 directory will be searched for, and, once found, evaluated. If
-`src/my_module/main.lua` contains more `require()` calls, files within that
+`src/my_module/init.lua` contains more `require()` calls, files within that
 directory (`src/my_module`) will be searched for.
 
-For instance, if `src/my_module/main.lua` contains `require('worker')`, the file
+For instance, if `src/my_module/init.lua` contains `require('worker')`, the file
 `src/my_module/worker.lua` will be searched for. Any file (except for
-`main.lua`) within `src/my_module` can import other files from the same
+`init.lua`) within `src/my_module` can import other files from the same
 directory (i.e. their siblings) using the `require('../')` form
-(`src/my_module/main.lua` siblings live in the directory above, `src`). For
+(`src/my_module/init.lua` siblings live in the directory above, `src`). For
 instance, `src/my_module/worker.lua` and `src/my_module/util.lua` may both want
 to use the same error type (possibly private) to that module —
 `src/my_module/error.lua`. In this case, all they need to contain is the call

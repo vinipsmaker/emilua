@@ -314,9 +314,9 @@ static int require(lua_State* L)
                                (std::string{module_id} + ".lua"))) {
                     module_path /= std::string{module_id} + ".lua";
                     module_is_leaf = true;
-                } else if (fs::exists(module_path / module_id / "main.lua")) {
+                } else if (fs::exists(module_path / module_id / "init.lua")) {
                     module_path /= module_id;
-                    module_path /= "main.lua";
+                    module_path /= "init.lua";
                     module_is_leaf = false;
                 } else {
                     throw std::system_error{errc::module_not_found};
