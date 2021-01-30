@@ -9,6 +9,8 @@
 
 #include <boost/hana.hpp>
 
+#include <boost/http/algorithm/query.hpp>
+
 #include <emilua/dispatch_table.hpp>
 #include <emilua/fiber.hpp>
 #include <emilua/http.hpp>
@@ -97,6 +99,22 @@ static int request_new(lua_State* L)
     rawgetp(L, LUA_REGISTRYINDEX, &http_request_mt_key);
     setmetatable(L, -2);
     new (r) std::shared_ptr<Request>{std::make_shared<Request>()};
+    return 1;
+}
+
+static int request_continue_required(lua_State* L)
+{
+    auto m = reinterpret_cast<std::shared_ptr<Request>*>(lua_touserdata(L, 1));
+    if (!m || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &http_request_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    lua_pushboolean(L, request_continue_required(**m));
     return 1;
 }
 
@@ -1937,10 +1955,14 @@ void init_http(lua_State* L)
 
         lua_pushliteral(L, "request");
         {
-            lua_createtable(L, /*narr=*/0, /*nrec=*/1);
+            lua_createtable(L, /*narr=*/0, /*nrec=*/2);
 
             lua_pushliteral(L, "new");
             lua_pushcfunction(L, request_new);
+            lua_rawset(L, -3);
+
+            lua_pushliteral(L, "continue_required");
+            lua_pushcfunction(L, request_continue_required);
             lua_rawset(L, -3);
         }
         lua_rawset(L, -3);

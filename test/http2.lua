@@ -12,7 +12,8 @@ local f = spawn(function()
     req.target = '/foobar'
     req.headers = {
         host = '127.0.0.1',
-        ['x-foobar'] = 'foobar2'
+        ['x-foobar'] = 'foobar2',
+        expect = '100-continue'
     }
     sock:write_request(req)
 
@@ -33,7 +34,9 @@ end)
 local sock, req, res = a, http.request.new(), http.response.new()
 
 sock:read_request(req)
-sock:write_response_continue()
+if http.request.continue_required(req) then
+    sock:write_response_continue()
+end
 while sock.read_state ~= 'finished' do
     sock:read_some(req)
 end

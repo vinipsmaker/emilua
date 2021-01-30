@@ -30,6 +30,9 @@ end)
 local sock, req, res = a, http.request.new(), http.response.new()
 
 sock:read_request(req)
+if http.request.continue_required(req) then
+    error('query algorithm is drunk')
+end
 while sock.read_state ~= 'finished' do
     sock:read_some(req)
 end

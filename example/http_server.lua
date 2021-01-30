@@ -35,7 +35,9 @@ while true do
 
         while true do
             sock:read_request(req)
-            sock:write_response_continue()
+            if http.request.continue_required(req) then
+                sock:write_response_continue()
+            end
 
             print(req.method .. ' ' .. req.target)
             print_headers(req.headers)
