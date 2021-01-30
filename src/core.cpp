@@ -31,7 +31,7 @@ char error_category_mt_key;
 
 vm_context::vm_context(emilua::app_context& appctx,
                        asio::io_context::strand strand)
-    : app_context(appctx)
+    : appctx(appctx)
     , strand_(std::move(strand))
     , valid_(true)
     , lua_errmem(false)

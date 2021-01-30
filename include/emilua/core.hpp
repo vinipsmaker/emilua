@@ -397,7 +397,7 @@ public:
         boost::intrusive::constant_time_size<false>
     > pending_operations;
 
-    app_context& app_context;
+    app_context& appctx;
 
     // can be empty
     std::weak_ptr<asio::io_context> ioctxref;

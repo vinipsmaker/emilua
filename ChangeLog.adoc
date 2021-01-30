@@ -2,6 +2,7 @@
 
 == 0.2
 
+* Fix build when compiler is GCC.
 * Refactor module system. The new module system is incompatible with the
   previous one. Please refer to the documentation.
 * Remove `failed_to_load_module` error code. Now you should see `"iostream

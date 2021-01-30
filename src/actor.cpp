@@ -832,12 +832,12 @@ static int spawn_vm(lua_State* L)
 
         {
             std::unique_lock<std::mutex> lk{
-                vm_ctx.app_context.extra_threads_count_mtx};
+                vm_ctx.appctx.extra_threads_count_mtx};
             // must happen before we return from this function (i.e. before the
             // control returns to the runtime)
-            ++vm_ctx.app_context.extra_threads_count;
+            ++vm_ctx.appctx.extra_threads_count;
         }
-        std::thread{[&appctx=vm_ctx.app_context,new_ioctx]() mutable {
+        std::thread{[&appctx=vm_ctx.appctx,new_ioctx]() mutable {
             for (;;) {
                 try {
                     new_ioctx->run();
@@ -859,8 +859,7 @@ static int spawn_vm(lua_State* L)
     try {
         auto new_vm_ctx = emilua::make_vm(
             new_ioctx ? *new_ioctx : vm_ctx.strand().context(),
-            vm_ctx.app_context, dummy, module,
-            emilua::ContextType::worker);
+            vm_ctx.appctx, dummy, module, emilua::ContextType::worker);
         new_vm_ctx->ioctxref = new_ioctx;
 
         auto buf = reinterpret_cast<actor_address*>(
@@ -898,16 +897,15 @@ static int spawn_ctx_threads(lua_State* L)
         return 0;
 
     {
-        std::unique_lock<std::mutex> lk{
-            vm_ctx.app_context.extra_threads_count_mtx};
+        std::unique_lock<std::mutex> lk{vm_ctx.appctx.extra_threads_count_mtx};
         // must happen before we return from this function (i.e. before the
         // control returns to the runtime)
-        vm_ctx.app_context.extra_threads_count += nthrds;
+        vm_ctx.appctx.extra_threads_count += nthrds;
     }
     for (;nthrds > 0 ; --nthrds) {
         std::thread{
             [
-                &appctx=vm_ctx.app_context,
+                &appctx=vm_ctx.appctx,
                 &ioctx=vm_ctx.strand().context(),
                 guard=vm_ctx.ioctxref.lock()
             ]() mutable {

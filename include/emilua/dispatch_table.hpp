@@ -28,6 +28,8 @@
 #include <boost/hana/set.hpp>
 #include <boost/hana/zip.hpp>
 
+#include <boost/config.hpp>
+
 #include <string_view>
 
 namespace emilua {
@@ -208,7 +210,13 @@ auto dispatch(Xs xs, Fallback fallback, std::string_view key, Args&&... args)
     -> decltype(fallback(key, std::forward<Args>(args)...))
 {
     std::conditional_t<
+#ifdef BOOST_CLANG
+        // TODO: why is GCC complaining about "`xs` is not a constant
+        // expression" here?
         detail::all_sizes_differ(xs) || detail::all_first_letters_differ(xs),
+#else
+        true,
+#endif
         detail::ConstantHash,
         detail::Hash<decltype(hana::transform(xs, hana::first))>
     > hash;
