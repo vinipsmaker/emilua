@@ -82,6 +82,10 @@ This will download the extra dependencies:
 * CLI11.
 * Trial.Protocol.
 
+== Install
+
+* https://aur.archlinux.org/packages/emilua/[ArchLinux].
+
 == BUILD
 
 [source,bash]
