@@ -1,3 +1,3 @@
 -- cyclic_import
 
-require('module7')
+require('./module7')

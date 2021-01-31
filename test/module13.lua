@@ -4,5 +4,5 @@
 local println = require('println')
 
 foo = 'foo'
-require('module13_foo')
+require('./module13_foo')
 println(foo)

@@ -1,1 +1,1 @@
-require('module4_bar')
+require('./module4_bar')

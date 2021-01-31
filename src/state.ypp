@@ -70,8 +70,16 @@ static int mark_module_as_loaded(lua_State* L)
 
 static int require(lua_State* L)
 {
+    // std::string_view::starts_with() only appeared in C++20
+    static constexpr auto starts_with = [](
+        std::string_view base, std::string_view prefix) {
+        base = base.substr(0, prefix.size());
+        return base == prefix;
+    };
+
     auto vm_ctx = get_vm_context(L).shared_from_this();
     luaL_checktype(L, 1, LUA_TSTRING);
+    auto module_id = tostringview(L, 1);
 
     rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
     lua_pushthread(vm_ctx->current_fiber());
@@ -89,10 +97,8 @@ static int require(lua_State* L)
     lua_Integer lua_context;
     switch (lua_tointeger(L, CTXIDX)) {
     case ContextType::test:
-        // TODO: when support for external crates is added, this _CONTEXT
-        // propagation should be restricted to modules provided by the package
-        // itself
-        lua_context = ContextType::test;
+        lua_context = starts_with(module_id, ".") ?
+            ContextType::test : ContextType::regular_context;
         break;
     default:
         lua_context = ContextType::regular_context;
@@ -105,423 +111,410 @@ static int require(lua_State* L)
 
     parentpat = [.]{2}[/];
     localpat = [.][/];
+    modseppat = [/];
     modnamepat = [a-zA-Z_][a-zA-Z0-9_]*;
     */
-    const char* YYCURSOR = lua_tostring(L, 1);
-    const char* YYMARKER;
-    const char* begin;
-    int nparents = 0;
- loop:
-    begin = YYCURSOR;
+    if (starts_with(module_id, ".")) {
+        if (starts_with(module_id, "./"))
+            module_id.remove_prefix(2);
+
+        const char* YYCURSOR = module_id.data();
+        const char* YYMARKER;
+        const char* begin;
+        int nparents = 0;
+    loop:
+        begin = YYCURSOR;
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wgnu-case-range"
-    %{
-    * {
-        push(L, errc::invalid_module_name);
-        return lua_error(L);
-    }
-    {parentpat} {
-        ++nparents;
-        goto loop;
-    }
-    {modnamepat} {
-        if (*YYCURSOR != '\0') {
-            push(L, errc::invalid_module_name);
+        %{
+        * {
+            push(L, errc::invalid_module_name, "module", tostringview(L, 1));
             return lua_error(L);
         }
-        goto end;
-    }
-    %}
+        {parentpat} {
+            ++nparents;
+            goto loop;
+        }
+        {modnamepat} {
+            if (*YYCURSOR != '\0') {
+                push(L, errc::invalid_module_name,
+                     "module", tostringview(L, 1));
+                return lua_error(L);
+            }
+            goto end;
+        }
+        %}
 #pragma GCC diagnostic pop
- end:
+    end:
 
-    std::string_view module_id(begin, YYCURSOR - begin);
+        module_id = std::string_view(begin, YYCURSOR - begin);
 
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING(LUA_FFILIBNAME),
-                [&]() -> int {
-                    if (nparents != 0) {
-                        push(L, errc::module_not_found);
-                        return lua_error(L);
-                    }
+        if (nparents == 0 && is_leaf) {
+            push(L, errc::leaf_cannot_import_child);
+            return lua_error(L);
+        }
 
-                    lua_pushboolean(L, 1);
+        // Our detection to this error is very limited, but this is not a
+        // reason to worry.
+        int parent_stacksize = lua_objlen(L, STACKIDX);
+        if (nparents >= parent_stacksize) {
+            push(L, errc::root_cannot_import_parent);
+            return lua_error(L);
+        }
 
-                    rawgetp(L, LUA_REGISTRYINDEX, &ffi_module_key);
-                    if (lua_type(L, -1) == LUA_TNIL) {
-                        lua_pop(L, 1);
-                        lua_pushcfunction(L, luaopen_ffi);
-                        lua_call(L, 0, 1);
-                        lua_pushlightuserdata(L, &ffi_module_key);
-                        lua_pushvalue(L, -2);
-                        lua_rawset(L, LUA_REGISTRYINDEX);
-                    }
-
-                    return 2;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("sleep_for"),
-                [&]() -> int {
-                    if (nparents != 0) {
-                        push(L, errc::module_not_found);
-                        return lua_error(L);
-                    }
-                    lua_pushboolean(L, 1);
-                    rawgetp(L, LUA_REGISTRYINDEX, &sleep_for_key);
-                    return 2;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("println"),
-                [&]() -> int {
-                    if (nparents != 0) {
-                        push(L, errc::module_not_found);
-                        return lua_error(L);
-                    }
-                    lua_pushboolean(L, 1);
-                    lua_pushcfunction(L, println);
-                    return 2;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("mutex"),
-                [&]() -> int {
-                    if (nparents != 0) {
-                        push(L, errc::module_not_found);
-                        return lua_error(L);
-                    }
-                    lua_pushboolean(L, 1);
-                    rawgetp(L, LUA_REGISTRYINDEX, &mutex_key);
-                    return 2;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("cond"),
-                [&]() -> int {
-                    if (nparents != 0) {
-                        push(L, errc::module_not_found);
-                        return lua_error(L);
-                    }
-                    lua_pushboolean(L, 1);
-                    rawgetp(L, LUA_REGISTRYINDEX, &cond_key);
-                    return 2;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("inbox"),
-                [&]() -> int {
-                    if (nparents != 0) {
-                        push(L, errc::module_not_found);
-                        return lua_error(L);
-                    }
-                    lua_pushboolean(L, 1);
-                    rawgetp(L, LUA_REGISTRYINDEX, &inbox_key);
-                    vm_ctx->inbox.imported = true;
-                    return 2;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("json"),
-                [&]() -> int {
-                    if (nparents != 0) {
-                        push(L, errc::module_not_found);
-                        return lua_error(L);
-                    }
-                    lua_pushboolean(L, 1);
-                    rawgetp(L, LUA_REGISTRYINDEX, &json_key);
-                    return 2;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("steady_timer"),
-                [&]() -> int {
-                    if (nparents != 0) {
-                        push(L, errc::module_not_found);
-                        return lua_error(L);
-                    }
-                    lua_pushboolean(L, 1);
-                    rawgetp(L, LUA_REGISTRYINDEX, &timer_key);
-                    return 2;
-                }
-            ),
-#if ENABLE_HTTP
-            hana::make_pair(
-                BOOST_HANA_STRING("http"),
-                [&]() -> int {
-                    if (nparents != 0) {
-                        push(L, errc::module_not_found);
-                        return lua_error(L);
-                    }
-                    lua_pushboolean(L, 1);
-                    rawgetp(L, LUA_REGISTRYINDEX, &http_key);
-                    return 2;
-                }
-            ),
-#endif // ENABLE_HTTP
-            hana::make_pair(
-                BOOST_HANA_STRING("ip"),
-                [&]() -> int {
-                    if (nparents != 0) {
-                        push(L, errc::module_not_found);
-                        return lua_error(L);
-                    }
-                    lua_pushboolean(L, 1);
-                    rawgetp(L, LUA_REGISTRYINDEX, &ip_key);
-                    return 2;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("tls"),
-                [&]() -> int {
-                    if (nparents != 0) {
-                        push(L, errc::module_not_found);
-                        return lua_error(L);
-                    }
-                    lua_pushboolean(L, 1);
-                    rawgetp(L, LUA_REGISTRYINDEX, &tls_key);
-                    return 2;
-                }
-            )
-        ),
-        [&](std::string_view /*key*/) -> int {
-            if (nparents == 0 && is_leaf) {
-                push(L, errc::leaf_cannot_import_child);
-                return lua_error(L);
-            }
-
-            // Our detection to this error is very limited, but this is not a
-            // reason to worry.
-            int parent_stacksize = lua_objlen(L, STACKIDX);
-            if (nparents >= parent_stacksize) {
-                push(L, errc::root_cannot_import_parent);
-                return lua_error(L);
-            }
-
-            lua_rawgeti(L, STACKIDX, parent_stacksize);
-            fs::path module_path{tostringview(L), fs::path::native_format};
-            lua_pop(L, 1);
+        lua_rawgeti(L, STACKIDX, parent_stacksize);
+        fs::path module_path{tostringview(L), fs::path::native_format};
+        lua_pop(L, 1);
+        module_path = module_path.parent_path();
+        for (int i = (is_leaf ? 1u : 0u) ; i != nparents ; ++i) {
             module_path = module_path.parent_path();
-            for (int i = (is_leaf ? 1u : 0u) ; i != nparents ; ++i) {
-                module_path = module_path.parent_path();
-            }
+        }
 
-            bool module_is_leaf;
-            try {
-                if (fs::exists(module_path /
-                               (std::string{module_id} + ".lua"))) {
-                    module_path /= std::string{module_id} + ".lua";
-                    module_is_leaf = true;
-                } else if (fs::exists(module_path / module_id / "init.lua")) {
-                    module_path /= module_id;
-                    module_path /= "init.lua";
-                    module_is_leaf = false;
-                } else {
-                    throw std::system_error{errc::module_not_found};
-                }
-            } catch (const std::system_error& e) {
-                push(L, e.code());
+        bool module_is_leaf;
+        try {
+            if (fs::exists(module_path / (std::string{module_id} + ".lua"))) {
+                module_path /= std::string{module_id} + ".lua";
+                module_is_leaf = true;
+            } else if (fs::exists(module_path / module_id / "init.lua")) {
+                module_path /= module_id;
+                module_path /= "init.lua";
+                module_is_leaf = false;
+            } else {
+                throw std::system_error{errc::module_not_found};
+            }
+        } catch (const std::system_error& e) {
+            push(L, e.code(), "module", tostringview(L, 1));
+            return lua_error(L);
+        }
+
+        {
+            rawgetp(L, LUA_REGISTRYINDEX, &loaded_modules_key);
+            push(L, module_path);
+            lua_rawget(L, -2);
+            if (!lua_isnil(L, -1)) {
+                lua_pushboolean(L, 1);
+                lua_insert(L, -2);
+                return 2;
+            }
+            lua_pop(L, 2);
+        }
+
+        push(L, module_path);
+        for (int i = 1, len = parent_stacksize ; i <= len ; ++i) {
+            lua_rawgeti(L, STACKIDX - 1, i);
+            if (lua_rawequal(L, -1, -2)) {
+                push(L, errc::cyclic_import);
                 return lua_error(L);
             }
+            lua_pop(L, 1);
+        }
+        lua_pop(L, 1);
 
-            {
-                rawgetp(L, LUA_REGISTRYINDEX, &loaded_modules_key);
-                push(L, module_path);
-                lua_rawget(L, -2);
-                if (!lua_isnil(L, -1)) {
-                    lua_pushboolean(L, 1);
-                    lua_insert(L, -2);
-                    return 2;
-                }
-                lua_pop(L, 2);
-            }
+        std::optional<std::reference_wrapper<std::string>> module_source;
+        {
+            auto& service = vm_ctx->appctx;
+            [[maybe_unused]]
+            std::lock_guard guard{service.modules_cache_registry_mtx};
+            auto it = service.modules_cache_registry.find(module_path);
+            if (it == service.modules_cache_registry.end()) {
+                try {
+                    std::string contents;
+                    std::ifstream in{module_path,
+                                     std::ios::in | std::ios::binary};
+                    in.exceptions(std::ios_base::badbit |
+                                  std::ios_base::failbit |
+                                  std::ios_base::eofbit);
+                    {
+                        char buf[1];
+                        in.read(buf, 1);
+                    }
+                    in.seekg(0, std::ios::end);
+                    contents.resize(in.tellg());
+                    in.seekg(0, std::ios::beg);
+                    in.read(&contents[0], contents.size());
+                    in.close();
 
-            push(L, module_path);
-            for (int i = 1, len = parent_stacksize ; i <= len ; ++i) {
-                lua_rawgeti(L, STACKIDX - 1, i);
-                if (lua_rawequal(L, -1, -2)) {
-                    push(L, errc::cyclic_import);
+                    // TODO: store bytecode instead source
+                    it = service.modules_cache_registry
+                        .emplace(module_path, std::move(contents))
+                        .first;
+                } catch (const std::system_error& e) {
+                    push(L, e.code());
+                    return lua_error(L);
+                } catch (const std::exception& e) {
+                    lua_pushstring(L, e.what());
                     return lua_error(L);
                 }
-                lua_pop(L, 1);
             }
-            lua_pop(L, 1);
+            module_source = it->second;
+        }
+        assert(module_source);
 
-            std::optional<std::reference_wrapper<std::string>> module_source;
-            {
-                auto& service = vm_ctx->appctx;
-                [[maybe_unused]]
-                std::lock_guard guard{service.modules_cache_registry_mtx};
-                auto it = service.modules_cache_registry.find(module_path);
-                if (it == service.modules_cache_registry.end()) {
-                    try {
-                        std::string contents;
-                        std::ifstream in{module_path,
-                                         std::ios::in | std::ios::binary};
-                        in.exceptions(std::ios_base::badbit |
-                                      std::ios_base::failbit |
-                                      std::ios_base::eofbit);
-                        {
-                            char buf[1];
-                            in.read(buf, 1);
-                        }
-                        in.seekg(0, std::ios::end);
-                        contents.resize(in.tellg());
-                        in.seekg(0, std::ios::beg);
-                        in.read(&contents[0], contents.size());
-                        in.close();
+        lua_State* module_fiber = lua_newthread(L);
 
-                        // TODO: store bytecode instead source
-                        it = service.modules_cache_registry
-                            .emplace(module_path, std::move(contents))
-                            .first;
-                    } catch (const std::system_error& e) {
-                        push(L, e.code());
-                        return lua_error(L);
-                    } catch (const std::exception& e) {
-                        lua_pushstring(L, e.what());
-                        return lua_error(L);
-                    }
-                }
-                module_source = it->second;
-            }
-            assert(module_source);
+        rawgetp(L, LUA_REGISTRYINDEX, &module_start_fn_key);
+        lua_pushcfunction(L, root_scope);
+        lua_pushcfunction(L, terminate_vm_with_cleanup_error);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_pcall_key);
+        lua_pushcfunction(L, lua_error);
+        lua_pushcfunction(L, mark_module_as_loaded);
 
-            lua_State* module_fiber = lua_newthread(L);
+        std::string name{'@'};
+        name += module_path;
+        switch (int res = luaL_loadbuffer(
+            L, module_source->get().data(), module_source->get().size(),
+            name.data()
+        ) ; res) {
+        case 0:
+            break;
+        case LUA_ERRMEM:
+            push(L, std::errc::not_enough_memory);
+        default:
+            return lua_error(L);
+        }
 
-            rawgetp(L, LUA_REGISTRYINDEX, &module_start_fn_key);
-            lua_pushcfunction(L, root_scope);
-            lua_pushcfunction(L, terminate_vm_with_cleanup_error);
-            rawgetp(L, LUA_REGISTRYINDEX, &raw_pcall_key);
-            lua_pushcfunction(L, lua_error);
-            lua_pushcfunction(L, mark_module_as_loaded);
+        lua_pushvalue(L, -1);
+        lua_xmove(L, module_fiber, 1);
 
-            std::string name{'@'};
-            name += module_path;
-            switch (int res = luaL_loadbuffer(
-                L, module_source->get().data(), module_source->get().size(),
-                name.data()
-            ) ; res) {
-            case 0:
-                break;
-            case LUA_ERRMEM:
-                push(L, std::errc::not_enough_memory);
-            default:
+        // pushes module fiber's start-fn onto the stack
+        lua_call(L, 6, 1);
+
+        lua_xmove(L, module_fiber, 1);
+
+        // default_modules_key {{{
+        lua_newtable(L);
+
+        rawgetp(L, LUA_REGISTRYINDEX, &default_modules_key);
+        lua_pushnil(L);
+        while (lua_next(L, -2) != 0) {
+            lua_pushvalue(L, -2);
+            lua_insert(L, -2);
+            lua_rawset(L, -5);
+        }
+        lua_pop(L, 1);
+
+        lua_pushliteral(L, "_G");
+        lua_pushvalue(L, -2);
+        lua_rawset(L, -3);
+
+        std::string_view ctx_str;
+        switch (lua_context) {
+        case ContextType::regular_context:
+            ctx_str = "";
+            break;
+        case ContextType::error_category:
+            assert(false);
+            break;
+        case ContextType::main:
+            ctx_str = "main";
+            break;
+        case ContextType::test:
+            ctx_str = "test";
+            break;
+        case ContextType::worker:
+            ctx_str = "worker";
+            break;
+        }
+        lua_pushliteral(L, "_CONTEXT");
+        push(L, ctx_str);
+        lua_rawset(L, -3);
+
+        lua_xmove(L, module_fiber, 1);
+        lua_pushvalue(module_fiber, -1);
+        lua_replace(module_fiber, LUA_GLOBALSINDEX);
+        lua_setfenv(module_fiber, -3);
+        lua_remove(module_fiber, -2);
+        // }}} default_modules_key
+
+        init_new_coro_or_fiber_scope(module_fiber, L);
+
+        // FiberDataIndex {{{
+        rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
+        lua_insert(L, -2);
+        lua_createtable(
+            L,
+            /*narr=*/EMILUA_IMPL_INITIAL_MODULE_FIBER_DATA_CAPACITY,
+            /*nrec=*/0);
+
+        lua_createtable(L, /*narr=*/parent_stacksize + 1, /*nrec=*/0);
+        for (int i = 1 ; i <= parent_stacksize ; ++i) {
+            lua_rawgeti(L, STACKIDX - 4, i);
+            lua_rawseti(L, -2, i);
+        }
+        push(L, module_path);
+        lua_pushvalue(L, -1);
+        // redundant to STACK, but simplifies code branches elsewhere
+        lua_rawseti(L, -4, FiberDataIndex::SOURCE_PATH);
+        lua_rawseti(L, -2, parent_stacksize + 1);
+        lua_rawseti(L, -2, FiberDataIndex::STACK);
+
+        lua_pushboolean(L, module_is_leaf ? 1 : 0);
+        lua_rawseti(L, -2, FiberDataIndex::LEAF);
+
+        lua_pushinteger(L, lua_context);
+        lua_rawseti(L, -2, FiberDataIndex::CONTEXT);
+
+        // when boolean (i.e. not integer), lua code requests to change this
+        // setting are ignored
+        lua_pushboolean(L, 1);
+        lua_rawseti(L, -2, FiberDataIndex::INTERRUPTION_DISABLED);
+
+        lua_pushthread(vm_ctx->current_fiber());
+        lua_xmove(vm_ctx->current_fiber(), L, 1);
+        lua_rawseti(L, -2, FiberDataIndex::JOINER);
+
+        lua_pushthread(vm_ctx->current_fiber());
+        lua_xmove(vm_ctx->current_fiber(), L, 1);
+        lua_rawget(L, -4);
+        lua_rawgeti(L, -1, FiberDataIndex::LOCAL_STORAGE);
+        lua_rawseti(L, -3, FiberDataIndex::LOCAL_STORAGE);
+        lua_pop(L, 1);
+
+        // From now on to the rest of this function, every raised exception
+        // must kill the whole VM or else we risk leaking a handle
+        lua_rawset(L, -3);
+        // }}} FiberDataIndex
+
+        vm_ctx->strand().defer([vm_ctx,module_fiber]() {
+            vm_ctx->fiber_resume_trivial(module_fiber);
+        }, std::allocator<void>{});
+
+        return lua_yield(L, 0);
+    } else {
+        const char* YYCURSOR = module_id.data();
+        const char* YYMARKER;
+        boost::ignore_unused(YYMARKER);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wgnu-case-range"
+        %{
+        * {
+            push(L, errc::invalid_module_name, "module", tostringview(L, 1));
+            return lua_error(L);
+        }
+        {modnamepat} {
+            if (*YYCURSOR != '\0') {
+                push(L, errc::invalid_module_name,
+                     "module", tostringview(L, 1));
                 return lua_error(L);
             }
+            goto valid;
+        }
+        %}
+#pragma GCC diagnostic pop
+    valid:
 
-            lua_pushvalue(L, -1);
-            lua_xmove(L, module_fiber, 1);
+        return dispatch_table::dispatch(
+            hana::make_tuple(
+                hana::make_pair(
+                    BOOST_HANA_STRING(LUA_FFILIBNAME),
+                    [](lua_State* L) -> int {
+                        lua_pushboolean(L, 1);
 
-            // pushes module fiber's start-fn onto the stack
-            lua_call(L, 6, 1);
+                        rawgetp(L, LUA_REGISTRYINDEX, &ffi_module_key);
+                        if (lua_type(L, -1) == LUA_TNIL) {
+                            lua_pop(L, 1);
+                            lua_pushcfunction(L, luaopen_ffi);
+                            lua_call(L, 0, 1);
+                            lua_pushlightuserdata(L, &ffi_module_key);
+                            lua_pushvalue(L, -2);
+                            lua_rawset(L, LUA_REGISTRYINDEX);
+                        }
 
-            lua_xmove(L, module_fiber, 1);
-
-            // default_modules_key {{{
-            lua_newtable(L);
-
-            rawgetp(L, LUA_REGISTRYINDEX, &default_modules_key);
-            lua_pushnil(L);
-            while (lua_next(L, -2) != 0) {
-                lua_pushvalue(L, -2);
-                lua_insert(L, -2);
-                lua_rawset(L, -5);
-            }
-            lua_pop(L, 1);
-
-            lua_pushliteral(L, "_G");
-            lua_pushvalue(L, -2);
-            lua_rawset(L, -3);
-
-            std::string_view ctx_str;
-            switch (lua_context) {
-            case ContextType::regular_context:
-                ctx_str = "";
-                break;
-            case ContextType::error_category:
-                assert(false);
-                break;
-            case ContextType::main:
-                ctx_str = "main";
-                break;
-            case ContextType::test:
-                ctx_str = "test";
-                break;
-            case ContextType::worker:
-                ctx_str = "worker";
-                break;
-            }
-            lua_pushliteral(L, "_CONTEXT");
-            push(L, ctx_str);
-            lua_rawset(L, -3);
-
-            lua_xmove(L, module_fiber, 1);
-            lua_pushvalue(module_fiber, -1);
-            lua_replace(module_fiber, LUA_GLOBALSINDEX);
-            lua_setfenv(module_fiber, -3);
-            lua_remove(module_fiber, -2);
-            // }}} default_modules_key
-
-            init_new_coro_or_fiber_scope(module_fiber, L);
-
-            // FiberDataIndex {{{
-            rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
-            lua_insert(L, -2);
-            lua_createtable(
-                L,
-                /*narr=*/EMILUA_IMPL_INITIAL_MODULE_FIBER_DATA_CAPACITY,
-                /*nrec=*/0);
-
-            lua_createtable(L, /*narr=*/parent_stacksize + 1, /*nrec=*/0);
-            for (int i = 1 ; i <= parent_stacksize ; ++i) {
-                lua_rawgeti(L, STACKIDX - 4, i);
-                lua_rawseti(L, -2, i);
-            }
-            push(L, module_path);
-            lua_pushvalue(L, -1);
-            // redundant to STACK, but simplifies code branches elsewhere
-            lua_rawseti(L, -4, FiberDataIndex::SOURCE_PATH);
-            lua_rawseti(L, -2, parent_stacksize + 1);
-            lua_rawseti(L, -2, FiberDataIndex::STACK);
-
-            lua_pushboolean(L, module_is_leaf ? 1 : 0);
-            lua_rawseti(L, -2, FiberDataIndex::LEAF);
-
-            lua_pushinteger(L, lua_context);
-            lua_rawseti(L, -2, FiberDataIndex::CONTEXT);
-
-            // when boolean (i.e. not integer), lua code requests to change this
-            // setting are ignored
-            lua_pushboolean(L, 1);
-            lua_rawseti(L, -2, FiberDataIndex::INTERRUPTION_DISABLED);
-
-            lua_pushthread(vm_ctx->current_fiber());
-            lua_xmove(vm_ctx->current_fiber(), L, 1);
-            lua_rawseti(L, -2, FiberDataIndex::JOINER);
-
-            lua_pushthread(vm_ctx->current_fiber());
-            lua_xmove(vm_ctx->current_fiber(), L, 1);
-            lua_rawget(L, -4);
-            lua_rawgeti(L, -1, FiberDataIndex::LOCAL_STORAGE);
-            lua_rawseti(L, -3, FiberDataIndex::LOCAL_STORAGE);
-            lua_pop(L, 1);
-
-            // From now on to the rest of this function, every raised exception
-            // must kill the whole VM or else we risk leaking a handle
-            lua_rawset(L, -3);
-            // }}} FiberDataIndex
-
-            vm_ctx->strand().defer([vm_ctx,module_fiber]() {
-                vm_ctx->fiber_resume_trivial(module_fiber);
-            }, std::allocator<void>{});
-
-            return lua_yield(L, 0);
-        },
-        module_id
-    );
+                        return 2;
+                    }
+                ),
+                hana::make_pair(
+                    BOOST_HANA_STRING("sleep_for"),
+                    [](lua_State* L) -> int {
+                        lua_pushboolean(L, 1);
+                        rawgetp(L, LUA_REGISTRYINDEX, &sleep_for_key);
+                        return 2;
+                    }
+                ),
+                hana::make_pair(
+                    BOOST_HANA_STRING("println"),
+                    [](lua_State* L) -> int {
+                        lua_pushboolean(L, 1);
+                        lua_pushcfunction(L, println);
+                        return 2;
+                    }
+                ),
+                hana::make_pair(
+                    BOOST_HANA_STRING("mutex"),
+                    [](lua_State* L) -> int {
+                        lua_pushboolean(L, 1);
+                        rawgetp(L, LUA_REGISTRYINDEX, &mutex_key);
+                        return 2;
+                    }
+                ),
+                hana::make_pair(
+                    BOOST_HANA_STRING("cond"),
+                    [](lua_State* L) -> int {
+                        lua_pushboolean(L, 1);
+                        rawgetp(L, LUA_REGISTRYINDEX, &cond_key);
+                        return 2;
+                    }
+                ),
+                hana::make_pair(
+                    BOOST_HANA_STRING("inbox"),
+                    [&vm_ctx](lua_State* L) -> int {
+                        lua_pushboolean(L, 1);
+                        rawgetp(L, LUA_REGISTRYINDEX, &inbox_key);
+                        vm_ctx->inbox.imported = true;
+                        return 2;
+                    }
+                ),
+                hana::make_pair(
+                    BOOST_HANA_STRING("json"),
+                    [](lua_State* L) -> int {
+                        lua_pushboolean(L, 1);
+                        rawgetp(L, LUA_REGISTRYINDEX, &json_key);
+                        return 2;
+                    }
+                ),
+                hana::make_pair(
+                    BOOST_HANA_STRING("steady_timer"),
+                    [](lua_State* L) -> int {
+                        lua_pushboolean(L, 1);
+                        rawgetp(L, LUA_REGISTRYINDEX, &timer_key);
+                        return 2;
+                    }
+                ),
+#if ENABLE_HTTP
+                hana::make_pair(
+                    BOOST_HANA_STRING("http"),
+                    [](lua_State* L) -> int {
+                        lua_pushboolean(L, 1);
+                        rawgetp(L, LUA_REGISTRYINDEX, &http_key);
+                        return 2;
+                    }
+                ),
+#endif // ENABLE_HTTP
+                hana::make_pair(
+                    BOOST_HANA_STRING("ip"),
+                    [](lua_State* L) -> int {
+                        lua_pushboolean(L, 1);
+                        rawgetp(L, LUA_REGISTRYINDEX, &ip_key);
+                        return 2;
+                    }
+                ),
+                hana::make_pair(
+                    BOOST_HANA_STRING("tls"),
+                    [](lua_State* L) -> int {
+                        lua_pushboolean(L, 1);
+                        rawgetp(L, LUA_REGISTRYINDEX, &tls_key);
+                        return 2;
+                    }
+                )
+            ),
+            [](std::string_view /*key*/, lua_State* L) -> int {
+                push(L, errc::module_not_found, "module", tostringview(L, 1));
+                return lua_error(L);
+            },
+            module_id,
+            L
+        );
+    }
 }
 
 std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,

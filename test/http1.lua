@@ -1,6 +1,6 @@
 local ip = require 'ip'
 local http = require 'http'
-local socket_pair = require('util').socket_pair
+local socket_pair = require('./util').socket_pair
 
 local a, b = socket_pair()
 a, b = http.socket.new(a), http.socket.new(b)

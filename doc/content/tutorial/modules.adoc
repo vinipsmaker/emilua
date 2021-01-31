@@ -14,7 +14,7 @@ system as well. To import a module in dynamic languages such as lua, Python and
 JavaScript, it is to evaluate/execute source code. Rust doesn't have this
 constraint and Rust gets just fine with a lot of static analysis. The two
 languages live in separate worlds. Finally, the module system is also inspired
-by what Python does.
+by what Python and NodeJS do.
 
 A module system is meant to isolate pieces of code, symbols and names. One
 module should not interfere with each other. And a module can have dependencies
@@ -37,6 +37,9 @@ The things you need to know to get started:
 * Cyclic references are unsupported and will raise an error on import.
 * You can use the syntax `require('../foobar')` to import a sibling module named
   `foobar`.
+* If the module id doesn't start with `'./'` then it is assumed to refer to an
+  external package and different rules apply. Currently only core modules are
+  considered to perform package resolution.
 
 === Small example
 
@@ -44,7 +47,7 @@ File `src/init.lua`:
 
 [source,lua]
 ----
-local server = require('server')
+local server = require('./server')
 
 local hostname = '127.0.0.1'
 local port = 3000
@@ -116,13 +119,13 @@ src
 └── util.lua
 ----
 
-In this synthetic example, there is the project scope whose root begins at
+In this artificial example, there is the project scope whose root begins at
 `src/init.lua` — the root module.
 
 In the root module, it is forbidden to use `require('../')` statements as there
 is no parent module. Any name the `src/init.lua` file ``require()``s will be
 searched on the `src` directory. For instance, if `src/init.lua` contains
-`require('util')`, emilua will use the `src/util.lua` file to define the
+`require('./util')`, emilua will use the `src/util.lua` file to define the
 importing module.
 
 But modules may grow and can be further split into files within a directory by
@@ -131,17 +134,17 @@ directory will be searched for, and, once found, evaluated. If
 `src/my_module/init.lua` contains more `require()` calls, files within that
 directory (`src/my_module`) will be searched for.
 
-For instance, if `src/my_module/init.lua` contains `require('worker')`, the file
-`src/my_module/worker.lua` will be searched for. Any file (except for
+For instance, if `src/my_module/init.lua` contains `require('./worker')`, the
+file `src/my_module/worker.lua` will be searched for. Any file (except for
 `init.lua`) within `src/my_module` can import other files from the same
 directory (i.e. their siblings) using the `require('../')` form
 (`src/my_module/init.lua` siblings live in the directory above, `src`). For
 instance, `src/my_module/worker.lua` and `src/my_module/util.lua` may both want
 to use the same error type (possibly private) to that module —
 `src/my_module/error.lua`. In this case, all they need to contain is the call
-`require('../error')`. And because they are defined by files (not directories by
-themselves), they don't have children modules and can't use the usual
-`require('')` call (i.e. the call argument must start with `../`).
+`require('../error')`. And finally due to how they are defined by files (not
+directories by themselves), they don't have children modules and can't use the
+usual `require('./')` call (i.e. the call argument must start with `../`).
 
 Any number of super levels is allowed (e.g. `require('../../../../foobar')`).
 

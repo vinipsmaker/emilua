@@ -1,1 +1,1 @@
-require('module9_foo')
+require('./module9_foo')

@@ -1,3 +1,3 @@
 -- module_not_found
 
-require('foo')
+require('./foo')
