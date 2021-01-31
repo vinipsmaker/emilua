@@ -108,7 +108,8 @@ emilua_bin = executable(
     re2c_gen.process(re2c_src),
     cpp_pch : 'meson/pchheader.hpp',
     dependencies : [boost, luajit, ssl, curses],
-    include_directories : include_directories(incdir)
+    include_directories : include_directories(incdir),
+    install : true,
 )
 
 if get_option('enable_tests')
