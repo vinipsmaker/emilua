@@ -13,8 +13,10 @@ Features:
 * Integrates with Lua builtins (i.e. you can mix up fibers and coroutines,
   modules, ...).
 * HTTP{_}footnote:[WebSocket planned for next releases.].
-* Actor API (each VM is an actor and you can spawn many of them to be scheduled
-  through the same (or a new) thread pool).
+* Actor API (each VM is an actor and they're spawned in thread pools under your
+  control{_}footnote:[The default profile inherits the parent execution context
+  (no new thread is created), but the option to create a new one is also
+  available.]).
 * Native JSON module.
 * Cross-platform (should run anywhere Boost.Asio also runs).
 
@@ -56,7 +58,7 @@ end
 == Dependencies
 
 * Meson 0.55.0 or later.
-* {cpp}17 compiler.
+* {cpp}17 compiler (GCC 10 or newer should work).
 * LuaJIT.
 * Boost.Asio (and other Boost libraries as well).
 * `re2c`.
