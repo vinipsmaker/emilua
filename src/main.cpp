@@ -76,12 +76,11 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    int exit_code = 0;
     emilua::app_context appctx;
     asio::io_context ioctx{main_ctx_concurrency_hint};
 
     try {
-        auto vm_ctx = emilua::make_vm(ioctx, appctx, exit_code, filename,
+        auto vm_ctx = emilua::make_vm(ioctx, appctx, filename,
                                       emilua::ContextType::main);
         vm_ctx->strand().post([vm_ctx]() {
             vm_ctx->fiber_resume_trivial(vm_ctx->L());
@@ -106,5 +105,5 @@ int main(int argc, char *argv[])
             appctx.extra_threads_count_empty_cond.wait(lk);
     }
 
-    return exit_code;
+    return appctx.exit_code;
 }

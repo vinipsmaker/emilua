@@ -25,9 +25,6 @@ static char closed_tx_chan_mt_key;
 static char chan_recv_key;
 static char chan_send_key;
 
-// TODO: fix it
-static int dummy;
-
 int deserializer_closure(lua_State* L)
 {
     using array_key_type = int;
@@ -859,7 +856,7 @@ static int spawn_vm(lua_State* L)
     try {
         auto new_vm_ctx = emilua::make_vm(
             new_ioctx ? *new_ioctx : vm_ctx.strand().context(),
-            vm_ctx.appctx, dummy, module, emilua::ContextType::worker);
+            vm_ctx.appctx, module, emilua::ContextType::worker);
         new_vm_ctx->ioctxref = new_ioctx;
 
         auto buf = reinterpret_cast<actor_address*>(

@@ -519,7 +519,6 @@ static int require(lua_State* L)
 
 std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
                                     emilua::app_context& appctx,
-                                    int& exit_code,
                                     fs::path entry_point,
                                     ContextType lua_context)
 {
