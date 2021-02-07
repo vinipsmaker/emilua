@@ -31,7 +31,7 @@ extern "C" {
 #include <lua.h>
 }
 
-#include <config.h>
+#include <emilua/config.h>
 
 #define EMILUA_CHECK_SUSPEND_ALLOWED(VM_CTX, L)             \
     if (!emilua::detail::unsafe_can_suspend((VM_CTX), (L))) \

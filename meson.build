@@ -1,13 +1,7 @@
 project('emilua', 'cpp', default_options : ['cpp_std=c++17'])
 
-conf = configuration_data()
-conf.set10('ENABLE_COLOR', not get_option('disable_color'))
-conf.set10('ENABLE_HTTP', get_option('enable_http'))
-configure_file(
-    input : 'meson/config.h.in',
-    output : 'config.h',
-    configuration : conf,
-)
+# https://github.com/mesonbuild/meson/issues/2320
+subdir('include/emilua')
 
 luajit = dependency('luajit', version : '>=2.0.5')
 boost = dependency(
