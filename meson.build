@@ -106,6 +106,15 @@ emilua_bin = executable(
     install : true,
 )
 
+install_subdir(
+    'include/emilua',
+    install_dir : get_option('includedir'),
+    exclude_files : [
+        'config.h.in',
+        'meson.build',
+    ],
+)
+
 if get_option('enable_tests')
     tests = {
         'fiber' : [

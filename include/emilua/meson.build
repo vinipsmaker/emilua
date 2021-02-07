@@ -7,4 +7,5 @@ configure_file(
     input : 'config.h.in',
     output : 'config.h',
     configuration : conf,
+    install_dir : get_option('includedir') / 'emilua',
 )
