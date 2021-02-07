@@ -1,5 +1,9 @@
 project('emilua', 'cpp', default_options : ['cpp_std=c++17'])
 
+version_major = 0
+version_minor = 3
+version_patch = 0
+
 # https://github.com/mesonbuild/meson/issues/2320
 subdir('include/emilua')
 

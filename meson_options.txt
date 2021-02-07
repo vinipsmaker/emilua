@@ -14,3 +14,7 @@ option(
     'enable_http', type : 'boolean', value : false,
     description : 'Whether to build the HTTP module.'
 )
+option(
+    'version_suffix', type : 'string', value : '',
+    description : 'A suffix string to append to version string'
+)
