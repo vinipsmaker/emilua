@@ -11,7 +11,7 @@
 
 #include <emilua/state.hpp>
 
-#if ENABLE_COLOR
+#if EMILUA_CONFIG_ENABLE_COLOR
 #include <cstdlib>
 #include <cstdio>
 
@@ -19,7 +19,7 @@ extern "C" {
 #include <curses.h>
 #include <term.h>
 } // extern "C"
-#endif // ENABLE_COLOR
+#endif // EMILUA_CONFIG_ENABLE_COLOR
 
 namespace asio = boost::asio;
 
@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
 {
     LUAJIT_VERSION_SYM();
 
-#if ENABLE_COLOR
+#if EMILUA_CONFIG_ENABLE_COLOR
     emilua::stdout_has_color = []() {
         using namespace std::literals::string_view_literals;
         auto env = std::getenv("EMILUA_COLORS");
@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     }();
 #else
     emilua::stdout_has_color = false;
-#endif // ENABLE_COLOR
+#endif // EMILUA_CONFIG_ENABLE_COLOR
 
     CLI::App app{"Emilua: Execution engine for luaJIT"};
 

@@ -21,9 +21,9 @@
 #include <emilua/tls.hpp>
 #include <emilua/ip.hpp>
 
-#if ENABLE_HTTP
+#if EMILUA_CONFIG_ENABLE_HTTP
 #include <emilua/http.hpp>
-#endif // ENABLE_HTTP
+#endif // EMILUA_CONFIG_ENABLE_HTTP
 
 namespace emilua {
 
@@ -480,7 +480,7 @@ static int require(lua_State* L)
                         return 2;
                     }
                 ),
-#if ENABLE_HTTP
+#if EMILUA_CONFIG_ENABLE_HTTP
                 hana::make_pair(
                     BOOST_HANA_STRING("http"),
                     [](lua_State* L) -> int {
@@ -489,7 +489,7 @@ static int require(lua_State* L)
                         return 2;
                     }
                 ),
-#endif // ENABLE_HTTP
+#endif // EMILUA_CONFIG_ENABLE_HTTP
                 hana::make_pair(
                     BOOST_HANA_STRING("ip"),
                     [](lua_State* L) -> int {
@@ -788,9 +788,9 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     init_ip(L);
     init_tls(L);
 
-#if ENABLE_HTTP
+#if EMILUA_CONFIG_ENABLE_HTTP
     init_http(L);
-#endif // ENABLE_HTTP
+#endif // EMILUA_CONFIG_ENABLE_HTTP
     // }}}
 
     // default_modules_key {{{
