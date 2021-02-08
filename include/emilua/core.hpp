@@ -23,6 +23,7 @@
 #include <atomic>
 #include <deque>
 #include <mutex>
+#include <set>
 
 extern "C" {
 #include <lauxlib.h>
@@ -66,6 +67,36 @@ using result = outcome::basic_result<
     outcome::policy::terminate
 #endif // defined(NDEBUG)
 >;
+
+struct TransparentStringComp
+{
+    using is_transparent = void;
+
+    bool operator()(const std::string& lhs, const std::string& rhs) const
+    {
+        return lhs < rhs;
+    }
+
+    bool operator()(const std::string_view& lhs, const std::string& rhs) const
+    {
+        return lhs < rhs;
+    }
+
+    bool operator()(const std::string& lhs, const std::string_view& rhs) const
+    {
+        return lhs < rhs;
+    }
+
+    bool operator()(const char* lhs, const std::string& rhs) const
+    {
+        return lhs < rhs;
+    }
+
+    bool operator()(const std::string& lhs, const char* rhs) const
+    {
+        return lhs < rhs;
+    }
+};
 
 namespace detail {
 template<class Executor>
@@ -147,6 +178,8 @@ public:
     app_context(const app_context&) = delete;
 
     std::atomic_int exit_code = 0;
+
+    std::vector<std::filesystem::path> emilua_path;
 
     std::unordered_map<std::filesystem::path, std::string, path_hash>
         modules_cache_registry;
@@ -391,6 +424,9 @@ public:
 
     void notify_deadlock(std::string msg);
     void notify_cleanup_error(lua_State* coro);
+
+    // Use it to detect cycles when loading modules from external packages.
+    std::set<std::string, TransparentStringComp> visited_external_packages;
 
     inbox_t inbox;
 

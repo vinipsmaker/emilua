@@ -3,6 +3,7 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
+#include <experimental/memory>
 #include <iostream>
 #include <fstream>
 #include <new>
@@ -20,6 +21,8 @@
 #include <emilua/json.hpp>
 #include <emilua/tls.hpp>
 #include <emilua/ip.hpp>
+
+#include <boost/scope_exit.hpp>
 
 #if EMILUA_CONFIG_ENABLE_HTTP
 #include <emilua/http.hpp>
@@ -41,6 +44,38 @@ static char default_modules_key;
 static char module_start_fn_key;
 static char loaded_modules_key;
 static char ffi_module_key;
+
+// Throws:
+//
+// * std::ios_base::failure
+// * std::exception
+static std::string& load_module_source(
+    app_context& appctx, const fs::path& module_path)
+{
+    [[maybe_unused]] std::lock_guard guard{appctx.modules_cache_registry_mtx};
+    auto it = appctx.modules_cache_registry.find(module_path);
+    if (it == appctx.modules_cache_registry.end()) {
+        std::string contents;
+        std::ifstream in{module_path, std::ios::in | std::ios::binary};
+        in.exceptions(std::ios_base::badbit | std::ios_base::failbit |
+                      std::ios_base::eofbit);
+        {
+            char buf[1];
+            in.read(buf, 1);
+        }
+        in.seekg(0, std::ios::end);
+        contents.resize(in.tellg());
+        in.seekg(0, std::ios::beg);
+        in.read(&contents[0], contents.size());
+        in.close();
+
+        // TODO: store bytecode instead source
+        it = appctx.modules_cache_registry
+            .emplace(module_path, std::move(contents))
+            .first;
+    }
+    return it->second;
+}
 
 static int println(lua_State* L)
 {
@@ -103,6 +138,157 @@ static int require(lua_State* L)
     default:
         lua_context = ContextType::regular_context;
     }
+
+    auto start_module_fiber = [L,&vm_ctx,lua_context](
+        const fs::path module_path,
+        const std::string& module_source,
+        bool module_is_leaf,
+        std::experimental::observer_ptr<bool> commit_package_as_loaded
+    ) {
+        lua_State* module_fiber = lua_newthread(L);
+
+        rawgetp(L, LUA_REGISTRYINDEX, &module_start_fn_key);
+        lua_pushcfunction(L, root_scope);
+        lua_pushcfunction(L, terminate_vm_with_cleanup_error);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_pcall_key);
+        lua_pushcfunction(L, lua_error);
+        lua_pushcfunction(L, mark_module_as_loaded);
+
+        std::string name{'@'};
+        name += module_path;
+        switch (int res = luaL_loadbuffer(
+            L, module_source.data(), module_source.size(), name.data()
+        ) ; res) {
+        case 0:
+            break;
+        case LUA_ERRMEM:
+            push(L, std::errc::not_enough_memory);
+        default:
+            return lua_error(L);
+        }
+
+        lua_pushvalue(L, -1);
+        lua_xmove(L, module_fiber, 1);
+
+        // pushes module fiber's start-fn onto the stack
+        lua_call(L, 6, 1);
+
+        lua_xmove(L, module_fiber, 1);
+
+        // default_modules_key {{{
+        lua_newtable(L);
+
+        rawgetp(L, LUA_REGISTRYINDEX, &default_modules_key);
+        lua_pushnil(L);
+        while (lua_next(L, -2) != 0) {
+            lua_pushvalue(L, -2);
+            lua_insert(L, -2);
+            lua_rawset(L, -5);
+        }
+        lua_pop(L, 1);
+
+        lua_pushliteral(L, "_G");
+        lua_pushvalue(L, -2);
+        lua_rawset(L, -3);
+
+        std::string_view ctx_str;
+        switch (lua_context) {
+        case ContextType::regular_context:
+            ctx_str = "";
+            break;
+        case ContextType::error_category:
+            assert(false);
+            break;
+        case ContextType::main:
+            ctx_str = "main";
+            break;
+        case ContextType::test:
+            ctx_str = "test";
+            break;
+        case ContextType::worker:
+            ctx_str = "worker";
+            break;
+        }
+        lua_pushliteral(L, "_CONTEXT");
+        push(L, ctx_str);
+        lua_rawset(L, -3);
+
+        lua_xmove(L, module_fiber, 1);
+        lua_pushvalue(module_fiber, -1);
+        lua_replace(module_fiber, LUA_GLOBALSINDEX);
+        lua_setfenv(module_fiber, -3);
+        lua_remove(module_fiber, -2);
+        // }}} default_modules_key
+
+        init_new_coro_or_fiber_scope(module_fiber, L);
+
+        // FiberDataIndex {{{
+        rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
+        lua_insert(L, -2);
+        lua_createtable(
+            L,
+            /*narr=*/EMILUA_IMPL_INITIAL_MODULE_FIBER_DATA_CAPACITY,
+            /*nrec=*/0);
+
+        if (commit_package_as_loaded) {
+            lua_createtable(L, /*narr=*/1, /*nrec=*/0);
+            push(L, module_path);
+            lua_pushvalue(L, -1);
+            // redundant to STACK, but simplifies code branches elsewhere
+            lua_rawseti(L, -4, FiberDataIndex::SOURCE_PATH);
+            lua_rawseti(L, -2, 1);
+            lua_rawseti(L, -2, FiberDataIndex::STACK);
+        } else {
+            int parent_stacksize = lua_objlen(L, STACKIDX - 3);
+            lua_createtable(L, /*narr=*/parent_stacksize + 1, /*nrec=*/0);
+            for (int i = 1 ; i <= parent_stacksize ; ++i) {
+                lua_rawgeti(L, STACKIDX - 4, i);
+                lua_rawseti(L, -2, i);
+            }
+            push(L, module_path);
+            lua_pushvalue(L, -1);
+            // redundant to STACK, but simplifies code branches elsewhere
+            lua_rawseti(L, -4, FiberDataIndex::SOURCE_PATH);
+            lua_rawseti(L, -2, parent_stacksize + 1);
+            lua_rawseti(L, -2, FiberDataIndex::STACK);
+        }
+
+        lua_pushboolean(L, module_is_leaf ? 1 : 0);
+        lua_rawseti(L, -2, FiberDataIndex::LEAF);
+
+        lua_pushinteger(L, lua_context);
+        lua_rawseti(L, -2, FiberDataIndex::CONTEXT);
+
+        // when boolean (i.e. not integer), lua code requests to change this
+        // setting are ignored
+        lua_pushboolean(L, 1);
+        lua_rawseti(L, -2, FiberDataIndex::INTERRUPTION_DISABLED);
+
+        lua_pushthread(vm_ctx->current_fiber());
+        lua_xmove(vm_ctx->current_fiber(), L, 1);
+        lua_rawseti(L, -2, FiberDataIndex::JOINER);
+
+        lua_pushthread(vm_ctx->current_fiber());
+        lua_xmove(vm_ctx->current_fiber(), L, 1);
+        lua_rawget(L, -4);
+        lua_rawgeti(L, -1, FiberDataIndex::LOCAL_STORAGE);
+        lua_rawseti(L, -3, FiberDataIndex::LOCAL_STORAGE);
+        lua_pop(L, 1);
+
+        // From now on to the rest of this function, every raised exception
+        // must kill the whole VM or else we risk leaking a handle
+        lua_rawset(L, -3);
+        // }}} FiberDataIndex
+
+        if (commit_package_as_loaded)
+            *commit_package_as_loaded = true;
+
+        vm_ctx->strand().defer([vm_ctx,module_fiber]() {
+            vm_ctx->fiber_resume_trivial(module_fiber);
+        }, std::allocator<void>{});
+
+        return lua_yield(L, 0);
+    };
 
     /*!re2c
     re2c:define:YYCTYPE = char;
@@ -211,175 +397,21 @@ static int require(lua_State* L)
         lua_pop(L, 1);
 
         std::optional<std::reference_wrapper<std::string>> module_source;
-        {
-            auto& service = vm_ctx->appctx;
-            [[maybe_unused]]
-            std::lock_guard guard{service.modules_cache_registry_mtx};
-            auto it = service.modules_cache_registry.find(module_path);
-            if (it == service.modules_cache_registry.end()) {
-                try {
-                    std::string contents;
-                    std::ifstream in{module_path,
-                                     std::ios::in | std::ios::binary};
-                    in.exceptions(std::ios_base::badbit |
-                                  std::ios_base::failbit |
-                                  std::ios_base::eofbit);
-                    {
-                        char buf[1];
-                        in.read(buf, 1);
-                    }
-                    in.seekg(0, std::ios::end);
-                    contents.resize(in.tellg());
-                    in.seekg(0, std::ios::beg);
-                    in.read(&contents[0], contents.size());
-                    in.close();
-
-                    // TODO: store bytecode instead source
-                    it = service.modules_cache_registry
-                        .emplace(module_path, std::move(contents))
-                        .first;
-                } catch (const std::system_error& e) {
-                    push(L, e.code());
-                    return lua_error(L);
-                } catch (const std::exception& e) {
-                    lua_pushstring(L, e.what());
-                    return lua_error(L);
-                }
-            }
-            module_source = it->second;
-        }
-        assert(module_source);
-
-        lua_State* module_fiber = lua_newthread(L);
-
-        rawgetp(L, LUA_REGISTRYINDEX, &module_start_fn_key);
-        lua_pushcfunction(L, root_scope);
-        lua_pushcfunction(L, terminate_vm_with_cleanup_error);
-        rawgetp(L, LUA_REGISTRYINDEX, &raw_pcall_key);
-        lua_pushcfunction(L, lua_error);
-        lua_pushcfunction(L, mark_module_as_loaded);
-
-        std::string name{'@'};
-        name += module_path;
-        switch (int res = luaL_loadbuffer(
-            L, module_source->get().data(), module_source->get().size(),
-            name.data()
-        ) ; res) {
-        case 0:
-            break;
-        case LUA_ERRMEM:
-            push(L, std::errc::not_enough_memory);
-        default:
+        try {
+            module_source = load_module_source(vm_ctx->appctx, module_path);
+        } catch (const std::system_error& e) {
+            push(L, e.code());
+            return lua_error(L);
+        } catch (const std::exception& e) {
+            lua_pushstring(L, e.what());
             return lua_error(L);
         }
-
-        lua_pushvalue(L, -1);
-        lua_xmove(L, module_fiber, 1);
-
-        // pushes module fiber's start-fn onto the stack
-        lua_call(L, 6, 1);
-
-        lua_xmove(L, module_fiber, 1);
-
-        // default_modules_key {{{
-        lua_newtable(L);
-
-        rawgetp(L, LUA_REGISTRYINDEX, &default_modules_key);
-        lua_pushnil(L);
-        while (lua_next(L, -2) != 0) {
-            lua_pushvalue(L, -2);
-            lua_insert(L, -2);
-            lua_rawset(L, -5);
-        }
-        lua_pop(L, 1);
-
-        lua_pushliteral(L, "_G");
-        lua_pushvalue(L, -2);
-        lua_rawset(L, -3);
-
-        std::string_view ctx_str;
-        switch (lua_context) {
-        case ContextType::regular_context:
-            ctx_str = "";
-            break;
-        case ContextType::error_category:
-            assert(false);
-            break;
-        case ContextType::main:
-            ctx_str = "main";
-            break;
-        case ContextType::test:
-            ctx_str = "test";
-            break;
-        case ContextType::worker:
-            ctx_str = "worker";
-            break;
-        }
-        lua_pushliteral(L, "_CONTEXT");
-        push(L, ctx_str);
-        lua_rawset(L, -3);
-
-        lua_xmove(L, module_fiber, 1);
-        lua_pushvalue(module_fiber, -1);
-        lua_replace(module_fiber, LUA_GLOBALSINDEX);
-        lua_setfenv(module_fiber, -3);
-        lua_remove(module_fiber, -2);
-        // }}} default_modules_key
-
-        init_new_coro_or_fiber_scope(module_fiber, L);
-
-        // FiberDataIndex {{{
-        rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
-        lua_insert(L, -2);
-        lua_createtable(
-            L,
-            /*narr=*/EMILUA_IMPL_INITIAL_MODULE_FIBER_DATA_CAPACITY,
-            /*nrec=*/0);
-
-        lua_createtable(L, /*narr=*/parent_stacksize + 1, /*nrec=*/0);
-        for (int i = 1 ; i <= parent_stacksize ; ++i) {
-            lua_rawgeti(L, STACKIDX - 4, i);
-            lua_rawseti(L, -2, i);
-        }
-        push(L, module_path);
-        lua_pushvalue(L, -1);
-        // redundant to STACK, but simplifies code branches elsewhere
-        lua_rawseti(L, -4, FiberDataIndex::SOURCE_PATH);
-        lua_rawseti(L, -2, parent_stacksize + 1);
-        lua_rawseti(L, -2, FiberDataIndex::STACK);
-
-        lua_pushboolean(L, module_is_leaf ? 1 : 0);
-        lua_rawseti(L, -2, FiberDataIndex::LEAF);
-
-        lua_pushinteger(L, lua_context);
-        lua_rawseti(L, -2, FiberDataIndex::CONTEXT);
-
-        // when boolean (i.e. not integer), lua code requests to change this
-        // setting are ignored
-        lua_pushboolean(L, 1);
-        lua_rawseti(L, -2, FiberDataIndex::INTERRUPTION_DISABLED);
-
-        lua_pushthread(vm_ctx->current_fiber());
-        lua_xmove(vm_ctx->current_fiber(), L, 1);
-        lua_rawseti(L, -2, FiberDataIndex::JOINER);
-
-        lua_pushthread(vm_ctx->current_fiber());
-        lua_xmove(vm_ctx->current_fiber(), L, 1);
-        lua_rawget(L, -4);
-        lua_rawgeti(L, -1, FiberDataIndex::LOCAL_STORAGE);
-        lua_rawseti(L, -3, FiberDataIndex::LOCAL_STORAGE);
-        lua_pop(L, 1);
-
-        // From now on to the rest of this function, every raised exception
-        // must kill the whole VM or else we risk leaking a handle
-        lua_rawset(L, -3);
-        // }}} FiberDataIndex
-
-        vm_ctx->strand().defer([vm_ctx,module_fiber]() {
-            vm_ctx->fiber_resume_trivial(module_fiber);
-        }, std::allocator<void>{});
-
-        return lua_yield(L, 0);
+        assert(module_source);
+        return start_module_fiber(
+            module_path,
+            module_source->get(),
+            module_is_leaf,
+            nullptr);
     } else {
         const char* YYCURSOR = module_id.data();
         const char* YYMARKER;
@@ -388,13 +420,12 @@ static int require(lua_State* L)
 #pragma GCC diagnostic ignored "-Wgnu-case-range"
         %{
         * {
-            push(L, errc::invalid_module_name, "module", tostringview(L, 1));
+            push(L, errc::invalid_module_name, "module", module_id);
             return lua_error(L);
         }
         {modnamepat} {
             if (*YYCURSOR != '\0') {
-                push(L, errc::invalid_module_name,
-                     "module", tostringview(L, 1));
+                push(L, errc::invalid_module_name, "module", module_id);
                 return lua_error(L);
             }
             goto valid;
@@ -402,6 +433,79 @@ static int require(lua_State* L)
         %}
 #pragma GCC diagnostic pop
     valid:
+
+        auto on_external_package = [&vm_ctx,&start_module_fiber](
+            std::string_view module_id, lua_State* L
+        ) -> int {
+            for (const auto& p: vm_ctx->appctx.emilua_path) {
+                {
+                    rawgetp(L, LUA_REGISTRYINDEX, &loaded_modules_key);
+                    push(L, module_id);
+                    lua_rawget(L, -2);
+                    if (!lua_isnil(L, -1)) {
+                        lua_pushboolean(L, 1);
+                        lua_insert(L, -2);
+                        return 2;
+                    }
+                    lua_pop(L, 2);
+                }
+
+                if (
+                    !vm_ctx->visited_external_packages.emplace(module_id).second
+                ) {
+                    push(L, errc::cyclic_import, "module", module_id);
+                    return lua_error(L);
+                }
+
+                bool commit_package_as_loaded = false;
+                BOOST_SCOPE_EXIT_ALL(&) {
+                    if (!commit_package_as_loaded) {
+                        vm_ctx->visited_external_packages.erase(
+                            vm_ctx->visited_external_packages.find(module_id));
+                    }
+                };
+
+                fs::path module_path;
+                bool module_is_leaf;
+                try {
+                    if (fs::exists(p / (std::string{module_id} + ".lua"))) {
+                        module_path = p / (std::string{module_id} + ".lua");
+                        module_is_leaf = true;
+                    } else if (fs::exists(p / module_id / "init.lua")) {
+                        module_path = p / module_id / "init.lua";
+                        module_is_leaf = false;
+                    } else {
+                        throw std::system_error{errc::module_not_found};
+                    }
+                    module_path = fs::absolute(std::move(module_path));
+                } catch (const std::system_error&) {
+                    continue;
+                }
+
+                std::optional<std::reference_wrapper<std::string>>
+                    module_source;
+                try {
+                    module_source = load_module_source(
+                        vm_ctx->appctx, module_path);
+                } catch (const std::system_error& e) {
+                    push(L, e.code(), "module", module_id);
+                    return lua_error(L);
+                } catch (const std::exception& e) {
+                    lua_pushstring(L, e.what());
+                    return lua_error(L);
+                }
+                assert(module_source);
+                return start_module_fiber(
+                    module_path,
+                    module_source->get(),
+                    module_is_leaf,
+                    std::experimental::make_observer(&commit_package_as_loaded)
+                );
+            }
+
+            push(L, errc::module_not_found, "module", module_id);
+            return lua_error(L);
+        };
 
         return dispatch_table::dispatch(
             hana::make_tuple(
@@ -507,10 +611,7 @@ static int require(lua_State* L)
                     }
                 )
             ),
-            [](std::string_view /*key*/, lua_State* L) -> int {
-                push(L, errc::module_not_found, "module", tostringview(L, 1));
-                return lua_error(L);
-            },
+            on_external_package,
             module_id,
             L
         );
@@ -840,37 +941,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
         lua_setglobal(L, "_CONTEXT");
     }
 
-    std::optional<std::reference_wrapper<std::string>> module_source;
-    {
-        auto& service = state->appctx;
-        [[maybe_unused]]
-        std::lock_guard guard{service.modules_cache_registry_mtx};
-        auto it = service.modules_cache_registry.find(entry_point);
-        if (it == service.modules_cache_registry.end()) {
-            // Throwing block {{{
-            std::string contents;
-            std::ifstream in{entry_point, std::ios::in | std::ios::binary};
-            in.exceptions(std::ios_base::badbit | std::ios_base::failbit |
-                          std::ios_base::eofbit);
-            {
-                char buf[1];
-                in.read(buf, 1);
-            }
-            in.seekg(0, std::ios::end);
-            contents.resize(in.tellg());
-            in.seekg(0, std::ios::beg);
-            in.read(&contents[0], contents.size());
-            in.close();
-
-            // TODO: store bytecode instead source
-            it = service.modules_cache_registry
-                .emplace(entry_point, std::move(contents))
-                .first;
-            // }}}
-        }
-        module_source = it->second;
-    }
-    assert(module_source);
+    std::string& module_source = load_module_source(state->appctx, entry_point);
 
     {
         lua_pushlightuserdata(L, &module_start_fn_key);
@@ -897,7 +968,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     std::string name{'@'};
     name += entry_point;
     switch (int res = luaL_loadbuffer(
-        L, module_source->get().data(), module_source->get().size(), name.data()
+        L, module_source.data(), module_source.size(), name.data()
     ) ; res) {
     case 0:
         break;

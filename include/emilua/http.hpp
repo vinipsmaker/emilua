@@ -23,38 +23,8 @@ extern char http_response_mt_key;
 extern char http_socket_mt_key;
 extern char https_socket_mt_key;
 
-struct HeadersComp
-{
-    using is_transparent = void;
-
-    bool operator()(const std::string& lhs, const std::string& rhs) const
-    {
-        return lhs < rhs;
-    }
-
-    bool operator()(const std::string_view& lhs, const std::string& rhs) const
-    {
-        return lhs < rhs;
-    }
-
-    bool operator()(const std::string& lhs, const std::string_view& rhs) const
-    {
-        return lhs < rhs;
-    }
-
-    bool operator()(const char* lhs, const std::string& rhs) const
-    {
-        return lhs < rhs;
-    }
-
-    bool operator()(const std::string& lhs, const char* rhs) const
-    {
-        return lhs < rhs;
-    }
-};
-
-using Headers
-    = boost::container::flat_multimap<std::string, std::string, HeadersComp>;
+using Headers = boost::container::flat_multimap<
+    std::string, std::string, TransparentStringComp>;
 
 struct Request
     : public boost::http::basic_request<

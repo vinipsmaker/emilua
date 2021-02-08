@@ -1,12 +1,15 @@
-/* Copyright (c) 2020 Vinícius dos Santos Oliveira
+/* Copyright (c) 2020, 2021 Vinícius dos Santos Oliveira
 
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
+#include <string_view>
 #include <iostream>
 
 #include <CLI/CLI.hpp>
 
+#include <boost/preprocessor/stringize.hpp>
+#include <boost/predef/os/windows.h>
 #include <boost/asio/io_context.hpp>
 
 #include <emilua/state.hpp>
@@ -22,6 +25,7 @@ extern "C" {
 #endif // EMILUA_CONFIG_ENABLE_COLOR
 
 namespace asio = boost::asio;
+namespace fs = std::filesystem;
 
 int main(int argc, char *argv[])
 {
@@ -78,6 +82,41 @@ int main(int argc, char *argv[])
 
     emilua::app_context appctx;
     asio::io_context ioctx{main_ctx_concurrency_hint};
+
+    {
+        const char* env = std::getenv("EMILUA_PATH");
+        if (env) {
+            for (std::string_view spec{env} ;;) {
+                std::string_view::size_type sepidx = spec.find(
+#if BOOST_OS_WINDOWS
+                    ';'
+#else
+                    ':'
+#endif
+                );
+                if (sepidx == std::string_view::npos) {
+                    appctx.emilua_path.emplace_back(
+                        spec, fs::path::native_format);
+                    break;
+                } else {
+                    appctx.emilua_path.emplace_back(
+                        spec.substr(0, sepidx), fs::path::native_format);
+                    spec.remove_prefix(sepidx + 1);
+                }
+            }
+        }
+    }
+
+    // NOTE: Using `auto_format` because who knows how will meson give me this
+    // path here?
+    appctx.emilua_path.emplace_back(
+        EMILUA_CONFIG_LIBROOTDIR, fs::path::auto_format);
+    // TODO: Remove VERSION_MINOR from path components once emilua reaches
+    // version 1.0.0 (versions that differ only in minor and patch numbers do
+    // not break API).
+    appctx.emilua_path.back() /=
+        "emilua-" BOOST_PP_STRINGIZE(EMILUA_CONFIG_VERSION_MAJOR)
+        "." BOOST_PP_STRINGIZE(EMILUA_CONFIG_VERSION_MINOR);
 
     try {
         auto vm_ctx = emilua::make_vm(ioctx, appctx, filename,

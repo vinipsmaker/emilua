@@ -2,6 +2,8 @@
 title = "Modules"
 +++
 
+:_:
+
 Emilua has its own module system. It may look familiar, and indeed it is the
 intention. Given the fact that other libraries on the wild will have
 incompatible execution models, compatibility with existing lua libraries is not
@@ -37,9 +39,9 @@ The things you need to know to get started:
 * Cyclic references are unsupported and will raise an error on import.
 * You can use the syntax `require('../foobar')` to import a sibling module named
   `foobar`.
-* If the module id doesn't start with `'./'` then it is assumed to refer to an
-  external package and different rules apply. Currently only core modules are
-  considered to perform package resolution.
+* If the module id doesn't start with `'./'` or `'../'` then it is assumed to
+  refer to an external package and different rules apply (see section at the
+  end).
 
 === Small example
 
@@ -119,8 +121,8 @@ src
 └── util.lua
 ----
 
-In this artificial example, there is the project scope whose root begins at
-`src/init.lua` — the root module.
+In this example, there is the project scope whose root begins at `src/init.lua`
+— the root module.
 
 In the root module, it is forbidden to use `require('../')` statements as there
 is no parent module. Any name the `src/init.lua` file ``require()``s will be
@@ -129,10 +131,10 @@ searched on the `src` directory. For instance, if `src/init.lua` contains
 importing module.
 
 But modules may grow and can be further split into files within a directory by
-itself. That was the case for the `my_module`. The `init.lua` file in that
-directory will be searched for, and, once found, evaluated. If
-`src/my_module/init.lua` contains more `require()` calls, files within that
-directory (`src/my_module`) will be searched for.
+itself. That was the case for `my_module`. The `init.lua` file in that directory
+will be searched for, and, once found, evaluated. If `src/my_module/init.lua`
+contains more `require()` calls whose arguments start with `'./'`, files within
+that directory (`src/my_module`) will be searched for.
 
 For instance, if `src/my_module/init.lua` contains `require('./worker')`, the
 file `src/my_module/worker.lua` will be searched for. Any file (except for
@@ -147,6 +149,22 @@ directories by themselves), they don't have children modules and can't use the
 usual `require('./')` call (i.e. the call argument must start with `../`).
 
 Any number of super levels is allowed (e.g. `require('../../../../foobar')`).
+
+== External packages
+
+If the module name to import doesn't begin with `'./'` nor `'../'` then it'll be
+searched for outside of the project directory. The places Emilua will look for
+are:
+
+* Core modules (e.g. `'inbox'`).
+* External packages.
+
+Emilua looks for external packages by examining the following locations (in that
+order):
+
+. The `EMILUA_PATH` environment variable. That's a colon-separated
+  list{_}footnote:[It's semicolon-separated on Windows.] of directories.
+. The installation-dependent default (usually `$PREFIX/lib/emilua-$VERSION`).
 
 == Misc
 

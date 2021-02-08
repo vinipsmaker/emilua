@@ -13,6 +13,7 @@
 #include <deque>
 #include <mutex>
 #include <new>
+#include <set>
 
 #include <CLI/CLI.hpp>
 
