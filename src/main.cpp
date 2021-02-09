@@ -65,12 +65,25 @@ int main(int argc, char *argv[])
 
     std::string filename;
     int main_ctx_concurrency_hint = BOOST_ASIO_CONCURRENCY_HINT_DEFAULT;
-    app.add_option("file", filename, "Script filename")->required();
-    app.add_option("--main-context-concurrency-hint", main_ctx_concurrency_hint,
-                   "Concurrency hint for the main execution engine context");
-
     try {
+        auto filename_opt = app.add_option("file", filename, "Script filename");
+        app.add_option(
+            "--main-context-concurrency-hint", main_ctx_concurrency_hint,
+            "Concurrency hint for the main execution engine context");
+        auto version_opt = app.add_flag(
+            "--version", "Output version information and exit");
+
         app.parse(argc, argv);
+
+        if (*version_opt) {
+            std::cout << "Emilua " EMILUA_CONFIG_VERSION_STRING << std::endl;
+            return 0;
+        }
+
+        if (!*filename_opt) {
+            std::cerr << "Missing filename" << std::endl;
+            return 1;
+        }
     } catch (const CLI::ParseError &e) {
         return app.exit(e);
     }
