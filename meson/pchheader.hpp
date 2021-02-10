@@ -32,10 +32,6 @@
 #include <boost/beast/core/stream_traits.hpp>
 #include <boost/beast/ssl/ssl_stream.hpp>
 
-#include <trial/protocol/buffer/string.hpp>
-#include <trial/protocol/json/reader.hpp>
-#include <trial/protocol/json/writer.hpp>
-
 extern "C" {
 #include <lauxlib.h>
 #include <luajit.h>
