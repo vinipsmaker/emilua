@@ -13,6 +13,8 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/config.hpp>
 
+#include <boost/hana/functional/overload.hpp>
+
 #include <boost/outcome/basic_result.hpp>
 #include <boost/outcome/policy/all_narrow.hpp>
 #include <boost/outcome/policy/terminate.hpp>
