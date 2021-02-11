@@ -31,8 +31,8 @@ namespace emilua {
 // 2. init_ioctx_services()
 // 3. init_lua_module()
 //
-// init_lua_module() is only called on io contexts for which init_ioctx() has
-// already been called.
+// init_lua_module() is only called on io contexts for which
+// init_ioctx_services() has already been called.
 class BOOST_SYMBOL_VISIBLE plugin
 {
 public:
