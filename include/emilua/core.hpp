@@ -10,6 +10,8 @@
 #include <boost/core/ignore_unused.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/intrusive/list.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/config.hpp>
 
 #include <boost/outcome/basic_result.hpp>
 #include <boost/outcome/policy/all_narrow.hpp>
@@ -162,6 +164,8 @@ public:
 };
 } // namespace detail
 
+class BOOST_SYMBOL_VISIBLE plugin;
+
 class app_context
 {
 private:
@@ -183,6 +187,8 @@ public:
 
     std::unordered_map<std::filesystem::path, std::string, path_hash>
         modules_cache_registry;
+    std::unordered_map<std::string, boost::shared_ptr<plugin>>
+        native_modules_cache_registry;
     std::mutex modules_cache_registry_mtx;
 
     std::size_t extra_threads_count = 0;

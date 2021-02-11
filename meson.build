@@ -14,6 +14,7 @@ boost = dependency(
     modules : ['thread'],
     static : true
 )
+libdl = meson.get_compiler('cpp').find_library('dl', required : false)
 ssl = dependency('openssl', version : '>=1.1.1')
 find_program('xxd')
 bytecode_gen = generator(
@@ -105,8 +106,16 @@ emilua_bin = executable(
     bytecode_gen.process(bytecode_src),
     re2c_gen.process(re2c_src),
     cpp_pch : 'meson/pchheader.hpp',
-    dependencies : [boost, luajit, ssl, curses],
+    dependencies : [
+        boost,
+        luajit,
+        ssl,
+        curses,
+        libdl,
+    ],
+    export_dynamic : true,
     include_directories : include_directories(incdir),
+    cpp_args : '-DBOOST_DLL_USE_STD_FS',
     install : true,
 )
 

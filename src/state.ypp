@@ -12,6 +12,7 @@
 #include <emilua/dispatch_table.hpp>
 #include <emilua/scope_cleanup.hpp>
 #include <emilua/lua_shim.hpp>
+#include <emilua/plugin.hpp>
 #include <emilua/fiber.hpp>
 #include <emilua/actor.hpp>
 #include <emilua/mutex.hpp>
@@ -22,7 +23,10 @@
 #include <emilua/tls.hpp>
 #include <emilua/ip.hpp>
 
+#include <boost/preprocessor/stringize.hpp>
+
 #include <boost/scope_exit.hpp>
+#include <boost/dll.hpp>
 
 #if EMILUA_CONFIG_ENABLE_HTTP
 #include <emilua/http.hpp>
@@ -32,6 +36,7 @@ namespace emilua {
 
 using namespace std::string_view_literals;
 namespace fs = std::filesystem;
+namespace dll = boost::dll;
 
 extern unsigned char start_fn_bytecode[];
 extern std::size_t start_fn_bytecode_size;
@@ -437,19 +442,21 @@ static int require(lua_State* L)
         auto on_external_package = [&vm_ctx,&start_module_fiber](
             std::string_view module_id, lua_State* L
         ) -> int {
-            for (const auto& p: vm_ctx->appctx.emilua_path) {
-                {
-                    rawgetp(L, LUA_REGISTRYINDEX, &loaded_modules_key);
-                    push(L, module_id);
-                    lua_rawget(L, -2);
-                    if (!lua_isnil(L, -1)) {
-                        lua_pushboolean(L, 1);
-                        lua_insert(L, -2);
-                        return 2;
-                    }
-                    lua_pop(L, 2);
+            {
+                rawgetp(L, LUA_REGISTRYINDEX, &loaded_modules_key);
+                // relative path (module_id), so it will only resolve native
+                // modules for now
+                push(L, module_id);
+                lua_rawget(L, -2);
+                if (!lua_isnil(L, -1)) {
+                    lua_pushboolean(L, 1);
+                    lua_insert(L, -2);
+                    return 2;
                 }
+                lua_pop(L, 2);
+            }
 
+            for (const auto& p: vm_ctx->appctx.emilua_path) {
                 if (
                     !vm_ctx->visited_external_packages.emplace(module_id).second
                 ) {
@@ -467,19 +474,62 @@ static int require(lua_State* L)
 
                 fs::path module_path;
                 bool module_is_leaf;
+                boost::shared_ptr<plugin> native_module;
                 try {
-                    if (fs::exists(p / (std::string{module_id} + ".lua"))) {
-                        module_path = p / (std::string{module_id} + ".lua");
+                    if (
+                        module_path = p / (std::string{module_id} + ".lua") ;
+                        fs::exists(module_path)
+                    ) {
+                        module_path = fs::absolute(std::move(module_path));
                         module_is_leaf = true;
-                    } else if (fs::exists(p / module_id / "init.lua")) {
-                        module_path = p / module_id / "init.lua";
+                    } else if (
+                        module_path = p / module_id / "init.lua" ;
+                        fs::exists(module_path)
+                    ) {
+                        module_path = fs::absolute(std::move(module_path));
                         module_is_leaf = false;
                     } else {
-                        throw std::system_error{errc::module_not_found};
+                        [[maybe_unused]] std::lock_guard guard{
+                            vm_ctx->appctx.modules_cache_registry_mtx};
+                        auto& cache_registry = vm_ctx->appctx
+                            .native_modules_cache_registry;
+                        auto it = cache_registry.find(std::string{module_id});
+                        if (it != cache_registry.end()) {
+                            native_module = it->second;
+                        } else {
+                            native_module = dll::import<plugin>(
+                                p / module_id,
+                                BOOST_PP_STRINGIZE(EMILUA_PLUGIN_SYMBOL),
+                                dll::load_mode::append_decorations);
+                            cache_registry.emplace(
+                                std::piecewise_construct,
+                                std::forward_as_tuple(module_id),
+                                std::forward_as_tuple(native_module));
+                            native_module->init_appctx(vm_ctx->appctx);
+                        }
                     }
-                    module_path = fs::absolute(std::move(module_path));
-                } catch (const std::system_error&) {
+                } catch (const std::exception&) {
                     continue;
+                }
+
+                if (native_module) {
+                    native_module->init_ioctx_services(
+                        vm_ctx->strand().context());
+                    auto ec = native_module->init_lua_module(*vm_ctx, L);
+                    if (ec) {
+                        push(L, ec, "module", module_id);
+                        return lua_error(L);
+                    }
+
+                    rawgetp(L, LUA_REGISTRYINDEX, &loaded_modules_key);
+                    push(L, module_id);
+                    lua_pushvalue(L, -3);
+                    lua_rawset(L, -3);
+                    lua_pop(L, 1);
+
+                    lua_pushboolean(L, 1);
+                    lua_insert(L, -2);
+                    return 2;
                 }
 
                 std::optional<std::reference_wrapper<std::string>>
