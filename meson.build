@@ -115,6 +115,7 @@ emilua_bin = executable(
     ],
     export_dynamic : true,
     include_directories : include_directories(incdir),
+    implicit_include_directories : false,
     cpp_args : '-DBOOST_DLL_USE_STD_FS',
     install : true,
 )
