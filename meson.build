@@ -105,7 +105,7 @@ emilua_bin = executable(
     src,
     bytecode_gen.process(bytecode_src),
     re2c_gen.process(re2c_src),
-    cpp_pch : 'meson/pchheader.hpp',
+    cpp_pch : 'pch/pchheader.hpp',
     dependencies : [
         boost,
         luajit,
