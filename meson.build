@@ -307,8 +307,9 @@ if get_option('enable_tests')
                      meson.current_source_dir() + '/test/' + t,
                  ],
                  env : [
-# Test must override this env so non-colored terminal output will be
-# auto-detected (this is, in itself, another test)
+                     # Test must override this env so non-colored terminal
+                     # output will be auto-detected (this is, in itself, another
+                     # test)
                      'EMILUA_COLORS=',
                      'EMILUA_BIN=' + emilua_bin.full_path(),
                      'AWK_BIN=' + gawk.full_path(),
