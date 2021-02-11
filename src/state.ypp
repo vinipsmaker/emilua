@@ -457,16 +457,11 @@ static int require(lua_State* L)
             }
 
             for (const auto& p: vm_ctx->appctx.emilua_path) {
-                if (
-                    !vm_ctx->visited_external_packages.emplace(module_id).second
-                ) {
-                    push(L, errc::cyclic_import, "module", module_id);
-                    return lua_error(L);
-                }
-
+                bool already_loaded = !vm_ctx->visited_external_packages
+                    .emplace(module_id).second;
                 bool commit_package_as_loaded = false;
                 BOOST_SCOPE_EXIT_ALL(&) {
-                    if (!commit_package_as_loaded) {
+                    if (!already_loaded && !commit_package_as_loaded) {
                         vm_ctx->visited_external_packages.erase(
                             vm_ctx->visited_external_packages.find(module_id));
                     }
@@ -513,6 +508,7 @@ static int require(lua_State* L)
                 }
 
                 if (native_module) {
+                    assert(!already_loaded);
                     native_module->init_ioctx_services(
                         vm_ctx->strand().context());
                     auto ec = native_module->init_lua_module(*vm_ctx, L);
@@ -530,6 +526,24 @@ static int require(lua_State* L)
                     lua_pushboolean(L, 1);
                     lua_insert(L, -2);
                     return 2;
+                }
+
+                {
+                    rawgetp(L, LUA_REGISTRYINDEX, &loaded_modules_key);
+                    push(L, module_path);
+                    lua_rawget(L, -2);
+                    if (!lua_isnil(L, -1)) {
+                        assert(already_loaded);
+                        lua_pushboolean(L, 1);
+                        lua_insert(L, -2);
+                        return 2;
+                    }
+                    lua_pop(L, 2);
+                }
+
+                if (already_loaded) {
+                    push(L, errc::cyclic_import, "module", module_id);
+                    return lua_error(L);
                 }
 
                 std::optional<std::reference_wrapper<std::string>>
