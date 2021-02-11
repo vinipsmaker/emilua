@@ -39,11 +39,11 @@ public:
    // Called only once per `appctx`. On normal conditions there is only one
    // `appctx` to the whole process, but the user might create custom
    // "launchers" to his project where multiple app contexts exist.
-   virtual void init_appctx(app_context& appctx) noexcept = 0;
+   virtual void init_appctx(app_context& appctx) noexcept;
 
    // It may be called multiple times on the same `ioctx` object. Use it to
    // register new services in the execution loop.
-   virtual void init_ioctx_services(asio::io_context& ioctx) noexcept = 0;
+   virtual void init_ioctx_services(asio::io_context& ioctx) noexcept;
 
    // Called only once per VM. It should push the Lua module (table) on the
    // stack on success and nothing on failure. It must only throw LUA_ERRMEM

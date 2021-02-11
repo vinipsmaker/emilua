@@ -62,6 +62,7 @@ src = [
 
     'src/scope_cleanup.cpp',
     'src/lua_shim.cpp',
+    'src/plugin.cpp',
     'src/fiber.cpp',
     'src/actor.cpp',
     'src/mutex.cpp',
