@@ -62,7 +62,6 @@ src = [
 
     'src/scope_cleanup.cpp',
     'src/lua_shim.cpp',
-    'src/plugin.cpp',
     'src/fiber.cpp',
     'src/actor.cpp',
     'src/mutex.cpp',
@@ -92,6 +91,10 @@ re2c_src = [
     'src/state.ypp',
 ]
 
+if get_option('enable_plugins')
+    src += 'src/plugin.cpp'
+endif
+
 if get_option('enable_http')
     warning('HTTP support is still experimental.' +
             ' Please report any bugs you find.')
@@ -114,7 +117,7 @@ emilua_bin = executable(
         curses,
         libdl,
     ],
-    export_dynamic : true,
+    export_dynamic : get_option('enable_plugins'),
     include_directories : include_directories(incdir),
     implicit_include_directories : false,
     cpp_args : '-DBOOST_DLL_USE_STD_FS',

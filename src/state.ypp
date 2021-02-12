@@ -12,7 +12,6 @@
 #include <emilua/dispatch_table.hpp>
 #include <emilua/scope_cleanup.hpp>
 #include <emilua/lua_shim.hpp>
-#include <emilua/plugin.hpp>
 #include <emilua/fiber.hpp>
 #include <emilua/actor.hpp>
 #include <emilua/mutex.hpp>
@@ -23,10 +22,13 @@
 #include <emilua/tls.hpp>
 #include <emilua/ip.hpp>
 
-#include <boost/preprocessor/stringize.hpp>
-
 #include <boost/scope_exit.hpp>
+
+#if EMILUA_CONFIG_ENABLE_PLUGINS
+#include <emilua/plugin.hpp>
+#include <boost/preprocessor/stringize.hpp>
 #include <boost/dll.hpp>
+#endif // EMILUA_CONFIG_ENABLE_PLUGINS
 
 #if EMILUA_CONFIG_ENABLE_HTTP
 #include <emilua/http.hpp>
@@ -36,7 +38,10 @@ namespace emilua {
 
 using namespace std::string_view_literals;
 namespace fs = std::filesystem;
+
+#if EMILUA_CONFIG_ENABLE_PLUGINS
 namespace dll = boost::dll;
+#endif // EMILUA_CONFIG_ENABLE_PLUGINS
 
 extern unsigned char start_fn_bytecode[];
 extern std::size_t start_fn_bytecode_size;
@@ -442,6 +447,7 @@ static int require(lua_State* L)
         auto on_external_package = [&vm_ctx,&start_module_fiber](
             std::string_view module_id, lua_State* L
         ) -> int {
+#if EMILUA_CONFIG_ENABLE_PLUGINS
             {
                 rawgetp(L, LUA_REGISTRYINDEX, &loaded_modules_key);
                 // relative path (module_id), so it will only resolve native
@@ -455,6 +461,7 @@ static int require(lua_State* L)
                 }
                 lua_pop(L, 2);
             }
+#endif // EMILUA_CONFIG_ENABLE_PLUGINS
 
             for (const auto& p: vm_ctx->appctx.emilua_path) {
                 bool already_loaded = !vm_ctx->visited_external_packages
@@ -469,7 +476,9 @@ static int require(lua_State* L)
 
                 fs::path module_path;
                 bool module_is_leaf;
+#if EMILUA_CONFIG_ENABLE_PLUGINS
                 boost::shared_ptr<plugin> native_module;
+#endif // EMILUA_CONFIG_ENABLE_PLUGINS
                 try {
                     if (
                         module_path = p / (std::string{module_id} + ".lua") ;
@@ -484,6 +493,7 @@ static int require(lua_State* L)
                         module_path = fs::absolute(std::move(module_path));
                         module_is_leaf = false;
                     } else {
+#if EMILUA_CONFIG_ENABLE_PLUGINS
                         [[maybe_unused]] std::lock_guard guard{
                             vm_ctx->appctx.modules_cache_registry_mtx};
                         auto& cache_registry = vm_ctx->appctx
@@ -502,11 +512,15 @@ static int require(lua_State* L)
                                 std::forward_as_tuple(native_module));
                             native_module->init_appctx(vm_ctx->appctx);
                         }
+#else // EMILUA_CONFIG_ENABLE_PLUGINS
+                        throw std::system_error{errc::module_not_found};
+#endif // EMILUA_CONFIG_ENABLE_PLUGINS
                     }
                 } catch (const std::exception&) {
                     continue;
                 }
 
+#if EMILUA_CONFIG_ENABLE_PLUGINS
                 if (native_module) {
                     assert(!already_loaded);
                     native_module->init_ioctx_services(
@@ -527,6 +541,7 @@ static int require(lua_State* L)
                     lua_insert(L, -2);
                     return 2;
                 }
+#endif // EMILUA_CONFIG_ENABLE_PLUGINS
 
                 {
                     rawgetp(L, LUA_REGISTRYINDEX, &loaded_modules_key);

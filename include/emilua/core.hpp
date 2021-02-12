@@ -10,7 +10,6 @@
 #include <boost/core/ignore_unused.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/intrusive/list.hpp>
-#include <boost/shared_ptr.hpp>
 #include <boost/config.hpp>
 
 #include <boost/hana/functional/overload.hpp>
@@ -37,6 +36,10 @@ extern "C" {
 }
 
 #include <emilua/config.h>
+
+#if EMILUA_CONFIG_ENABLE_PLUGINS
+#include <boost/shared_ptr.hpp>
+#endif // EMILUA_CONFIG_ENABLE_PLUGINS
 
 #define EMILUA_CHECK_SUSPEND_ALLOWED(VM_CTX, L)             \
     if (!emilua::detail::unsafe_can_suspend((VM_CTX), (L))) \
@@ -166,7 +169,9 @@ public:
 };
 } // namespace detail
 
+#if EMILUA_CONFIG_ENABLE_PLUGINS
 class BOOST_SYMBOL_VISIBLE plugin;
+#endif // EMILUA_CONFIG_ENABLE_PLUGINS
 
 class app_context
 {
@@ -189,8 +194,10 @@ public:
 
     std::unordered_map<std::filesystem::path, std::string, path_hash>
         modules_cache_registry;
+#if EMILUA_CONFIG_ENABLE_PLUGINS
     std::unordered_map<std::string, boost::shared_ptr<plugin>>
         native_modules_cache_registry;
+#endif // EMILUA_CONFIG_ENABLE_PLUGINS
     std::mutex modules_cache_registry_mtx;
 
     std::size_t extra_threads_count = 0;

@@ -13,6 +13,7 @@ conf.set_quoted(
     get_option('version_suffix')
 )
 conf.set_quoted('LIBROOTDIR', get_option('prefix') / get_option('libdir'))
+conf.set10('ENABLE_PLUGINS', get_option('enable_plugins'))
 conf.set10('ENABLE_COLOR', not get_option('disable_color'))
 conf.set10('ENABLE_HTTP', get_option('enable_http'))
 
