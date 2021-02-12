@@ -7,10 +7,6 @@
 
 #include <boost/preprocessor/list/cat.hpp>
 
-#ifndef BOOST_DLL_USE_STD_FS
-#error "project must be built using BOOST_DLL_USE_STD_FS"
-#endif
-
 // The plugin API/ABI is not stable. This trick adds a safety layer to avoid
 // loading plugins compiled for the wrong version.
 #define EMILUA_PLUGIN_SYMBOL BOOST_PP_LIST_CAT( ( \
