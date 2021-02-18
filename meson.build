@@ -10,7 +10,7 @@ subdir('include/emilua')
 luajit = dependency('luajit', version : '>=2.0.5')
 boost = dependency(
     'boost',
-    version : '>=1.69',
+    version : '>=1.72',
     modules : ['thread'],
     static : true
 )

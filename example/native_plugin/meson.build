@@ -1,7 +1,7 @@
 project('my_plugin', 'cpp', default_options : ['cpp_std=c++17'])
 
 luajit = dependency('luajit', version : '>=2.0.5')
-boost = dependency('boost', version : '>=1.69')
+boost = dependency('boost', version : '>=1.72')
 
 src = [
     'src/main.cpp',
