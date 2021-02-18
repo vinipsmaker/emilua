@@ -556,6 +556,8 @@ std::string category_impl::message(int value) const noexcept
         return "Channel closed";
     case static_cast<int>(errc::no_senders):
         return "Broadcast the address before attempting to receive on it";
+    case static_cast<int>(errc::internal_module):
+        return "Lua code cannot import this module directly";
     default:
         return {};
     }

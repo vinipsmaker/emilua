@@ -30,7 +30,7 @@ namespace emilua {
 // 3. init_lua_module()
 //
 // init_lua_module() is only called on io contexts for which
-// init_ioctx_services() has already been called.
+// init_ioctx_services() has already been called (and the call succeeded).
 class BOOST_SYMBOL_VISIBLE plugin
 {
 public:
@@ -41,7 +41,8 @@ public:
 
    // It may be called multiple times on the same `ioctx` object. Use it to
    // register new services in the execution loop.
-   virtual void init_ioctx_services(asio::io_context& ioctx) noexcept;
+   virtual std::error_code init_ioctx_services(
+       asio::io_context& ioctx) noexcept;
 
    // Called only once per VM. It should push the Lua module (table) on the
    // stack on success and nothing on failure. It must only throw LUA_ERRMEM
@@ -56,8 +57,7 @@ public:
    // implement that. Just apply "lazy loading" techniques on the next layer if
    // you need such a thing (e.g. a function that checks if the module is ready
    // and suspend until so otherwise).
-   virtual std::error_code init_lua_module(
-       vm_context& vm_ctx, lua_State* L) = 0;
+   virtual std::error_code init_lua_module(vm_context& vm_ctx, lua_State* L);
 
    virtual ~plugin() = 0;
 };

@@ -523,9 +523,13 @@ static int require(lua_State* L)
 #if EMILUA_CONFIG_ENABLE_PLUGINS
                 if (native_module) {
                     assert(!already_loaded);
-                    native_module->init_ioctx_services(
+                    auto ec = native_module->init_ioctx_services(
                         vm_ctx->strand().context());
-                    auto ec = native_module->init_lua_module(*vm_ctx, L);
+                    if (ec) {
+                        push(L, ec, "module", module_id);
+                        return lua_error(L);
+                    }
+                    ec = native_module->init_lua_module(*vm_ctx, L);
                     if (ec) {
                         push(L, ec, "module", module_id);
                         return lua_error(L);

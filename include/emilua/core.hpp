@@ -617,6 +617,7 @@ enum class errc {
     unmatched_scope_cleanup,
     channel_closed,
     no_senders,
+    internal_module,
 };
 
 const std::error_category& category();
