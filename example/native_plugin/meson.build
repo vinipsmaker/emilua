@@ -1,6 +1,6 @@
 project('my_plugin', 'cpp', default_options : ['cpp_std=c++17'])
 
-luajit = dependency('luajit', version : '>=2.0.5')
+emilua = dependency('emilua')
 boost = dependency('boost', version : '>=1.72')
 
 src = [
@@ -10,8 +10,11 @@ src = [
 my_plugin_object = shared_module(
     'my_plugin',
     src,
-    dependencies : [boost, luajit],
+    dependencies : [emilua, boost],
     gnu_symbol_visibility : 'hidden',
     install : true,
-    install_dir : get_option('libdir') / 'emilua-0.3',
+    install_dir : emilua.get_variable(
+        pkgconfig : 'pluginsdir',
+        pkgconfig_define : ['prefix', get_option('prefix')],
+    ),
 )

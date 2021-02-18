@@ -1,8 +1,13 @@
-project('emilua', 'cpp', default_options : ['cpp_std=c++17'])
-
-version_major = 0
-version_minor = 3
-version_patch = 0
+project(
+    'emilua', 'cpp',
+    default_options : ['cpp_std=c++17'],
+    meson_version : '>=0.55.0',
+    license : [
+        'BSL-1.0', # most of the code
+        'BSD-3-Clause', # for the CLI11 dependency
+    ],
+    version : '0.3.0',
+)
 
 # https://github.com/mesonbuild/meson/issues/2320
 subdir('include/emilua')
@@ -20,7 +25,10 @@ find_program('xxd')
 bytecode_gen = generator(
     find_program(
         'luajit',
-        dirs: [luajit.get_pkgconfig_variable('prefix') + '/bin']
+        dirs: [
+            luajit.get_variable(pkgconfig : 'prefix', default_value : '') /
+            'bin'
+        ]
     ),
     output: 'bc_@BASENAME@.cpp',
     arguments: ['--', '@INPUT@', '@OUTPUT@']
@@ -131,6 +139,20 @@ install_subdir(
         'config.h.in',
         'meson.build',
     ],
+)
+
+import('pkgconfig').generate(
+    filebase : 'emilua',
+    name : 'Emilua Plugin API',
+    description : 'Lua execution engine',
+    requires : [
+        luajit.name(),
+    ],
+    variables : [
+        'pluginsdir=${libdir}' / 'emilua-' +
+        meson.project_version().split('.')[0] + '.' +
+        meson.project_version().split('.')[1],
+    ]
 )
 
 if get_option('enable_tests')
