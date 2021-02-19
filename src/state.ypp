@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 Vinícius dos Santos Oliveira
+/* Copyright (c) 2020, 2021 Vinícius dos Santos Oliveira
 
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
@@ -85,6 +85,52 @@ static std::string& load_module_source(
             .first;
     }
     return it->second;
+}
+
+// Throws:
+//
+// * std::ios_base::failure
+// * std::filesystem::filesystem_error
+// * std::system_error
+// * std::exception
+static boost::shared_ptr<plugin> load_native_module(
+    std::lock_guard<std::mutex>& modules_cache_registry_guard,
+    emilua::app_context& appctx, const fs::path& pluginsdir,
+    std::string_view module_id)
+{
+    auto& cache_registry = appctx.native_modules_cache_registry;
+    auto it = cache_registry.find(std::string{module_id});
+    if (it != cache_registry.end())
+        return it->second;
+
+    bool already_loading = !appctx.visited_native_modules.emplace(module_id)
+        .second;
+    if (already_loading)
+        throw std::system_error{errc::cyclic_import};
+
+    auto deps_path = pluginsdir / (std::string{module_id} + ".deps");
+    if (fs::exists(deps_path)) {
+        std::ifstream in{deps_path, std::ios::in | std::ios::binary};
+        in.exceptions(std::ios_base::badbit);
+        if (in.fail())
+            throw std::system_error{std::io_errc::stream};
+
+        for (std::string line ; std::getline(in, line, '\n') ;) {
+            load_native_module(modules_cache_registry_guard, appctx, pluginsdir,
+                               line);
+        }
+        if (!in.eof())
+            throw std::system_error{std::io_errc::stream};
+    }
+
+    auto native_module = dll::import<plugin>(
+        pluginsdir / module_id, BOOST_PP_STRINGIZE(EMILUA_PLUGIN_SYMBOL),
+        dll::load_mode::append_decorations);
+    cache_registry.emplace(
+        std::piecewise_construct, std::forward_as_tuple(module_id),
+        std::forward_as_tuple(native_module));
+    native_module->init_appctx(appctx);
+    return native_module;
 }
 
 static int println(lua_State* L)
@@ -496,22 +542,8 @@ static int require(lua_State* L)
 #if EMILUA_CONFIG_ENABLE_PLUGINS
                         [[maybe_unused]] std::lock_guard guard{
                             vm_ctx->appctx.modules_cache_registry_mtx};
-                        auto& cache_registry = vm_ctx->appctx
-                            .native_modules_cache_registry;
-                        auto it = cache_registry.find(std::string{module_id});
-                        if (it != cache_registry.end()) {
-                            native_module = it->second;
-                        } else {
-                            native_module = dll::import<plugin>(
-                                p / module_id,
-                                BOOST_PP_STRINGIZE(EMILUA_PLUGIN_SYMBOL),
-                                dll::load_mode::append_decorations);
-                            cache_registry.emplace(
-                                std::piecewise_construct,
-                                std::forward_as_tuple(module_id),
-                                std::forward_as_tuple(native_module));
-                            native_module->init_appctx(vm_ctx->appctx);
-                        }
+                        native_module = load_native_module(
+                            guard, vm_ctx->appctx, p, module_id);
 #else // EMILUA_CONFIG_ENABLE_PLUGINS
                         throw std::system_error{errc::module_not_found};
 #endif // EMILUA_CONFIG_ENABLE_PLUGINS

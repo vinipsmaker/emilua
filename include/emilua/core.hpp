@@ -198,6 +198,7 @@ public:
 #if EMILUA_CONFIG_ENABLE_PLUGINS
     std::unordered_map<std::string, boost::shared_ptr<plugin>>
         native_modules_cache_registry;
+    std::set<std::string, TransparentStringComp> visited_native_modules;
 #endif // EMILUA_CONFIG_ENABLE_PLUGINS
     std::mutex modules_cache_registry_mtx;
 
