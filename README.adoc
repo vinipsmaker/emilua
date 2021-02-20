@@ -61,6 +61,7 @@ end
 * {cpp}17 compiler (GCC 10 or newer should work).
 * LuaJIT.
 * Boost.Asio (and other Boost libraries as well).
+* https://fmt.dev/[fmt].
 * `re2c`.
 * `xxd`.
 
@@ -81,7 +82,6 @@ git submodule update --init
 
 This will download the extra dependencies:
 
-* fmt.
 * CLI11.
 * Trial.Protocol.
 

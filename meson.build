@@ -19,6 +19,7 @@ boost = dependency(
     modules : ['thread'],
     static : true
 )
+fmt = dependency('fmt', version : '>=6.2.1')
 libdl = meson.get_compiler('cpp').find_library('dl', required : false)
 ssl = dependency('openssl', version : '>=1.1.1')
 find_program('xxd')
@@ -80,13 +81,10 @@ endif
 incdir = [
     '3rd/trial.protocol/include',
     '3rd/CLI11/include',
-    '3rd/fmt/include',
     'include'
 ]
 
 src = [
-    '3rd/fmt/src/format.cc',
-
     'src/scope_cleanup.cpp',
     'src/lua_shim.cpp',
     'src/fiber.cpp',
@@ -140,6 +138,7 @@ emilua_bin = executable(
     dependencies : [
         boost,
         luajit,
+        fmt,
         ssl,
         curses,
         libdl,
