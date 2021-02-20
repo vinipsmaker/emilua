@@ -87,6 +87,7 @@ static std::string& load_module_source(
     return it->second;
 }
 
+#if EMILUA_CONFIG_ENABLE_PLUGINS
 // Throws:
 //
 // * std::ios_base::failure
@@ -132,6 +133,7 @@ static boost::shared_ptr<plugin> load_native_module(
     native_module->init_appctx(appctx);
     return native_module;
 }
+#endif // EMILUA_CONFIG_ENABLE_PLUGINS
 
 static int println(lua_State* L)
 {
