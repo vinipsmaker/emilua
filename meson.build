@@ -46,6 +46,25 @@ re2c_gen = generator(
     ]
 )
 
+if get_option('enable_manpages')
+    custom_target(
+        'manpages',
+        build_by_default : true,
+        command : [
+            find_program('asciidoctor', native : true),
+            '--backend=manpage',
+            '--attribute=VERSION=' + meson.project_version() +
+            get_option('version_suffix'),
+            '--out-file=@OUTPUT@',
+            '@INPUT@',
+        ],
+        output : '@BASENAME@',
+        input : 'doc/man/emilua.1.adoc',
+        install : true,
+        install_dir : get_option('mandir') / 'man1',
+    )
+endif
+
 if get_option('disable_color')
     curses = dependency('', required : false)
 else

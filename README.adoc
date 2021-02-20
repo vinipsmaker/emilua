@@ -67,6 +67,7 @@ end
 == Optional dependencies
 
 * Curses: coloured output on errors.
+* asciidoctor: manpages.
 * GNU AWK: tests.
 
 == "Bundled" dependencies

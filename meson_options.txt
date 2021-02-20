@@ -1,4 +1,8 @@
 option(
+    'enable_manpages', type : 'boolean', value : true,
+    description : 'Whether to build manpages (will need asciidoctor).'
+)
+option(
     'disable_color', type : 'boolean', value : false,
     description : 'Whether to disable builtin color support on terminal' +
         ' output. The builtin color support will auto-detect if stdout/stderr' +
