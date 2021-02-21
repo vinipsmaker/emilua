@@ -56,3 +56,18 @@ EMILUA_PATH::
   A colon-separated list of directories to augment the default search path for
   modules. The modules from this search set have higher priority than the ones
   in the default search path. On Windows, the list is semicolon-separated.
+
+EMILUA_LOG_LEVELS::
+
+  A comma-separated list of log specs. Each spec is a colon-separated pair where
+  second element is a number indicating maximum log level (inclusive) and the
+  first element indicates the affected log category. You can optionally pass a
+  spec containing just the log level that will affect the default category as
+  the first spec.
++
+.Example:
++
+[source,bash]
+----
+EMILUA_LOG_LEVELS="2,glib:7,dbus:3" emilua src/init.lua
+----

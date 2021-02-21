@@ -3,6 +3,7 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
+#include <charconv>
 #include <cstdio>
 #include <new>
 
@@ -23,11 +24,71 @@ char raw_unpack_key;
 char raw_xpcall_key;
 char raw_pcall_key;
 
+std::string_view log_domain<default_log_domain>::name = "emilua";
+int log_domain<default_log_domain>::log_level = /*LOG_WARNING=*/4;
+
 namespace detail {
 char context_key;
 char error_code_mt_key;
 char error_category_mt_key;
 } // namespace detail
+
+void app_context::init_log_domain(std::string_view name, int& log_level)
+{
+    auto rawenv = std::getenv("EMILUA_LOG_LEVELS");
+    if (!rawenv)
+        return;
+
+    std::string_view env = rawenv;
+    auto pos = env.find(name);
+    if (pos == std::string_view::npos)
+        return;
+
+    auto range = env.substr(pos);
+    range.remove_prefix(name.size() + /*the ':' char*/1);
+    int level;
+    auto res = std::from_chars(
+        range.data(), range.data() + range.size(), level);
+    if (res.ec != std::errc{})
+        return;
+
+    log_level = level;
+}
+
+void app_context::log(int priority, std::string_view domain,
+                      fmt::string_view format_str, fmt::format_args args)
+{
+    thread_local fmt::memory_buffer buf;
+    buf.clear();
+    switch (priority) {
+    case /*LOG_EMERG=*/0:
+    case /*LOG_ALERT=*/1:
+    case /*LOG_CRIT=*/2:
+    case /*LOG_ERR=*/3:
+        if (stdout_has_color) {
+            fmt::format_to(buf, FMT_STRING("<_>\033[31;1m[{}] "), domain);
+            buf.data()[1] = '0' + priority;
+            break;
+        }
+    case /*LOG_WARNING=*/4:
+        if (stdout_has_color) {
+            fmt::format_to(buf, FMT_STRING("<4>\033[93;1m[{}] "), domain);
+            break;
+        }
+    default:
+        fmt::format_to(buf, FMT_STRING("<_>[{}] "), domain);
+        buf.data()[1] = '0' + priority;
+    }
+    fmt::vformat_to(buf, format_str, args);
+    if (stdout_has_color && priority <= /*LOG_WARNING=*/4) {
+        std::string_view tail = "\033[22;39m\n";
+        buf.append(tail.data(), tail.data() + tail.size());
+    } else {
+        buf.resize(buf.size() + 1);
+        buf.data()[buf.size() - 1] = '\n';
+    }
+    std::fwrite(buf.data(), buf.size(), /*count=*/1, stderr);
+}
 
 vm_context::vm_context(emilua::app_context& appctx,
                        asio::io_context::strand strand)
@@ -63,13 +124,15 @@ void vm_context::close()
             if (!stdout_has_color)
                 red = underline = reset_red = reset_underline = {};
 
-            fmt::print(
-                stderr,
-                spec,
-                red,
-                static_cast<const void*>(L_),
-                underline, reset_underline,
-                reset_red);
+            if (/*LOG_ERR=*/3 <= log_domain<default_log_domain>::log_level) {
+                fmt::print(
+                    stderr,
+                    spec,
+                    red,
+                    static_cast<const void*>(L_),
+                    underline, reset_underline,
+                    reset_red);
+            }
 
             suppress_tail_errors = true;
         }
@@ -92,11 +155,13 @@ void vm_context::close()
                 errors += e;
                 errors.push_back('\n');
             }
-            fmt::print(
-                stderr,
-                spec,
-                red, static_cast<void*>(L_), failed_cleanup_handler_coro,
-                reset_red);
+            if (/*LOG_ERR=*/3 <= log_domain<default_log_domain>::log_level) {
+                fmt::print(
+                    stderr,
+                    spec,
+                    red, static_cast<void*>(L_), failed_cleanup_handler_coro,
+                    reset_red);
+            }
             suppress_tail_errors = true;
         }
 
@@ -118,11 +183,13 @@ void vm_context::close()
                 errors += e;
                 errors.push_back('\n');
             }
-            fmt::print(
-                stderr,
-                spec,
-                red, static_cast<void*>(L_), reset_red,
-                dim, errors, reset_dim);
+            if (/*LOG_ERR=*/3 <= log_domain<default_log_domain>::log_level) {
+                fmt::print(
+                    stderr,
+                    spec,
+                    red, static_cast<void*>(L_), reset_red,
+                    dim, errors, reset_dim);
+            }
         }
     }
 

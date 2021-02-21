@@ -165,6 +165,7 @@ import('pkgconfig').generate(
     description : 'Lua execution engine',
     requires : [
         luajit.name(),
+        fmt.name(),
     ],
     variables : [
         'pluginsdir=${libdir}' / 'emilua-' +

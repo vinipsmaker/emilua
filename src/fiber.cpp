@@ -699,6 +699,9 @@ void init_fiber_module(lua_State* L)
 void print_panic(const lua_State* fiber, bool is_main, std::string_view error,
                  std::string_view stacktrace)
 {
+    if (/*LOG_ERR=*/3 > log_domain<default_log_domain>::log_level)
+        return;
+
     constexpr auto spec{FMT_STRING(
         "{}{} {:p} panicked: '{}{}{}'{}\n"
         "{}{}{}\n"

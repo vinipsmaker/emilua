@@ -19,6 +19,8 @@
 #include <boost/outcome/policy/all_narrow.hpp>
 #include <boost/outcome/policy/terminate.hpp>
 
+#include <fmt/format.h>
+
 #include <condition_variable>
 #include <system_error>
 #include <string_view>
@@ -75,6 +77,18 @@ using result = outcome::basic_result<
     outcome::policy::terminate
 #endif // defined(NDEBUG)
 >;
+
+template<class T>
+struct log_domain;
+
+struct default_log_domain;
+
+template<>
+struct log_domain<default_log_domain>
+{
+    static std::string_view name;
+    static int log_level;
+};
 
 struct TransparentStringComp
 {
@@ -189,6 +203,21 @@ public:
     app_context() = default;
     app_context(const app_context&) = delete;
 
+    template<class Dom>
+    void init_log_domain()
+    {
+        init_log_domain(log_domain<Dom>::name, log_domain<Dom>::log_level);
+    }
+
+    template<class Domain>
+    void log(int priority, fmt::string_view format_str, fmt::format_args args)
+    {
+        if (priority > log_domain<Domain>::log_level)
+            return;
+
+        log(priority, log_domain<Domain>::name, format_str, std::move(args));
+    }
+
     std::atomic_int exit_code = 0;
 
     std::vector<std::filesystem::path> emilua_path;
@@ -205,6 +234,11 @@ public:
     std::size_t extra_threads_count = 0;
     std::mutex extra_threads_count_mtx;
     std::condition_variable extra_threads_count_empty_cond;
+
+private:
+    void init_log_domain(std::string_view name, int& log_level);
+    void log(int priority, std::string_view domain, fmt::string_view format_str,
+             fmt::format_args args);
 };
 
 class dead_vm_error: public std::runtime_error

@@ -1060,8 +1060,6 @@ maxmcode=40960  -- in KB
 * Describe the behaviour for `sys.exit()` (for main and secondary VMs). Should
   it call the cancellator for every active operation? Should it exit the
   application?
-* We do print to `stderr`. Shouldn't we provide an embedded logger module
-  already?
 
 == Extra caution to take when writing plug-ins
 

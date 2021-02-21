@@ -4,6 +4,7 @@
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
 #include <string_view>
+#include <charconv>
 #include <iostream>
 
 #include <CLI/CLI.hpp>
@@ -60,6 +61,15 @@ int main(int argc, char *argv[])
 #else
     emilua::stdout_has_color = false;
 #endif // EMILUA_CONFIG_ENABLE_COLOR
+
+    if (auto rawenv = std::getenv("EMILUA_LOG_LEVELS") ; rawenv) {
+        std::string_view env = rawenv;
+        int level;
+        auto res = std::from_chars(
+            env.data(), env.data() + env.size(), level);
+        if (res.ec == std::errc{})
+            emilua::log_domain<emilua::default_log_domain>::log_level = level;
+    }
 
     CLI::App app{"Emilua: Execution engine for luaJIT"};
 
