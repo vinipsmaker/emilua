@@ -412,6 +412,7 @@ static int chan_send(lua_State* L)
                     // states
                     lua_pop(L, 3);
                 }
+                [[fallthrough]];
             case LUA_TFUNCTION:
             case LUA_TTHREAD:
             case LUA_TLIGHTUSERDATA:

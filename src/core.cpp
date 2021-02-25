@@ -70,11 +70,13 @@ void app_context::log(int priority, std::string_view domain,
             buf.data()[1] = '0' + priority;
             break;
         }
+        [[fallthrough]];
     case /*LOG_WARNING=*/4:
         if (stdout_has_color) {
             fmt::format_to(buf, FMT_STRING("<4>\033[93;1m[{}] "), domain);
             break;
         }
+        [[fallthrough]];
     default:
         fmt::format_to(buf, FMT_STRING("<_>[{}] "), domain);
         buf.data()[1] = '0' + priority;

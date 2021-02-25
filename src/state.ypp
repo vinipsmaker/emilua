@@ -221,6 +221,7 @@ static int require(lua_State* L)
             break;
         case LUA_ERRMEM:
             push(L, std::errc::not_enough_memory);
+            [[fallthrough]];
         default:
             return lua_error(L);
         }
