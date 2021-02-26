@@ -43,7 +43,7 @@ enum FiberDataIndex: lua_Integer
     USER_HANDLE, //< "augmented joiner"
     // }}}
 
-    // data only avaiable for modules:
+    // data only available for modules:
     STACK,
     LEAF,
     CONTEXT
