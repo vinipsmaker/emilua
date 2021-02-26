@@ -367,7 +367,7 @@ static int require(lua_State* L)
         const char* YYMARKER;
         const char* begin;
         int nparents = 0;
-    loop:
+    loop_parse_dot:
         begin = YYCURSOR;
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wgnu-case-range"
@@ -378,7 +378,7 @@ static int require(lua_State* L)
         }
         {parentpat} {
             ++nparents;
-            goto loop;
+            goto loop_parse_dot;
         }
         {modnamepat} {
             if (*YYCURSOR != '\0') {
@@ -386,11 +386,11 @@ static int require(lua_State* L)
                      "module", tostringview(L, 1));
                 return lua_error(L);
             }
-            goto end;
+            goto end_parse_dot;
         }
         %}
 #pragma GCC diagnostic pop
-    end:
+    end_parse_dot:
 
         module_id = std::string_view(begin, YYCURSOR - begin);
 
@@ -471,6 +471,87 @@ static int require(lua_State* L)
             module_source->get(),
             module_is_leaf,
             nullptr);
+    } else if (starts_with(module_id, "/")) {
+        // TODO: detect cycles
+
+        lua_rawgeti(L, STACKIDX, 1);
+        fs::path module_path{tostringview(L), fs::path::native_format};
+        lua_pop(L, 1);
+        module_path = module_path.parent_path();
+
+        const char* YYCURSOR = module_id.data();
+        const char* YYMARKER;
+        boost::ignore_unused(YYMARKER);
+        const char* begin;
+    loop_parse_slash:
+        begin = YYCURSOR;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wgnu-case-range"
+        %{
+        * {
+            push(L, errc::invalid_module_name, "module", tostringview(L, 1));
+            return lua_error(L);
+        }
+        {modseppat}{modnamepat} {
+            std::string_view component(begin + 1, YYCURSOR - begin - 1);
+            if (*YYCURSOR == '\0') {
+                module_id = component;
+                goto end_parse_slash;
+            } else {
+                module_path /= component;
+                goto loop_parse_slash;
+            }
+        }
+        %}
+#pragma GCC diagnostic pop
+    end_parse_slash:
+
+        bool module_is_leaf;
+        try {
+            if (fs::exists(module_path / (std::string{module_id} + ".lua"))) {
+                module_path /= std::string{module_id} + ".lua";
+                module_is_leaf = true;
+            } else if (fs::exists(module_path / module_id / "init.lua")) {
+                module_path /= module_id;
+                module_path /= "init.lua";
+                module_is_leaf = false;
+            } else {
+                throw std::system_error{errc::module_not_found};
+            }
+        } catch (const std::system_error& e) {
+            push(L, e.code(), "module", tostringview(L, 1));
+            return lua_error(L);
+        }
+
+        {
+            rawgetp(L, LUA_REGISTRYINDEX, &loaded_modules_key);
+            push(L, module_path);
+            lua_rawget(L, -2);
+            if (!lua_isnil(L, -1)) {
+                lua_pushboolean(L, 1);
+                lua_insert(L, -2);
+                return 2;
+            }
+            lua_pop(L, 2);
+        }
+
+        std::optional<std::reference_wrapper<std::string>> module_source;
+        try {
+            module_source = load_module_source(vm_ctx->appctx, module_path);
+        } catch (const std::system_error& e) {
+            push(L, e.code());
+            return lua_error(L);
+        } catch (const std::exception& e) {
+            lua_pushstring(L, e.what());
+            return lua_error(L);
+        }
+        assert(module_source);
+        bool commit_package_as_loaded; //< so we have a 1-sized require()-stack
+        return start_module_fiber(
+            module_path,
+            module_source->get(),
+            module_is_leaf,
+            std::experimental::make_observer(&commit_package_as_loaded));
     } else {
         const char* YYCURSOR = module_id.data();
         const char* YYMARKER;
@@ -487,11 +568,11 @@ static int require(lua_State* L)
                 push(L, errc::invalid_module_name, "module", module_id);
                 return lua_error(L);
             }
-            goto valid;
+            goto end_parse_external;
         }
         %}
 #pragma GCC diagnostic pop
-    valid:
+    end_parse_external:
 
         auto on_external_package = [&vm_ctx,&start_module_fiber](
             std::string_view module_id, lua_State* L

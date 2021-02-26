@@ -1,0 +1,6 @@
+Main fiber from VM 0x1 panicked: 'The root module doesn't have a parent and can't reference one'
+stack traceback:
+	[string "?"]: in function 'require'
+	input.lua:1: in main chunk
+	[C]: in function ''
+	[string "?"]: in function <[string "?"]:0>

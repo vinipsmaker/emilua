@@ -285,6 +285,8 @@ if get_option('enable_tests')
             'module17',
             'module18',
             'module19',
+            'module20',
+            'module21',
         ],
         'actor' : [
             'actor1',

@@ -1,0 +1,1 @@
+baz = require('./foo').foo
