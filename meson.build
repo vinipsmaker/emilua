@@ -37,12 +37,16 @@ bytecode_gen = generator(
 re2c_gen = generator(
     find_program('re2c'),
     output: '@BASENAME@.cpp',
+    # TODO: enable depfile on next re2c release
+    #depfile : '@PLAINNAME@.d',
     arguments: [
         '-W', # Turn on all warnings
         '--flex-syntax',
         '--case-ranges',
         '--empty-class', 'match-none',
         '--input-encoding', 'ascii',
+        '-I', '@CURRENT_SOURCE_DIR@/include',
+        #'--depfile', '@DEPFILE@',
         '@INPUT@', '-o', '@OUTPUT@'
     ]
 )
@@ -88,7 +92,6 @@ src = [
     'src/scope_cleanup.cpp',
     'src/lua_shim.cpp',
     'src/fiber.cpp',
-    'src/actor.cpp',
     'src/mutex.cpp',
     'src/timer.cpp',
     'src/cond.cpp',
@@ -113,6 +116,7 @@ bytecode_src = [
 ]
 
 re2c_src = [
+    'src/actor.ypp',
     'src/state.ypp',
 ]
 
@@ -315,6 +319,8 @@ if get_option('enable_tests')
             'actor24',
             'actor25',
             'actor26',
+            'actor27',
+            'actor28',
         ],
         'json' : [
             'json1',

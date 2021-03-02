@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 Vinícius dos Santos Oliveira
+/* Copyright (c) 2020, 2021 Vinícius dos Santos Oliveira
 
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
@@ -14,6 +14,8 @@
 #include <boost/hana/functional/overload.hpp>
 
 namespace emilua {
+
+namespace fs = std::filesystem;
 
 extern unsigned char chan_op_bytecode[];
 extern std::size_t chan_op_bytecode_size;
@@ -782,6 +784,13 @@ static int inbox_gc(lua_State* L)
 
 static int spawn_vm(lua_State* L)
 {
+    // std::string_view::starts_with() only appeared in C++20
+    static constexpr auto starts_with = [](
+        std::string_view base, std::string_view prefix) {
+        base = base.substr(0, prefix.size());
+        return base == prefix;
+    };
+
     luaL_checktype(L, 1, LUA_TSTRING);
 
     bool inherit_ctx = true;
@@ -808,13 +817,83 @@ static int spawn_vm(lua_State* L)
 
     auto& vm_ctx = get_vm_context(L);
     auto module = tostringview(L, 1);
+    rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
+    lua_pushthread(vm_ctx.current_fiber());
+    lua_xmove(vm_ctx.current_fiber(), L, 1);
+    lua_rawget(L, -2);
+    lua_rawgeti(L, -1, FiberDataIndex::SOURCE_PATH);
+    fs::path source_path{tostringview(L, -1), fs::path::native_format};
+    fs::path module_path;
+    bool is_leaf = source_path.filename() != "init.lua";
+
+    /*!re2c
+    re2c:define:YYCTYPE = char;
+    re2c:yyfill:enable = 0;
+    re2c:indent:string = "    ";
+    */
+    /*!include:re2c "emilua/modules.re" */
     if (module == ".") {
-        rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
-        lua_pushthread(vm_ctx.current_fiber());
-        lua_xmove(vm_ctx.current_fiber(), L, 1);
-        lua_rawget(L, -2);
-        lua_rawgeti(L, -1, FiberDataIndex::SOURCE_PATH);
-        module = tostringview(L, -1);
+        module_path = source_path;
+    } else if (starts_with(module, ".")) {
+        if (starts_with(module, "./"))
+            module.remove_prefix(2);
+
+        const char* YYCURSOR = module.data();
+        const char* YYMARKER;
+        const char* begin;
+        int nparents = 0;
+    loop_parse_dot:
+        begin = YYCURSOR;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wgnu-case-range"
+        %{
+        * {
+            push(L, errc::invalid_module_name, "module", tostringview(L, 1));
+            return lua_error(L);
+        }
+        {emilua_parentpat} {
+            ++nparents;
+            goto loop_parse_dot;
+        }
+        {emilua_modnamepat} {
+            if (*YYCURSOR != '\0') {
+                push(L, errc::invalid_module_name,
+                     "module", tostringview(L, 1));
+                return lua_error(L);
+            }
+            goto end_parse_dot;
+        }
+        %}
+#pragma GCC diagnostic pop
+    end_parse_dot:
+
+        module = std::string_view(begin, YYCURSOR - begin);
+
+        if (nparents == 0 && is_leaf) {
+            push(L, errc::leaf_cannot_import_child);
+            return lua_error(L);
+        }
+
+        module_path = source_path.parent_path();
+        for (int i = (is_leaf ? 1u : 0u) ; i != nparents ; ++i) {
+            module_path = module_path.parent_path();
+        }
+        try {
+            // actors can only import non-leaf modules to maintain code
+            // consistency
+            if (fs::exists(module_path / module / "init.lua")) {
+                module_path /= module;
+                module_path /= "init.lua";
+            } else {
+                throw std::system_error{errc::module_not_found};
+            }
+        } catch (const std::system_error& e) {
+            push(L, e.code(), "module", tostringview(L, 1));
+            return lua_error(L);
+        }
+    } else {
+        push(L, errc::invalid_module_name);
+        return lua_error(L);
     }
 
     // * `work_guard` must live until we call strand.post()
@@ -857,7 +936,7 @@ static int spawn_vm(lua_State* L)
     try {
         auto new_vm_ctx = emilua::make_vm(
             new_ioctx ? *new_ioctx : vm_ctx.strand().context(),
-            vm_ctx.appctx, module, emilua::ContextType::worker);
+            vm_ctx.appctx, module_path, emilua::ContextType::worker);
         new_vm_ctx->ioctxref = new_ioctx;
 
         auto buf = reinterpret_cast<actor_address*>(
