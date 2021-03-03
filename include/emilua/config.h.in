@@ -10,3 +10,25 @@
 #define EMILUA_CONFIG_ENABLE_PLUGINS @ENABLE_PLUGINS@
 #define EMILUA_CONFIG_ENABLE_COLOR @ENABLE_COLOR@
 #define EMILUA_CONFIG_ENABLE_HTTP @ENABLE_HTTP@
+
+// == THREADS AVAILABILITY
+//
+// 0:: No threading support.
+//
+// 1 or higher:: Threads available.
+//
+// == EXECUTION CONTEXTS
+//
+// 0 or 1:: Only one thread may call io_context::run(). spawn_ctx_threads() will
+// always fail with ENOSYS (even if called with 0).
+//
+// 2 or higher:: Multiple threads may call io_context::run().
+// spawn_ctx_threads() fully implemented.
+//
+// == NOTES
+//
+// Decreasing this value will change the implementation assumptions and enable a
+// few optimizations. Check
+// <https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/overview/core/concurrency_hint.html>
+// for more info.
+#define EMILUA_CONFIG_THREAD_SUPPORT_LEVEL @THREAD_SUPPORT_LEVEL@

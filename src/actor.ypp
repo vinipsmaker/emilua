@@ -896,6 +896,7 @@ static int spawn_vm(lua_State* L)
         return lua_error(L);
     }
 
+#if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
     // * `work_guard` must live until we call strand.post()
     // * `work_guard` must be init'ed before we even spawn the thread to call
     //   ioctx.run()
@@ -932,12 +933,24 @@ static int spawn_vm(lua_State* L)
                 appctx.extra_threads_count_empty_cond.notify_all();
         }}.detach();
     }
+#else
+    if (!inherit_ctx) {
+        push(L, std::errc::not_supported);
+        return lua_error(L);
+    }
+#endif
 
     try {
+#if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
         auto new_vm_ctx = emilua::make_vm(
             new_ioctx ? *new_ioctx : vm_ctx.strand().context(),
             vm_ctx.appctx, module_path, emilua::ContextType::worker);
         new_vm_ctx->ioctxref = new_ioctx;
+#else
+        auto new_vm_ctx = emilua::make_vm(
+            vm_ctx.strand().context(), vm_ctx.appctx, module_path,
+            emilua::ContextType::worker);
+#endif
 
         auto buf = reinterpret_cast<actor_address*>(
             lua_newuserdata(L, sizeof(actor_address))
@@ -965,6 +978,10 @@ static int spawn_vm(lua_State* L)
 
 static int spawn_ctx_threads(lua_State* L)
 {
+#if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL < 2
+    push(L, std::errc::function_not_supported);
+    return lua_error(L);
+#else
     luaL_checktype(L, 1, LUA_TNUMBER);
 
     auto& vm_ctx = get_vm_context(L);
@@ -1006,6 +1023,7 @@ static int spawn_ctx_threads(lua_State* L)
         }.detach();
     }
     return 0;
+#endif
 }
 
 static int tx_chan_mt_eq(lua_State* L)

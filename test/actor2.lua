@@ -18,5 +18,6 @@ else
     -- called `inbox:recv()`. That's what we're testing: will the last sender
     -- awake the the fiber stalled in the `recv()` operation?
     this_fiber.yield()
+    this_fiber.yield()
     println('B')
 end

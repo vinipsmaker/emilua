@@ -831,7 +831,12 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     if (!entry_point.is_absolute())
         entry_point = std::filesystem::absolute(std::move(entry_point));
 
+#if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 1 || \
+    EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 0
+    strand_type strand{ioctx.get_executor()};
+#else
     strand_type strand{ioctx};
+#endif
     auto state = std::make_shared<vm_context>(appctx, strand);
     assert(state->valid());
 

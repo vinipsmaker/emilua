@@ -104,7 +104,15 @@ int main(int argc, char *argv[])
     }
 
     emilua::app_context appctx;
+#if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 2
     asio::io_context ioctx{main_ctx_concurrency_hint};
+#elif EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 1
+    asio::io_context ioctx{1};
+#elif EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 0
+    asio::io_context ioctx{BOOST_ASIO_CONCURRENCY_HINT_UNSAFE};
+#else
+# error Invalid thread support level
+#endif
 
     {
         const char* env = std::getenv("EMILUA_PATH");

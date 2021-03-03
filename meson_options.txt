@@ -11,6 +11,10 @@ option(
         ' print error messages, for instance.'
 )
 option(
+    'thread_support_level', type : 'integer', min : 0, max : 2, value : 2,
+    description : 'Check include/emilua/config.h.in for documentation',
+)
+option(
     'enable_tests', type : 'boolean',
     description : 'Whether to build tests (will require more dependencies).'
 )

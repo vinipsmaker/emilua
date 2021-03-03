@@ -78,7 +78,14 @@ using result = outcome::basic_result<
 #endif // defined(NDEBUG)
 >;
 
+#if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 2
 using strand_type = asio::io_context::strand;
+#elif EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 1 || \
+    EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 0
+using strand_type = asio::io_context::executor_type;
+#else
+# error Invalid thread support level
+#endif
 
 template<class T>
 struct log_domain;
