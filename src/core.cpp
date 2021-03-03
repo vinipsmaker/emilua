@@ -92,8 +92,7 @@ void app_context::log(int priority, std::string_view domain,
     std::fwrite(buf.data(), buf.size(), /*count=*/1, stderr);
 }
 
-vm_context::vm_context(emilua::app_context& appctx,
-                       asio::io_context::strand strand)
+vm_context::vm_context(emilua::app_context& appctx, strand_type strand)
     : appctx(appctx)
     , strand_(std::move(strand))
     , valid_(true)

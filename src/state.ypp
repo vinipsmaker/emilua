@@ -831,7 +831,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     if (!entry_point.is_absolute())
         entry_point = std::filesystem::absolute(std::move(entry_point));
 
-    asio::io_context::strand strand{ioctx};
+    strand_type strand{ioctx};
     auto state = std::make_shared<vm_context>(appctx, strand);
     assert(state->valid());
 

@@ -78,6 +78,8 @@ using result = outcome::basic_result<
 #endif // defined(NDEBUG)
 >;
 
+using strand_type = asio::io_context::strand;
+
 template<class T>
 struct log_domain;
 
@@ -373,7 +375,7 @@ public:
 class vm_context: public std::enable_shared_from_this<vm_context>
 {
 public:
-    vm_context(app_context& appctx, boost::asio::io_context::strand strand);
+    vm_context(app_context& appctx, strand_type strand);
     ~vm_context();
 
     vm_context(const vm_context&) = delete;
@@ -382,17 +384,14 @@ public:
     vm_context& operator=(const vm_context&) = delete;
     vm_context& operator=(vm_context&&) = delete;
 
-    const boost::asio::io_context::strand& strand()
+    const strand_type& strand()
     {
         return strand_;
     }
 
-    detail::remap_post_to_defer<boost::asio::io_context::strand>
-    strand_using_defer()
+    detail::remap_post_to_defer<strand_type> strand_using_defer()
     {
-        return detail::remap_post_to_defer<boost::asio::io_context::strand>{
-            strand_
-        };
+        return detail::remap_post_to_defer<strand_type>{strand_};
     }
 
     asio::executor_work_guard<asio::io_context::executor_type> work_guard()
@@ -492,7 +491,7 @@ public:
     std::weak_ptr<asio::io_context> ioctxref;
 
 private:
-    boost::asio::io_context::strand strand_;
+    strand_type strand_;
     bool valid_;
     bool lua_errmem;
     bool suppress_tail_errors = false;
