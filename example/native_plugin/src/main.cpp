@@ -21,12 +21,13 @@ public:
         std::cout << "Plugin initialized\n" << std::flush;
     }
 
-    void init_ioctx_services(asio::io_context&) noexcept override
+    std::error_code init_ioctx_services(asio::io_context&) noexcept override
     {
         std::cout <<
             "Plugin (re-)installed io services into current execution"
             " context\n" <<
             std::flush;
+        return {};
     }
 
     std::error_code init_lua_module(emilua::vm_context&, lua_State* L) override
