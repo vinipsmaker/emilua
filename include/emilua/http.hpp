@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <limits>
+
 #include <boost/http/socket.hpp>
 #include <boost/http/response.hpp>
 #include <boost/http/request.hpp>
@@ -31,7 +33,11 @@ struct Request
         std::string, Headers, std::vector<std::uint8_t>
     >
 {
-    bool busy = false;
+    unsigned nreaders = 0;
+    bool has_writer = false;
+
+    static constexpr unsigned max_readers =
+        std::numeric_limits<unsigned>::max();
 };
 
 struct Response
@@ -39,7 +45,11 @@ struct Response
         std::string, Headers, std::vector<std::uint8_t>
     >
 {
-    bool busy = false;
+    unsigned nreaders = 0;
+    bool has_writer = false;
+
+    static constexpr unsigned max_readers =
+        std::numeric_limits<unsigned>::max();
 };
 
 template<class T>

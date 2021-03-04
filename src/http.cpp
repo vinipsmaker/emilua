@@ -858,7 +858,7 @@ static int socket_read_request(lua_State* L)
         return lua_error(L);
     }
 
-    if ((*m)->busy) {
+    if ((*m)->nreaders > 0 || (*m)->has_writer) {
         push(L, std::errc::device_or_resource_busy, "arg", 2);
         return lua_error(L);
     }
@@ -877,14 +877,14 @@ static int socket_read_request(lua_State* L)
     set_interrupter(L, *vm_ctx);
 
     ++s->nbusy;
-    (*m)->busy = true;
+    (*m)->has_writer = true;
     s->socket.async_read_request(**m, asio::bind_executor(
         vm_ctx->strand_using_defer(),
         [vm_ctx,current_fiber,b1=s->buffer,msg=*m,nbusy=&s->nbusy](
             const boost::system::error_code& ec
         ) {
             boost::ignore_unused(b1);
-            msg->busy = false;
+            msg->has_writer = false;
             std::error_code std_ec = ec;
             vm_ctx->fiber_prologue(
                 current_fiber,
@@ -943,7 +943,7 @@ static int socket_write_response(lua_State* L)
         return lua_error(L);
     }
 
-    if ((*m)->busy) {
+    if ((*m)->has_writer || (*m)->nreaders == (*m)->max_readers) {
         push(L, std::errc::device_or_resource_busy, "arg", 2);
         return lua_error(L);
     }
@@ -962,13 +962,13 @@ static int socket_write_response(lua_State* L)
     set_interrupter(L, *vm_ctx);
 
     ++s->nbusy;
-    (*m)->busy = true;
+    (*m)->nreaders++;
     s->socket.async_write_response(**m, asio::bind_executor(
         vm_ctx->strand_using_defer(),
         [vm_ctx,current_fiber,msg=*m,nbusy=&s->nbusy](
             const boost::system::error_code& ec
         ) {
-            msg->busy = false;
+            msg->nreaders--;
             std::error_code std_ec = ec;
             vm_ctx->fiber_prologue(
                 current_fiber,
@@ -1091,7 +1091,7 @@ static int socket_write_response_metadata(lua_State* L)
         return lua_error(L);
     }
 
-    if ((*m)->busy) {
+    if ((*m)->has_writer || (*m)->nreaders == (*m)->max_readers) {
         push(L, std::errc::device_or_resource_busy, "arg", 2);
         return lua_error(L);
     }
@@ -1110,13 +1110,13 @@ static int socket_write_response_metadata(lua_State* L)
     set_interrupter(L, *vm_ctx);
 
     ++s->nbusy;
-    (*m)->busy = true;
+    (*m)->nreaders++;
     s->socket.async_write_response_metadata(**m, asio::bind_executor(
         vm_ctx->strand_using_defer(),
         [vm_ctx,current_fiber,msg=*m,nbusy=&s->nbusy](
             const boost::system::error_code& ec
         ) {
-            msg->busy = false;
+            msg->nreaders--;
             std::error_code std_ec = ec;
             vm_ctx->fiber_prologue(
                 current_fiber,
@@ -1185,7 +1185,10 @@ static int socket_write(lua_State* L)
     }
     assert(req || res);
 
-    if ((req && (*req)->busy) || (res && (*res)->busy)) {
+    if ((req && ((*req)->has_writer ||
+                 (*req)->nreaders == (*req)->max_readers)) ||
+        (res && ((*res)->has_writer ||
+                 (*res)->nreaders == (*res)->max_readers))) {
         push(L, std::errc::device_or_resource_busy, "arg", 2);
         return lua_error(L);
     }
@@ -1205,13 +1208,13 @@ static int socket_write(lua_State* L)
 
     auto sched_op = [&](auto& msg) {
         ++s->nbusy;
-        msg->busy = true;
+        msg->nreaders++;
         s->socket.async_write(*msg, asio::bind_executor(
             vm_ctx->strand_using_defer(),
             [vm_ctx,current_fiber,msg,nbusy=&s->nbusy](
                 const boost::system::error_code& ec
             ) {
-                msg->busy = false;
+                msg->nreaders--;
                 std::error_code std_ec = ec;
                 vm_ctx->fiber_prologue(
                     current_fiber,
@@ -1283,7 +1286,10 @@ static int socket_write_trailers(lua_State* L)
     }
     assert(req || res);
 
-    if ((req && (*req)->busy) || (res && (*res)->busy)) {
+    if ((req && ((*req)->has_writer ||
+                 (*req)->nreaders == (*req)->max_readers)) ||
+        (res && ((*res)->has_writer ||
+                 (*res)->nreaders == (*res)->max_readers))) {
         push(L, std::errc::device_or_resource_busy, "arg", 2);
         return lua_error(L);
     }
@@ -1303,13 +1309,13 @@ static int socket_write_trailers(lua_State* L)
 
     auto sched_op = [&](auto& msg) {
         ++s->nbusy;
-        msg->busy = true;
+        msg->nreaders++;
         s->socket.async_write_trailers(*msg, asio::bind_executor(
             vm_ctx->strand_using_defer(),
             [vm_ctx,current_fiber,msg,nbusy=&s->nbusy](
                 const boost::system::error_code& ec
             ) {
-                msg->busy = false;
+                msg->nreaders--;
                 std::error_code std_ec = ec;
                 vm_ctx->fiber_prologue(
                     current_fiber,
@@ -1435,7 +1441,7 @@ static int socket_write_request(lua_State* L)
         return lua_error(L);
     }
 
-    if ((*m)->busy) {
+    if ((*m)->has_writer || (*m)->nreaders == (*m)->max_readers) {
         push(L, std::errc::device_or_resource_busy, "arg", 2);
         return lua_error(L);
     }
@@ -1454,13 +1460,13 @@ static int socket_write_request(lua_State* L)
     set_interrupter(L, *vm_ctx);
 
     ++s->nbusy;
-    (*m)->busy = true;
+    (*m)->nreaders++;
     s->socket.async_write_request(**m, asio::bind_executor(
         vm_ctx->strand_using_defer(),
         [vm_ctx,current_fiber,msg=*m,nbusy=&s->nbusy](
             const boost::system::error_code& ec
         ) {
-            msg->busy = false;
+            msg->nreaders--;
             std::error_code std_ec = ec;
             vm_ctx->fiber_prologue(
                 current_fiber,
@@ -1519,7 +1525,7 @@ static int socket_write_request_metadata(lua_State* L)
         return lua_error(L);
     }
 
-    if ((*m)->busy) {
+    if ((*m)->has_writer || (*m)->nreaders == (*m)->max_readers) {
         push(L, std::errc::device_or_resource_busy, "arg", 2);
         return lua_error(L);
     }
@@ -1538,13 +1544,13 @@ static int socket_write_request_metadata(lua_State* L)
     set_interrupter(L, *vm_ctx);
 
     ++s->nbusy;
-    (*m)->busy = true;
+    (*m)->nreaders++;
     s->socket.async_write_request_metadata(**m, asio::bind_executor(
         vm_ctx->strand_using_defer(),
         [vm_ctx,current_fiber,msg=*m,nbusy=&s->nbusy](
             const boost::system::error_code& ec
         ) {
-            msg->busy = false;
+            msg->nreaders--;
             std::error_code std_ec = ec;
             vm_ctx->fiber_prologue(
                 current_fiber,
@@ -1603,7 +1609,7 @@ static int socket_read_response(lua_State* L)
         return lua_error(L);
     }
 
-    if ((*m)->busy) {
+    if ((*m)->nreaders > 0 || (*m)->has_writer) {
         push(L, std::errc::device_or_resource_busy, "arg", 2);
         return lua_error(L);
     }
@@ -1622,14 +1628,14 @@ static int socket_read_response(lua_State* L)
     set_interrupter(L, *vm_ctx);
 
     ++s->nbusy;
-    (*m)->busy = true;
+    (*m)->has_writer = true;
     s->socket.async_read_response(**m, asio::bind_executor(
         vm_ctx->strand_using_defer(),
         [vm_ctx,current_fiber,b1=s->buffer,msg=*m,nbusy=&s->nbusy](
             const boost::system::error_code& ec
         ) {
             boost::ignore_unused(b1);
-            msg->busy = false;
+            msg->has_writer = false;
             std::error_code std_ec = ec;
             vm_ctx->fiber_prologue(
                 current_fiber,
@@ -1698,7 +1704,8 @@ static int socket_read_some(lua_State* L)
     }
     assert(req || res);
 
-    if ((req && (*req)->busy) || (res && (*res)->busy)) {
+    if ((req && ((*req)->nreaders > 0 || (*req)->has_writer)) ||
+        (res && ((*res)->nreaders > 0 || (*res)->has_writer))) {
         push(L, std::errc::device_or_resource_busy, "arg", 2);
         return lua_error(L);
     }
@@ -1718,14 +1725,14 @@ static int socket_read_some(lua_State* L)
 
     auto sched_op = [&](auto& msg) {
         ++s->nbusy;
-        msg->busy = true;
+        msg->has_writer = true;
         s->socket.async_read_some(*msg, asio::bind_executor(
             vm_ctx->strand_using_defer(),
             [vm_ctx,current_fiber,b1=s->buffer,msg,nbusy=&s->nbusy](
                 const boost::system::error_code& ec
             ) {
                 boost::ignore_unused(b1);
-                msg->busy = false;
+                msg->has_writer = false;
                 std::error_code std_ec = ec;
                 vm_ctx->fiber_prologue(
                     current_fiber,
