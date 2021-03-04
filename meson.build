@@ -340,6 +340,14 @@ if get_option('enable_tests')
         ],
     }
 
+    if get_option('thread_support_level') >= 2
+        tests +=  {
+            'actor' : tests['actor'] + [
+                'actor29',
+            ]
+        }
+    endif
+
     if get_option('enable_http')
         tests +=  {
             'http' : [

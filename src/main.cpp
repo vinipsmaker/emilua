@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
     CLI::App app{"Emilua: Execution engine for luaJIT"};
 
     std::string filename;
-    int main_ctx_concurrency_hint = BOOST_ASIO_CONCURRENCY_HINT_DEFAULT;
+    int main_ctx_concurrency_hint = BOOST_ASIO_CONCURRENCY_HINT_SAFE;
     try {
         auto filename_opt = app.add_option("file", filename, "Script filename");
         app.add_option(
@@ -106,10 +106,14 @@ int main(int argc, char *argv[])
     emilua::app_context appctx;
 #if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 2
     asio::io_context ioctx{main_ctx_concurrency_hint};
+    asio::make_service<emilua::properties_service>(
+        ioctx, main_ctx_concurrency_hint);
 #elif EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 1
     asio::io_context ioctx{1};
+    asio::make_service<emilua::properties_service>(ioctx, 1);
 #elif EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 0
     asio::io_context ioctx{BOOST_ASIO_CONCURRENCY_HINT_UNSAFE};
+    asio::make_service<emilua::properties_service>(ioctx, 1);
 #else
 # error Invalid thread support level
 #endif

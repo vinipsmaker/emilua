@@ -912,6 +912,7 @@ static int spawn_vm(lua_State* L)
 
     if (!inherit_ctx) {
         new_ioctx = std::make_shared<asio::io_context>(concurrency_hint);
+        asio::make_service<properties_service>(*new_ioctx, concurrency_hint);
         work_guard.emplace(new_ioctx->get_executor());
 
         {
@@ -992,6 +993,13 @@ static int spawn_ctx_threads(lua_State* L)
 
     auto& vm_ctx = get_vm_context(L);
     auto nthrds = lua_tointeger(L, 1);
+
+    int concurrency_hint = asio::use_service<properties_service>(
+        vm_ctx.strand().context()).concurrency_hint;
+    if (concurrency_hint == 1) {
+        push(L, std::errc::not_supported);
+        return lua_error(L);
+    }
 
     if (nthrds <= 0)
         return 0;

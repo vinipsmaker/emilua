@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 Vinícius dos Santos Oliveira
+/* Copyright (c) 2020, 2021 Vinícius dos Santos Oliveira
 
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
@@ -23,6 +23,8 @@ bool stdout_has_color;
 char raw_unpack_key;
 char raw_xpcall_key;
 char raw_pcall_key;
+
+asio::io_context::id properties_service::id;
 
 std::string_view log_domain<default_log_domain>::name = "emilua";
 int log_domain<default_log_domain>::log_level = /*LOG_WARNING=*/4;
@@ -91,6 +93,22 @@ void app_context::log(int priority, std::string_view domain,
     }
     std::fwrite(buf.data(), buf.size(), /*count=*/1, stderr);
 }
+
+properties_service::properties_service(asio::execution_context& ctx,
+                                       int concurrency_hint)
+    : asio::execution_context::service(ctx)
+    , concurrency_hint(concurrency_hint)
+{}
+
+properties_service::properties_service(asio::execution_context& ctx)
+    : asio::execution_context::service(ctx)
+    , concurrency_hint(-1)
+{
+    throw std::logic_error("properties_service not initialized");
+}
+
+void properties_service::shutdown()
+{}
 
 vm_context::vm_context(emilua::app_context& appctx, strand_type strand)
     : appctx(appctx)

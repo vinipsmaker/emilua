@@ -250,6 +250,21 @@ private:
              fmt::format_args args);
 };
 
+class properties_service : public asio::execution_context::service
+{
+public:
+    using key_type = properties_service;
+
+    properties_service(asio::execution_context& ctx, int concurrency_hint);
+    explicit properties_service(asio::execution_context& ctx);
+
+    void shutdown() override;
+
+    const int concurrency_hint;
+
+    static asio::io_context::id id;
+};
+
 class dead_vm_error: public std::runtime_error
 {
 public:
