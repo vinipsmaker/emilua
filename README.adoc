@@ -137,8 +137,7 @@ You also need to have GNU AWK installed to run the tests.
 
 == ROADMAP
 
-* Package manager.
-* Native plug-in API.
+* More plugins.
 ** Regex plug-in.
 ** D-Bus plug-in.
 ** Python plug-in.

@@ -2,8 +2,18 @@
 
 == 0.3
 
-* Add rules for headers installation. The headers are necessary for native
-  plug-ins.
+* HTTP request and response objects now use read-write locks and there is some
+  limited sharing that you can do with them without stumbling upon EBUSY errors.
+* Improvements to the module system (that's the main feature for this
+  release). You should be able to use guix as the package manager for your
+  emilua projects.
+* EMILUA_PATH environment variable.
+* Native plugins API (it can be disabled at build configure time).
+* Add logging module.
+* Add manpage.
+* `--version` CLI arg.
+* Build configure options to disable threading.
+* Use fmtlib from host system.
 
 == 0.2
 
