@@ -218,6 +218,13 @@ inline int message_body(lua_State* L)
 
 static int request_meta_index(lua_State* L)
 {
+    auto& r = *reinterpret_cast<std::shared_ptr<Request>*>(
+        lua_touserdata(L, 1));
+    if (r->has_writer) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
     return dispatch_table::dispatch(
         hana::make_tuple(
             hana::make_pair(BOOST_HANA_STRING("method"), request_method),
@@ -375,6 +382,13 @@ inline int message_newbody(lua_State* L)
 
 static int request_meta_newindex(lua_State* L)
 {
+    auto& r = *reinterpret_cast<std::shared_ptr<Request>*>(
+        lua_touserdata(L, 1));
+    if (r->nreaders > 0 || r->has_writer) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
     return dispatch_table::dispatch(
         hana::make_tuple(
             hana::make_pair(BOOST_HANA_STRING("method"), request_newmethod),
@@ -415,6 +429,13 @@ inline int response_reason(lua_State* L)
 
 static int response_meta_index(lua_State* L)
 {
+    auto& r = *reinterpret_cast<std::shared_ptr<Response>*>(
+        lua_touserdata(L, 1));
+    if (r->has_writer) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
     return dispatch_table::dispatch(
         hana::make_tuple(
             hana::make_pair(BOOST_HANA_STRING("status"), response_status),
@@ -456,6 +477,13 @@ inline int response_newreason(lua_State* L)
 
 static int response_meta_newindex(lua_State* L)
 {
+    auto& r = *reinterpret_cast<std::shared_ptr<Response>*>(
+        lua_touserdata(L, 1));
+    if (r->nreaders > 0 || r->has_writer) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
     return dispatch_table::dispatch(
         hana::make_tuple(
             hana::make_pair(BOOST_HANA_STRING("status"), response_newstatus),
@@ -491,24 +519,44 @@ static int headers_meta_index(lua_State* L)
     case headers_origin::request_headers: {
         auto& r = *reinterpret_cast<std::shared_ptr<Request>*>(
             lua_touserdata(L, -1));
+        if (r->has_writer) {
+            push(L, std::errc::device_or_resource_busy);
+            return lua_error(L);
+        }
+
         headers = &r->headers();
         break;
     }
     case headers_origin::request_trailers: {
         auto& r = *reinterpret_cast<std::shared_ptr<Request>*>(
             lua_touserdata(L, -1));
+        if (r->has_writer) {
+            push(L, std::errc::device_or_resource_busy);
+            return lua_error(L);
+        }
+
         headers = &r->trailers();
         break;
     }
     case headers_origin::response_headers: {
         auto& r = *reinterpret_cast<std::shared_ptr<Response>*>(
             lua_touserdata(L, -1));
+        if (r->has_writer) {
+            push(L, std::errc::device_or_resource_busy);
+            return lua_error(L);
+        }
+
         headers = &r->headers();
         break;
     }
     case headers_origin::response_trailers: {
         auto& r = *reinterpret_cast<std::shared_ptr<Response>*>(
             lua_touserdata(L, -1));
+        if (r->has_writer) {
+            push(L, std::errc::device_or_resource_busy);
+            return lua_error(L);
+        }
+
         headers = &r->trailers();
         break;
     }
@@ -547,24 +595,44 @@ static int headers_meta_newindex(lua_State* L)
     case headers_origin::request_headers: {
         auto& r = *reinterpret_cast<std::shared_ptr<Request>*>(
             lua_touserdata(L, -1));
+        if (r->nreaders > 0 || r->has_writer) {
+            push(L, std::errc::device_or_resource_busy);
+            return lua_error(L);
+        }
+
         headers = &r->headers();
         break;
     }
     case headers_origin::request_trailers: {
         auto& r = *reinterpret_cast<std::shared_ptr<Request>*>(
             lua_touserdata(L, -1));
+        if (r->nreaders > 0 || r->has_writer) {
+            push(L, std::errc::device_or_resource_busy);
+            return lua_error(L);
+        }
+
         headers = &r->trailers();
         break;
     }
     case headers_origin::response_headers: {
         auto& r = *reinterpret_cast<std::shared_ptr<Response>*>(
             lua_touserdata(L, -1));
+        if (r->nreaders > 0 || r->has_writer) {
+            push(L, std::errc::device_or_resource_busy);
+            return lua_error(L);
+        }
+
         headers = &r->headers();
         break;
     }
     case headers_origin::response_trailers: {
         auto& r = *reinterpret_cast<std::shared_ptr<Response>*>(
             lua_touserdata(L, -1));
+        if (r->nreaders > 0 || r->has_writer) {
+            push(L, std::errc::device_or_resource_busy);
+            return lua_error(L);
+        }
+
         headers = &r->trailers();
         break;
     }
