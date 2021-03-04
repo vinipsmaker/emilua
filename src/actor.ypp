@@ -794,7 +794,11 @@ static int spawn_vm(lua_State* L)
     luaL_checktype(L, 1, LUA_TSTRING);
 
     bool inherit_ctx = true;
+#if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 2
     int concurrency_hint = BOOST_ASIO_CONCURRENCY_HINT_SAFE;
+#elif EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 1
+    int concurrency_hint = 1;
+#endif
 
     switch (lua_type(L, 2)) {
     default:
@@ -807,12 +811,14 @@ static int spawn_vm(lua_State* L)
         lua_getfield(L, 2, "inherit_ctx");
         if (lua_type(L, -1) == LUA_TBOOLEAN)
             inherit_ctx = lua_toboolean(L, -1);
+#if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
         lua_getfield(L, 2, "concurrency_hint");
         if (lua_type(L, -1) == LUA_TNUMBER) {
             int user_concurrency_hint = lua_tointeger(L, -1);
             if (user_concurrency_hint == 1)
                 concurrency_hint = 1;
         }
+#endif
     }
 
     auto& vm_ctx = get_vm_context(L);
