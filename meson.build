@@ -12,17 +12,36 @@ project(
 # https://github.com/mesonbuild/meson/issues/2320
 subdir('include/emilua')
 
+boost_modules = []
+
+if get_option('thread_support_level') >= 1
+    boost_modules += 'thread'
+endif
+
 luajit = dependency('luajit', version : '>=2.0.5')
 boost = dependency(
     'boost',
     version : '>=1.72',
-    modules : ['thread'],
+    modules : boost_modules,
     static : true
 )
 fmt = dependency('fmt', version : '>=6.2.1')
 libdl = meson.get_compiler('cpp').find_library('dl', required : false)
 ssl = dependency('openssl', version : '>=1.1.1')
 find_program('xxd')
+
+add_project_arguments(
+    '-DBOOST_DLL_USE_STD_FS',
+    '-DBOOST_ASIO_NO_DYNAMIC_BUFFER_V1',
+    '-DBOOST_ASIO_DISABLE_CO_AWAIT',
+    '-DBOOST_ASIO_DISABLE_STD_COROUTINE',
+    language : 'cpp',
+)
+
+if get_option('thread_support_level') == 0
+    add_project_arguments('-DBOOST_ASIO_DISABLE_THREADS', language : 'cpp')
+endif
+
 bytecode_gen = generator(
     find_program(
         'luajit',
@@ -34,6 +53,7 @@ bytecode_gen = generator(
     output: 'bc_@BASENAME@.cpp',
     arguments: ['--', '@INPUT@', '@OUTPUT@']
 )
+
 re2c_gen = generator(
     find_program('re2c'),
     output: '@BASENAME@.cpp',
@@ -150,7 +170,6 @@ emilua_bin = executable(
     export_dynamic : get_option('enable_plugins'),
     include_directories : include_directories(incdir),
     implicit_include_directories : false,
-    cpp_args : '-DBOOST_DLL_USE_STD_FS',
     install : true,
 )
 
@@ -162,6 +181,12 @@ install_subdir(
         'meson.build',
     ],
 )
+
+pc_extra_cflags = []
+
+if get_option('thread_support_level') == 0
+    pc_extra_cflags += '-DBOOST_ASIO_DISABLE_THREADS'
+endif
 
 import('pkgconfig').generate(
     filebase : 'emilua',
@@ -175,7 +200,8 @@ import('pkgconfig').generate(
         'pluginsdir=${libdir}' / 'emilua-' +
         meson.project_version().split('.')[0] + '.' +
         meson.project_version().split('.')[1],
-    ]
+    ],
+    extra_cflags : pc_extra_cflags,
 )
 
 if get_option('enable_tests')
