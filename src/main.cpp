@@ -86,7 +86,8 @@ int main(int argc, char *argv[])
         app.parse(argc, argv);
 
         if (*version_opt) {
-            std::cout << "Emilua " EMILUA_CONFIG_VERSION_STRING << std::endl;
+            std::cout << "Emilua " EMILUA_CONFIG_VERSION_STRING << std::endl <<
+                LUAJIT_VERSION << std::endl;
             return 0;
         }
 
