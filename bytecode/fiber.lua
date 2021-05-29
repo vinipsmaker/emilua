@@ -35,7 +35,7 @@ function spawn_start_fn_bootstrap(root_scope, set_current_traceback,
                 end
             end
             if ret[1] == false then
-                error(ret[2])
+                error(ret[2], 0)
             end
             return unpack(ret, 2)
         end
@@ -54,7 +54,7 @@ function fiber_join_bootstrap(error, unpack, native)
         if args[1] then
             return unpack(args, 2)
         else
-            error(args[2])
+            error(args[2], 0)
         end
     end
 end

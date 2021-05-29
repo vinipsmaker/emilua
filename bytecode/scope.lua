@@ -30,7 +30,7 @@ function scope_bootstrap(scope_push, scope_pop, terminate_vm_with_cleanup_error,
             restore_interruption()
         end
         if not ok then
-            error(e)
+            error(e, 0)
         end
     end
 end

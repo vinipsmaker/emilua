@@ -43,7 +43,7 @@ function coroutine_create_bootstrap(create, create_root_scope, root_scope,
                 end
             end
             if ret[1] == false then
-                error(ret[2])
+                error(ret[2], 0)
             end
             return unpack(ret, 2)
         end)
@@ -64,7 +64,7 @@ function coroutine_resume_bootstrap(resume, yield, is_yield_native,
         check_not_interrupted()
 
         if is_busy(co) then
-            error(eperm)
+            error(eperm, 0)
         end
 
         local args = {...}
@@ -98,7 +98,7 @@ function coroutine_wrap_bootstrap(new_create, new_resume, error, unpack)
         return function(...)
             local ret = {new_resume(co, ...)}
             if ret[1] == false then
-                error(ret[2])
+                error(ret[2], 0)
             end
             return unpack(ret, 2)
         end

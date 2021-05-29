@@ -15,7 +15,7 @@ function http_op_bootstrap(error, native)
     return function(self, arg1)
         local e = native(self, arg1)
         if e then
-            error(e)
+            error(e, 0)
         end
     end
 end

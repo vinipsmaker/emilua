@@ -23,6 +23,10 @@ bool stdout_has_color;
 char raw_unpack_key;
 char raw_xpcall_key;
 char raw_pcall_key;
+char raw_error_key;
+char raw_type_key;
+char raw_pairs_key;
+char raw_ipairs_key;
 
 asio::io_context::id properties_service::id;
 

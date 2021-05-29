@@ -256,14 +256,14 @@ void init_timer(lua_State* L)
     assert(res == 0); boost::ignore_unused(res);
     lua_pushvalue(L, -1);
     lua_insert(L, -3);
-    lua_pushcfunction(L, lua_error);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, timer_wait);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &sleep_for_key);
     lua_insert(L, -2);
-    lua_pushcfunction(L, lua_error);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, sleep_for);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);

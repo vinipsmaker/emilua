@@ -15,7 +15,7 @@ local function connect_bootstrap(error, native)
     return function(...)
         local e = native(...)
         if e then
-            error(e)
+            error(e, 0)
         end
     end
 end
@@ -30,7 +30,7 @@ local function accept_bootstrap(error, native)
     return function(...)
         local e, v = native(...)
         if e then
-            error(e)
+            error(e, 0)
         end
         return v
     end
@@ -46,7 +46,7 @@ local function resolve_bootstrap(error, native)
     return function(...)
         local e, v = native(...)
         if e then
-            error(e)
+            error(e, 0)
         end
         return v
     end

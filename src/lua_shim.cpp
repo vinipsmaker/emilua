@@ -199,9 +199,8 @@ void init_lua_shim_module(lua_State* L)
             });
         rawgetp(L, LUA_REGISTRYINDEX, &raw_xpcall_key);
         rawgetp(L, LUA_REGISTRYINDEX, &raw_pcall_key);
-        lua_pushcfunction(L, lua_error);
-        lua_pushliteral(L, "unpack");
-        lua_rawget(L, LUA_GLOBALSINDEX);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_unpack_key);
         lua_call(L, 10, 1);
         lua_rawset(L, -3);
 
@@ -233,9 +232,8 @@ void init_lua_shim_module(lua_State* L)
         lua_pushcfunction(L, clear_busy);
         push(L, std::errc::operation_not_permitted);
         lua_pushcfunction(L, check_not_interrupted);
-        lua_pushcfunction(L, lua_error);
-        lua_pushliteral(L, "unpack");
-        lua_rawget(L, LUA_GLOBALSINDEX);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_unpack_key);
         lua_call(L, 11, 1);
         lua_rawset(L, -3);
 
@@ -248,9 +246,8 @@ void init_lua_shim_module(lua_State* L)
         lua_rawget(L, -4);
         lua_pushliteral(L, "resume");
         lua_rawget(L, -5);
-        lua_pushcfunction(L, lua_error);
-        lua_pushliteral(L, "unpack");
-        lua_rawget(L, LUA_GLOBALSINDEX);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_unpack_key);
         lua_call(L, 4, 1);
         lua_rawset(L, -3);
 

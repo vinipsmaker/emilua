@@ -113,7 +113,7 @@ void init_scope_cleanup_module(lua_State* L)
     lua_pushcfunction(L, terminate_vm_with_cleanup_error);
     lua_pushcfunction(L, restore_interruption);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_pcall_key);
-    lua_pushcfunction(L, lua_error);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_call(L, 6, 1);
     lua_rawset(L, LUA_GLOBALSINDEX);
     lua_pushliteral(L, "scope_cleanup_push");

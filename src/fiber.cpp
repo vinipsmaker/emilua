@@ -651,7 +651,7 @@ void init_fiber_module(lua_State* L)
         lua_pushcfunction(L, terminate_vm_with_cleanup_error);
         rawgetp(L, LUA_REGISTRYINDEX, &raw_xpcall_key);
         rawgetp(L, LUA_REGISTRYINDEX, &raw_pcall_key);
-        lua_pushcfunction(L, lua_error);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
         rawgetp(L, LUA_REGISTRYINDEX, &raw_unpack_key);
         lua_call(L, 7, 1);
         lua_rawset(L, LUA_REGISTRYINDEX);
@@ -663,7 +663,7 @@ void init_fiber_module(lua_State* L)
             L, reinterpret_cast<char*>(fiber_join_bytecode),
             fiber_join_bytecode_size, nullptr);
         assert(res == 0); boost::ignore_unused(res);
-        lua_pushcfunction(L, lua_error);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
         rawgetp(L, LUA_REGISTRYINDEX, &raw_unpack_key);
         lua_pushcfunction(L, fiber_join);
         lua_call(L, 3, 1);

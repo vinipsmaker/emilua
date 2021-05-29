@@ -23,7 +23,7 @@ function start_fn_bootstrap(root_scope, set_current_traceback,
             end
         )
         if ok == false then
-            error(e)
+            error(e, 0)
         end
         do
             local cleanup_handlers = root_scope()
@@ -62,7 +62,7 @@ function module_start_fn_bootstrap(root_scope, terminate_vm_with_cleanup_error,
             end
         end
         if ok == false then
-            error(e)
+            error(e, 0)
         end
         return mark_module_as_loaded()
     end
@@ -80,7 +80,7 @@ function require_bootstrap(error, native)
         if ok then
             return val
         else
-            error(val)
+            error(val, 0)
         end
     end
 end

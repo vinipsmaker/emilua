@@ -16,7 +16,7 @@ function cond_wait_bootstrap(error, native)
         local e = native(cnd, mtx)
         mtx:lock()
         if e then
-            error(e)
+            error(e, 0)
         end
     end
 end

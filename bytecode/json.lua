@@ -18,7 +18,7 @@ function json_encode_bootstrap(writer_new, get_tojson, json_is_array, json_null,
     local function json_encode_recur(value, state, writer, visited, indent)
         local t = type(value)
         if t == 'nil' or t == 'function' or t == 'thread' then
-            error(EINVAL)
+            error(EINVAL, 0)
         elseif t == 'boolean' or t == 'number' or t == 'string' or
             value == json_null then
             writer:value(value)
@@ -28,18 +28,18 @@ function json_encode_bootstrap(writer_new, get_tojson, json_is_array, json_null,
         do
             local tojson = get_tojson(value)
             if tojson then
-                if visited[value] then error(ECYCLE) end
+                if visited[value] then error(ECYCLE, 0) end
                 visited[value] = true
                 tojson(value, state)
                 visited[value] = nil
                 return
             elseif t == 'userdata' then
-                error(EINVAL)
+                error(EINVAL, 0)
             end
         end
 
         -- `assert(t == 'table')`
-        if visited[value] then error(ECYCLE) end
+        if visited[value] then error(ECYCLE, 0) end
         visited[value] = true
         if json_is_array(value) or #value > 0 then
             writer:begin_array()
@@ -63,7 +63,7 @@ function json_encode_bootstrap(writer_new, get_tojson, json_is_array, json_null,
                 elseif t == 'userdata' then
                     local tojson = get_tojson(v)
                     if tojson then
-                        if visited[v] then error(ECYCLE) end
+                        if visited[v] then error(ECYCLE, 0) end
                         visited[v] = true
                         writer:value(k)
                         tojson(v, state)
@@ -103,7 +103,7 @@ function json_encode_bootstrap(writer_new, get_tojson, json_is_array, json_null,
             indent = state.indent
         end
 
-        if indent then error(ENOTSUP) end
+        if indent then error(ENOTSUP, 0) end
 
         json_encode_recur(value, state, writer, visited, indent)
         if opts and opts.state then

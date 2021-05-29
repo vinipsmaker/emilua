@@ -2157,77 +2157,77 @@ void init_http(lua_State* L)
 
         lua_pushlightuserdata(L, &http_op_key<T>::read_request);
         lua_pushvalue(L, -2);
-        lua_pushcfunction(L, lua_error);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
         lua_pushcfunction(L, socket_read_request<T>);
         lua_call(L, 2, 1);
         lua_rawset(L, LUA_REGISTRYINDEX);
 
         lua_pushlightuserdata(L, &http_op_key<T>::write_response);
         lua_pushvalue(L, -2);
-        lua_pushcfunction(L, lua_error);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
         lua_pushcfunction(L, socket_write_response<T>);
         lua_call(L, 2, 1);
         lua_rawset(L, LUA_REGISTRYINDEX);
 
         lua_pushlightuserdata(L, &http_op_key<T>::write_response_continue);
         lua_pushvalue(L, -2);
-        lua_pushcfunction(L, lua_error);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
         lua_pushcfunction(L, socket_write_response_continue<T>);
         lua_call(L, 2, 1);
         lua_rawset(L, LUA_REGISTRYINDEX);
 
         lua_pushlightuserdata(L, &http_op_key<T>::write_response_metadata);
         lua_pushvalue(L, -2);
-        lua_pushcfunction(L, lua_error);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
         lua_pushcfunction(L, socket_write_response_metadata<T>);
         lua_call(L, 2, 1);
         lua_rawset(L, LUA_REGISTRYINDEX);
 
         lua_pushlightuserdata(L, &http_op_key<T>::write);
         lua_pushvalue(L, -2);
-        lua_pushcfunction(L, lua_error);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
         lua_pushcfunction(L, socket_write<T>);
         lua_call(L, 2, 1);
         lua_rawset(L, LUA_REGISTRYINDEX);
 
         lua_pushlightuserdata(L, &http_op_key<T>::write_trailers);
         lua_pushvalue(L, -2);
-        lua_pushcfunction(L, lua_error);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
         lua_pushcfunction(L, socket_write_trailers<T>);
         lua_call(L, 2, 1);
         lua_rawset(L, LUA_REGISTRYINDEX);
 
         lua_pushlightuserdata(L, &http_op_key<T>::write_end_of_message);
         lua_pushvalue(L, -2);
-        lua_pushcfunction(L, lua_error);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
         lua_pushcfunction(L, socket_write_end_of_message<T>);
         lua_call(L, 2, 1);
         lua_rawset(L, LUA_REGISTRYINDEX);
 
         lua_pushlightuserdata(L, &http_op_key<T>::write_request);
         lua_pushvalue(L, -2);
-        lua_pushcfunction(L, lua_error);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
         lua_pushcfunction(L, socket_write_request<T>);
         lua_call(L, 2, 1);
         lua_rawset(L, LUA_REGISTRYINDEX);
 
         lua_pushlightuserdata(L, &http_op_key<T>::write_request_metadata);
         lua_pushvalue(L, -2);
-        lua_pushcfunction(L, lua_error);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
         lua_pushcfunction(L, socket_write_request_metadata<T>);
         lua_call(L, 2, 1);
         lua_rawset(L, LUA_REGISTRYINDEX);
 
         lua_pushlightuserdata(L, &http_op_key<T>::read_response);
         lua_pushvalue(L, -2);
-        lua_pushcfunction(L, lua_error);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
         lua_pushcfunction(L, socket_read_response<T>);
         lua_call(L, 2, 1);
         lua_rawset(L, LUA_REGISTRYINDEX);
 
         lua_pushlightuserdata(L, &http_op_key<T>::read_some);
         lua_pushvalue(L, -2);
-        lua_pushcfunction(L, lua_error);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
         lua_pushcfunction(L, socket_read_some<T>);
         lua_call(L, 2, 1);
         lua_rawset(L, LUA_REGISTRYINDEX);
@@ -2237,7 +2237,7 @@ void init_http(lua_State* L)
 
     lua_pushlightuserdata(L, &http_op_key<TlsSocket>::close);
     lua_pushvalue(L, -2);
-    lua_pushcfunction(L, lua_error);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, socket_close<TlsSocket>);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);

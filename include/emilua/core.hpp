@@ -67,6 +67,10 @@ extern bool stdout_has_color;
 extern char raw_unpack_key;
 extern char raw_xpcall_key;
 extern char raw_pcall_key;
+extern char raw_error_key;
+extern char raw_type_key;
+extern char raw_pairs_key;
+extern char raw_ipairs_key;
 
 template<class T, class EC = std::error_code>
 using result = outcome::basic_result<

@@ -1464,7 +1464,7 @@ void init_ip(lua_State* L)
     int res = luaL_loadbuffer(L, reinterpret_cast<char*>(connect_bytecode),
                               connect_bytecode_size, nullptr);
     assert(res == 0); boost::ignore_unused(res);
-    lua_pushcfunction(L, lua_error);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, tcp_socket_connect);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
@@ -1473,7 +1473,7 @@ void init_ip(lua_State* L)
     res = luaL_loadbuffer(L, reinterpret_cast<char*>(accept_bytecode),
                           accept_bytecode_size, nullptr);
     assert(res == 0); boost::ignore_unused(res);
-    lua_pushcfunction(L, lua_error);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, tcp_acceptor_accept);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
@@ -1482,7 +1482,7 @@ void init_ip(lua_State* L)
     res = luaL_loadbuffer(L, reinterpret_cast<char*>(resolve_bytecode),
                           resolve_bytecode_size, nullptr);
     assert(res == 0); boost::ignore_unused(res);
-    lua_pushcfunction(L, lua_error);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, tcp_resolver_resolve);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);

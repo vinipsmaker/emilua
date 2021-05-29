@@ -683,13 +683,13 @@ void init_json_module(lua_State* L)
             lua_pushcfunction(L, get_tojson);
             lua_pushcfunction(L, is_array);
             rawgetp(L, LUA_REGISTRYINDEX, &json_null_key);
-            lua_getglobal(L, "type");
-            lua_getglobal(L, "error");
+            rawgetp(L, LUA_REGISTRYINDEX, &raw_type_key);
+            rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
             push(L, std::errc::invalid_argument);
             push(L, json_errc::cycle_exists);
             push(L, std::errc::not_supported);
-            lua_getglobal(L, "pairs");
-            lua_getglobal(L, "ipairs");
+            rawgetp(L, LUA_REGISTRYINDEX, &raw_pairs_key);
+            rawgetp(L, LUA_REGISTRYINDEX, &raw_ipairs_key);
             lua_call(L, 11, 1);
         }
         lua_rawset(L, -3);

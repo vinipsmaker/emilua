@@ -209,7 +209,7 @@ static int require(lua_State* L)
         lua_pushcfunction(L, root_scope);
         lua_pushcfunction(L, terminate_vm_with_cleanup_error);
         rawgetp(L, LUA_REGISTRYINDEX, &raw_pcall_key);
-        lua_pushcfunction(L, lua_error);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
         lua_pushcfunction(L, mark_module_as_loaded);
 
         std::string name{'@'};
@@ -1035,17 +1035,6 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
         lua_pop(L, 1);
     }
 
-    {
-        int res = luaL_loadbuffer(
-            L, reinterpret_cast<char*>(require_bytecode),
-            require_bytecode_size, nullptr);
-        assert(res == 0); boost::ignore_unused(res);
-        lua_pushcfunction(L, lua_error);
-        lua_pushcfunction(L, require);
-        lua_call(L, 2, 1);
-    }
-    lua_setglobal(L, "require");
-
     lua_pushcfunction(L, luaopen_base);
     lua_call(L, 0, 0);
     lua_pushcfunction(L, luaopen_string);
@@ -1073,6 +1062,37 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     lua_pushliteral(L, "pcall");
     lua_rawget(L, LUA_GLOBALSINDEX);
     lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &raw_error_key);
+    lua_pushliteral(L, "error");
+    lua_rawget(L, LUA_GLOBALSINDEX);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &raw_type_key);
+    lua_pushliteral(L, "type");
+    lua_rawget(L, LUA_GLOBALSINDEX);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &raw_pairs_key);
+    lua_pushliteral(L, "pairs");
+    lua_rawget(L, LUA_GLOBALSINDEX);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &raw_ipairs_key);
+    lua_pushliteral(L, "ipairs");
+    lua_rawget(L, LUA_GLOBALSINDEX);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    {
+        int res = luaL_loadbuffer(
+            L, reinterpret_cast<char*>(require_bytecode),
+            require_bytecode_size, nullptr);
+        assert(res == 0); boost::ignore_unused(res);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+        lua_pushcfunction(L, require);
+        lua_call(L, 2, 1);
+    }
+    lua_setglobal(L, "require");
 
     // core modules (don't change order here) {{{
     init_scope_cleanup_module(L);
@@ -1162,7 +1182,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
         lua_pushcfunction(L, terminate_vm_with_cleanup_error);
         rawgetp(L, LUA_REGISTRYINDEX, &raw_xpcall_key);
         rawgetp(L, LUA_REGISTRYINDEX, &raw_pcall_key);
-        lua_pushcfunction(L, lua_error);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     }
 
     std::string name{'@'};

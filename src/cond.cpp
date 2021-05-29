@@ -262,7 +262,7 @@ void init_cond_module(lua_State* L)
             L, reinterpret_cast<char*>(cond_wait_bytecode),
             cond_wait_bytecode_size, nullptr);
         assert(res == 0); boost::ignore_unused(res);
-        lua_pushcfunction(L, lua_error);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
         lua_pushcfunction(L, cond_wait);
         lua_call(L, 2, 1);
         lua_rawset(L, LUA_REGISTRYINDEX);

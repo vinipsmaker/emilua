@@ -15,7 +15,7 @@ local function sleep_for_bootstrap(error, native)
     return function(...)
         local e, v = native(...)
         if e then
-            error(e)
+            error(e, 0)
         else
             return v
         end

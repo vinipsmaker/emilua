@@ -280,14 +280,14 @@ void init_tls(lua_State* L)
 
     lua_pushlightuserdata(L, &socket_client_handshake_key);
     lua_pushvalue(L, -2);
-    lua_pushcfunction(L, lua_error);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, socket_handshake<asio::ssl::stream_base::client>);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &socket_server_handshake_key);
     lua_insert(L, -2);
-    lua_pushcfunction(L, lua_error);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, socket_handshake<asio::ssl::stream_base::server>);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
