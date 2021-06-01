@@ -275,7 +275,7 @@ inline int fiber_joinable(lua_State* L)
     return 1;
 }
 
-static int fiber_meta_index(lua_State* L)
+static int fiber_mt_index(lua_State* L)
 {
     return dispatch_table::dispatch(
         hana::make_tuple(
@@ -315,7 +315,7 @@ static int fiber_meta_index(lua_State* L)
     );
 }
 
-static int fiber_meta_gc(lua_State* L)
+static int fiber_mt_gc(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
     auto handle = reinterpret_cast<fiber_handle*>(lua_touserdata(L, 1));
@@ -562,7 +562,7 @@ inline int this_fiber_id(lua_State* L)
     return 1;
 }
 
-static int this_fiber_meta_index(lua_State* L)
+static int this_fiber_mt_index(lua_State* L)
 {
     return dispatch_table::dispatch(
         hana::make_tuple(
@@ -630,11 +630,11 @@ void init_fiber_module(lua_State* L)
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__index");
-        lua_pushcfunction(L, fiber_meta_index);
+        lua_pushcfunction(L, fiber_mt_index);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__gc");
-        lua_pushcfunction(L, fiber_meta_gc);
+        lua_pushcfunction(L, fiber_mt_gc);
         lua_rawset(L, -3);
     }
 
@@ -680,7 +680,7 @@ void init_fiber_module(lua_State* L)
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__index");
-        lua_pushcfunction(L, this_fiber_meta_index);
+        lua_pushcfunction(L, this_fiber_mt_index);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__newindex");

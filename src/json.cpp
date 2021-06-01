@@ -508,7 +508,7 @@ inline int writer_level(lua_State* L)
     return 1;
 }
 
-static int writer_meta_index(lua_State* L)
+static int writer_mt_index(lua_State* L)
 {
     return dispatch_table::dispatch(
         hana::make_tuple(
@@ -715,7 +715,7 @@ void init_json_module(lua_State* L)
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__index");
-        lua_pushcfunction(L, writer_meta_index);
+        lua_pushcfunction(L, writer_mt_index);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__gc");

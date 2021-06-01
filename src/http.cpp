@@ -216,7 +216,7 @@ inline int message_body(lua_State* L)
     return 1;
 }
 
-static int request_meta_index(lua_State* L)
+static int request_mt_index(lua_State* L)
 {
     auto& r = *reinterpret_cast<std::shared_ptr<Request>*>(
         lua_touserdata(L, 1));
@@ -380,7 +380,7 @@ inline int message_newbody(lua_State* L)
     }
 }
 
-static int request_meta_newindex(lua_State* L)
+static int request_mt_newindex(lua_State* L)
 {
     auto& r = *reinterpret_cast<std::shared_ptr<Request>*>(
         lua_touserdata(L, 1));
@@ -427,7 +427,7 @@ inline int response_reason(lua_State* L)
     return 1;
 }
 
-static int response_meta_index(lua_State* L)
+static int response_mt_index(lua_State* L)
 {
     auto& r = *reinterpret_cast<std::shared_ptr<Response>*>(
         lua_touserdata(L, 1));
@@ -475,7 +475,7 @@ inline int response_newreason(lua_State* L)
     return 0;
 }
 
-static int response_meta_newindex(lua_State* L)
+static int response_mt_newindex(lua_State* L)
 {
     auto& r = *reinterpret_cast<std::shared_ptr<Response>*>(
         lua_touserdata(L, 1));
@@ -506,7 +506,7 @@ static int response_meta_newindex(lua_State* L)
     );
 }
 
-static int headers_meta_index(lua_State* L)
+static int headers_mt_index(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
     auto key = tostringview(L, 2);
@@ -582,7 +582,7 @@ static int headers_meta_index(lua_State* L)
     return 1;
 }
 
-static int headers_meta_newindex(lua_State* L)
+static int headers_mt_newindex(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
     auto key = tostringview(L, 2);
@@ -771,7 +771,7 @@ static int headers_next(lua_State* L)
     return 2;
 }
 
-static int headers_meta_pairs(lua_State* L)
+static int headers_mt_pairs(lua_State* L)
 {
     lua_pushcfunction(L, headers_next);
     lua_pushvalue(L, 1);
@@ -1899,7 +1899,7 @@ inline int socket_is_write_response_native_stream(lua_State* L)
 }
 
 template<class T>
-static int socket_meta_index(lua_State* L)
+static int socket_mt_index(lua_State* L)
 {
     return dispatch_table::dispatch(
         hana::make_tuple(
@@ -2073,11 +2073,11 @@ void init_http(lua_State* L)
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__index");
-        lua_pushcfunction(L, request_meta_index);
+        lua_pushcfunction(L, request_mt_index);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__newindex");
-        lua_pushcfunction(L, request_meta_newindex);
+        lua_pushcfunction(L, request_mt_newindex);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__gc");
@@ -2095,11 +2095,11 @@ void init_http(lua_State* L)
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__index");
-        lua_pushcfunction(L, response_meta_index);
+        lua_pushcfunction(L, response_mt_index);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__newindex");
-        lua_pushcfunction(L, response_meta_newindex);
+        lua_pushcfunction(L, response_mt_newindex);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__gc");
@@ -2117,15 +2117,15 @@ void init_http(lua_State* L)
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__index");
-        lua_pushcfunction(L, headers_meta_index);
+        lua_pushcfunction(L, headers_mt_index);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__newindex");
-        lua_pushcfunction(L, headers_meta_newindex);
+        lua_pushcfunction(L, headers_mt_newindex);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__pairs");
-        lua_pushcfunction(L, headers_meta_pairs);
+        lua_pushcfunction(L, headers_mt_pairs);
         lua_rawset(L, -3);
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
@@ -2146,7 +2146,7 @@ void init_http(lua_State* L)
             lua_rawset(L, -3);
 
             lua_pushliteral(L, "__index");
-            lua_pushcfunction(L, socket_meta_index<T>);
+            lua_pushcfunction(L, socket_mt_index<T>);
             lua_rawset(L, -3);
 
             lua_pushliteral(L, "__gc");

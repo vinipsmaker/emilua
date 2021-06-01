@@ -314,7 +314,7 @@ inline int address_scope_id_get(lua_State* L)
     return 1;
 }
 
-static int address_meta_index(lua_State* L)
+static int address_mt_index(lua_State* L)
 {
     return dispatch_table::dispatch(
         hana::make_tuple(
@@ -390,7 +390,7 @@ inline int address_scope_id_set(lua_State* L)
     return 0;
 }
 
-static int address_meta_newindex(lua_State* L)
+static int address_mt_newindex(lua_State* L)
 {
     return dispatch_table::dispatch(
         hana::make_tuple(
@@ -405,7 +405,7 @@ static int address_meta_newindex(lua_State* L)
     );
 }
 
-static int address_meta_tostring(lua_State* L)
+static int address_mt_tostring(lua_State* L)
 {
     auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
     auto ret = a->to_string();
@@ -413,7 +413,7 @@ static int address_meta_tostring(lua_State* L)
     return 1;
 }
 
-static int address_meta_eq(lua_State* L)
+static int address_mt_eq(lua_State* L)
 {
     auto a1 = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
     auto a2 = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 2));
@@ -421,7 +421,7 @@ static int address_meta_eq(lua_State* L)
     return 1;
 }
 
-static int address_meta_lt(lua_State* L)
+static int address_mt_lt(lua_State* L)
 {
     auto a1 = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
     auto a2 = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 2));
@@ -429,7 +429,7 @@ static int address_meta_lt(lua_State* L)
     return 1;
 }
 
-static int address_meta_le(lua_State* L)
+static int address_mt_le(lua_State* L)
 {
     auto a1 = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
     auto a2 = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 2));
@@ -523,7 +523,7 @@ static int tcp_socket_connect(lua_State* L)
     return lua_yield(L, 0);
 }
 
-static int tcp_socket_meta_index(lua_State* L)
+static int tcp_socket_mt_index(lua_State* L)
 {
     return dispatch_table::dispatch(
         hana::make_tuple(
@@ -998,7 +998,7 @@ inline int tcp_acceptor_local_port(lua_State* L)
     return 1;
 }
 
-static int tcp_acceptor_meta_index(lua_State* L)
+static int tcp_acceptor_mt_index(lua_State* L)
 {
     return dispatch_table::dispatch(
         hana::make_tuple(
@@ -1234,7 +1234,7 @@ static int tcp_resolver_cancel(lua_State* L)
     return 0;
 }
 
-static int tcp_resolver_meta_index(lua_State* L)
+static int tcp_resolver_mt_index(lua_State* L)
 {
     return dispatch_table::dispatch(
         hana::make_tuple(
@@ -1381,27 +1381,27 @@ void init_ip(lua_State* L)
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__index");
-        lua_pushcfunction(L, address_meta_index);
+        lua_pushcfunction(L, address_mt_index);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__newindex");
-        lua_pushcfunction(L, address_meta_newindex);
+        lua_pushcfunction(L, address_mt_newindex);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__tostring");
-        lua_pushcfunction(L, address_meta_tostring);
+        lua_pushcfunction(L, address_mt_tostring);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__eq");
-        lua_pushcfunction(L, address_meta_eq);
+        lua_pushcfunction(L, address_mt_eq);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__lt");
-        lua_pushcfunction(L, address_meta_lt);
+        lua_pushcfunction(L, address_mt_lt);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__le");
-        lua_pushcfunction(L, address_meta_le);
+        lua_pushcfunction(L, address_mt_le);
         lua_rawset(L, -3);
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
@@ -1415,7 +1415,7 @@ void init_ip(lua_State* L)
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__index");
-        lua_pushcfunction(L, tcp_socket_meta_index);
+        lua_pushcfunction(L, tcp_socket_mt_index);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__gc");
@@ -1433,7 +1433,7 @@ void init_ip(lua_State* L)
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__index");
-        lua_pushcfunction(L, tcp_acceptor_meta_index);
+        lua_pushcfunction(L, tcp_acceptor_mt_index);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__gc");
@@ -1451,7 +1451,7 @@ void init_ip(lua_State* L)
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__index");
-        lua_pushcfunction(L, tcp_resolver_meta_index);
+        lua_pushcfunction(L, tcp_resolver_mt_index);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__gc");

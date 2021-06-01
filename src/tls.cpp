@@ -186,7 +186,7 @@ static int socket_handshake(lua_State* L)
     return lua_yield(L, 0);
 }
 
-static int tls_socket_meta_index(lua_State* L)
+static int tls_socket_mt_index(lua_State* L)
 {
     return dispatch_table::dispatch(
         hana::make_tuple(
@@ -265,7 +265,7 @@ void init_tls(lua_State* L)
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__index");
-        lua_pushcfunction(L, tls_socket_meta_index);
+        lua_pushcfunction(L, tls_socket_mt_index);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__gc");
