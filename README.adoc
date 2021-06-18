@@ -82,7 +82,6 @@ git submodule update --init
 
 This will download the extra dependencies:
 
-* CLI11.
 * Trial.Protocol.
 
 == Install

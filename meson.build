@@ -104,7 +104,6 @@ endif
 
 incdir = [
     '3rd/trial.protocol/include',
-    '3rd/CLI11/include',
     'include'
 ]
 
@@ -117,7 +116,6 @@ src = [
     'src/cond.cpp',
     'src/core.cpp',
     'src/json.cpp',
-    'src/main.cpp',
     'src/tls.cpp',
     'src/ip.cpp',
 ]
@@ -138,6 +136,7 @@ bytecode_src = [
 re2c_src = [
     'src/actor.ypp',
     'src/state.ypp',
+    'src/main.ypp',
 ]
 
 if get_option('enable_plugins')

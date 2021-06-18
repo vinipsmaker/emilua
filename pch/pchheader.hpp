@@ -15,8 +15,6 @@
 #include <new>
 #include <set>
 
-#include <CLI/CLI.hpp>
-
 #include <fmt/chrono.h>
 #include <fmt/format.h>
 

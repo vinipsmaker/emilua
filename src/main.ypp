@@ -7,7 +7,7 @@
 #include <charconv>
 #include <iostream>
 
-#include <CLI/CLI.hpp>
+#include <fmt/format.h>
 
 #include <boost/preprocessor/stringize.hpp>
 #include <boost/predef/os/windows.h>
@@ -27,6 +27,19 @@ extern "C" {
 
 namespace asio = boost::asio;
 namespace fs = std::filesystem;
+
+static constexpr auto help_text = FMT_STRING(
+    "Emilua: Execution engine for luaJIT\n"
+    "Usage: {} [OPTIONS] [file]\n"
+    "\n"
+    "Positionals:\n"
+    "  file TEXT                   Script filename\n"
+    "\n"
+    "Options:\n"
+    "  -h,--help                   Print this help message and exit\n"
+    "  --main-context-concurrency-hint INT\n"
+    "                              Concurrency hint for the main execution engine context\n"
+    "  --version                   Output version information and exit\n");
 
 int main(int argc, char *argv[])
 {
@@ -71,40 +84,123 @@ int main(int argc, char *argv[])
             emilua::log_domain<emilua::default_log_domain>::log_level = level;
     }
 
-    CLI::App app{"Emilua: Execution engine for luaJIT"};
-
-    std::string filename;
+    std::optional<std::string_view> filename;
     int main_ctx_concurrency_hint = BOOST_ASIO_CONCURRENCY_HINT_SAFE;
-    try {
-        auto filename_opt = app.add_option("file", filename, "Script filename");
-        app.add_option(
-            "--main-context-concurrency-hint", main_ctx_concurrency_hint,
-            "Concurrency hint for the main execution engine context");
-        auto version_opt = app.add_flag(
-            "--version", "Output version information and exit");
+    emilua::app_context appctx;
 
-        app.parse(argc, argv);
+    /*!re2c
+    re2c:define:YYCTYPE = char;
+    re2c:yyfill:enable = 0;
+    re2c:indent:string = "    ";
 
-        if (*version_opt) {
-            std::cout << "Emilua " EMILUA_CONFIG_VERSION_STRING << std::endl <<
-                LUAJIT_VERSION << std::endl;
-            return 0;
-        }
-
-        if (!*filename_opt) {
-            std::cerr << "Missing filename" << std::endl;
-            return 1;
-        }
-    } catch (const CLI::ParseError &e) {
-        return app.exit(e);
-    }
-
-    if (filename.size() == 0) {
-        std::cerr << "Invalid filename given (empty)" << std::endl;
+    end = "\x00";
+    filename = [^\x00-][^\x00]*;
+    */
+    const char* YYCURSOR;
+    const char* YYMARKER;
+    char** cur_arg = argv;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wgnu-case-range"
+opt:
+    YYCURSOR = *++cur_arg;
+    if (YYCURSOR == nullptr) goto end;
+    %{
+    * {
+        fmt::print(stderr, FMT_STRING("bad option: `{}`\n"), *cur_arg);
         return 1;
     }
+    "--" {end} {
+        appctx.app_args.reserve((argv + argc) - (cur_arg + 1));
+        while (*++cur_arg) {
+            appctx.app_args.push_back(*cur_arg);
+        }
+        goto end;
+    }
+    "-" {end} {
+        std::cerr << "stdin not supported as input file\n";
+        return 1;
+    }
+    {filename} {end} {
+        if (filename) {
+            std::cerr << "emilua doesn't support more than one input file\n";
+            return 1;
+        }
+        filename.emplace(*cur_arg);
+        goto opt;
+    }
+    "-" { goto opt_short; }
+    "--" { goto opt_long; }
+    %}
 
-    emilua::app_context appctx;
+opt_short:
+    %{
+    * {
+        fmt::print(stderr, FMT_STRING("bad short option: {}\n"), *cur_arg);
+        return 1;
+    }
+    {end} { goto opt; }
+    "h" {
+        fmt::print(stdout, help_text, *argv);
+        return 0;
+    }
+    %}
+
+opt_long:
+    %{
+    * {
+        fmt::print(stderr, FMT_STRING("bad long option: {}\n"), *cur_arg);
+        return 1;
+    }
+    "help" {end} {
+        fmt::print(stdout, help_text, *argv);
+        return 0;
+    }
+    "version" {end} {
+        std::cout << "Emilua " EMILUA_CONFIG_VERSION_STRING << std::endl <<
+            LUAJIT_VERSION << std::endl;
+        return 0;
+    }
+    "main-context-concurrency-hint=1" {end} {
+        main_ctx_concurrency_hint = 1;
+        goto opt;
+    }
+    "main-context-concurrency-hint" {end} {
+        if (YYCURSOR = *++cur_arg ; YYCURSOR != nullptr) {
+            goto opt_main_context_concurrency_hint;
+        } else {
+            std::cerr <<
+                "missing value for argument"
+                " `--main-context-concurrency-hint`\n";
+            return 1;
+        }
+    }
+    %}
+
+opt_main_context_concurrency_hint:
+    %{
+    * {
+        fmt::print(
+            stderr,
+            FMT_STRING(
+                "value `{}` not supported for option"
+                " `--main-context-concurrency-hint`\n"),
+            *cur_arg);
+        return 1;
+    }
+    "1" {end} {
+        main_ctx_concurrency_hint = 1;
+        goto opt;
+    }
+    %}
+#pragma GCC diagnostic pop
+end:
+
+    if (!filename) {
+        std::cerr << "missing filename\n";
+        return 1;
+    }
+    assert(filename->size() > 0);
+
 #if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 2
     asio::io_context ioctx{main_ctx_concurrency_hint};
     asio::make_service<emilua::properties_service>(
@@ -155,7 +251,7 @@ int main(int argc, char *argv[])
         "." BOOST_PP_STRINGIZE(EMILUA_CONFIG_VERSION_MINOR);
 
     try {
-        auto vm_ctx = emilua::make_vm(ioctx, appctx, filename,
+        auto vm_ctx = emilua::make_vm(ioctx, appctx, *filename,
                                       emilua::ContextType::main);
         vm_ctx->strand().post([vm_ctx]() {
             vm_ctx->fiber_resume_trivial(vm_ctx->L());
