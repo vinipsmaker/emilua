@@ -6,7 +6,7 @@ project(
         'BSL-1.0', # most of the code
         'BSD-3-Clause', # for the CLI11 dependency
     ],
-    version : '0.3.0',
+    version : '0.3.2',
 )
 
 # https://github.com/mesonbuild/meson/issues/2320
