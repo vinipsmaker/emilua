@@ -2,10 +2,7 @@ project(
     'emilua', 'cpp',
     default_options : ['cpp_std=c++17'],
     meson_version : '>=0.55.0',
-    license : [
-        'BSL-1.0', # most of the code
-        'BSD-3-Clause', # for the CLI11 dependency
-    ],
+    license : 'BSL-1.0',
     version : '0.3.2',
 )
 
