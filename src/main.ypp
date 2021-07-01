@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
             emilua::log_domain<emilua::default_log_domain>::log_level = level;
     }
 
-    std::optional<std::string_view> filename;
+    std::string_view filename;
     int main_ctx_concurrency_hint = BOOST_ASIO_CONCURRENCY_HINT_SAFE;
     emilua::app_context appctx;
 
@@ -121,11 +121,11 @@ opt:
         return 1;
     }
     {filename} {end} {
-        if (filename) {
+        if (filename.size() > 0) {
             std::cerr << "emilua doesn't support more than one input file\n";
             return 1;
         }
-        filename.emplace(*cur_arg);
+        filename = *cur_arg;
         goto opt;
     }
     "-" { goto opt_short; }
@@ -195,11 +195,10 @@ opt_main_context_concurrency_hint:
 #pragma GCC diagnostic pop
 end:
 
-    if (!filename) {
+    if (filename.size() == 0) {
         std::cerr << "missing filename\n";
         return 1;
     }
-    assert(filename->size() > 0);
 
 #if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 2
     asio::io_context ioctx{main_ctx_concurrency_hint};
@@ -251,7 +250,7 @@ end:
         "." BOOST_PP_STRINGIZE(EMILUA_CONFIG_VERSION_MINOR);
 
     try {
-        auto vm_ctx = emilua::make_vm(ioctx, appctx, *filename,
+        auto vm_ctx = emilua::make_vm(ioctx, appctx, filename,
                                       emilua::ContextType::main);
         vm_ctx->strand().post([vm_ctx]() {
             vm_ctx->fiber_resume_trivial(vm_ctx->L());
