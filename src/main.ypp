@@ -107,7 +107,7 @@ opt:
     %{
     * {
         fmt::print(stderr, FMT_STRING("bad option: `{}`\n"), *cur_arg);
-        return 1;
+        return 2;
     }
     "--" {end} {
         appctx.app_args.reserve((argv + argc) - (cur_arg + 1));
@@ -118,12 +118,12 @@ opt:
     }
     "-" {end} {
         std::cerr << "stdin not supported as input file\n";
-        return 1;
+        return 2;
     }
     {filename} {end} {
         if (filename.size() > 0) {
             std::cerr << "emilua doesn't support more than one input file\n";
-            return 1;
+            return 2;
         }
         filename = *cur_arg;
         goto opt;
@@ -136,7 +136,7 @@ opt_short:
     %{
     * {
         fmt::print(stderr, FMT_STRING("bad short option: {}\n"), *cur_arg);
-        return 1;
+        return 2;
     }
     {end} { goto opt; }
     "h" {
@@ -149,7 +149,7 @@ opt_long:
     %{
     * {
         fmt::print(stderr, FMT_STRING("bad long option: {}\n"), *cur_arg);
-        return 1;
+        return 2;
     }
     "help" {end} {
         fmt::print(stdout, help_text, *argv);
@@ -171,7 +171,7 @@ opt_long:
             std::cerr <<
                 "missing value for argument"
                 " `--main-context-concurrency-hint`\n";
-            return 1;
+            return 2;
         }
     }
     %}
@@ -185,7 +185,7 @@ opt_main_context_concurrency_hint:
                 "value `{}` not supported for option"
                 " `--main-context-concurrency-hint`\n"),
             *cur_arg);
-        return 1;
+        return 2;
     }
     "1" {end} {
         main_ctx_concurrency_hint = 1;
@@ -197,7 +197,7 @@ end:
 
     if (filename.size() == 0) {
         std::cerr << "missing filename\n";
-        return 1;
+        return 2;
     }
 
 #if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 2
