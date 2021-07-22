@@ -19,6 +19,7 @@
 #include <emilua/timer.hpp>
 #include <emilua/cond.hpp>
 #include <emilua/json.hpp>
+#include <emilua/sys.hpp>
 #include <emilua/tls.hpp>
 #include <emilua/ip.hpp>
 
@@ -808,6 +809,14 @@ static int require(lua_State* L)
                         rawgetp(L, LUA_REGISTRYINDEX, &tls_key);
                         return 2;
                     }
+                ),
+                hana::make_pair(
+                    BOOST_HANA_STRING("sys"),
+                    [](lua_State* L) -> int {
+                        lua_pushboolean(L, 1);
+                        rawgetp(L, LUA_REGISTRYINDEX, &sys_key);
+                        return 2;
+                    }
                 )
             ),
             on_external_package,
@@ -1112,6 +1121,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     init_json_module(L);
     init_ip(L);
     init_tls(L);
+    init_sys(L);
 
 #if EMILUA_CONFIG_ENABLE_HTTP
     init_http(L);

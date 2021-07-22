@@ -113,6 +113,7 @@ src = [
     'src/cond.cpp',
     'src/core.cpp',
     'src/json.cpp',
+    'src/sys.cpp',
     'src/tls.cpp',
     'src/ip.cpp',
 ]
