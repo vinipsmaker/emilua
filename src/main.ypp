@@ -128,9 +128,11 @@ opt:
         return 2;
     }
     "--" {end} {
-        appctx.app_args.reserve((argv + argc) - (cur_arg + 1));
+        appctx.app_args.reserve(2 + ((argv + argc) - (cur_arg + 1)));
+        appctx.app_args.emplace_back(argv[0]);
+        appctx.app_args.emplace_back(filename);
         while (*++cur_arg) {
-            appctx.app_args.push_back(*cur_arg);
+            appctx.app_args.emplace_back(*cur_arg);
         }
         goto end;
     }
@@ -202,6 +204,12 @@ end:
     if (filename.size() == 0) {
         std::cerr << "missing filename\n";
         return 2;
+    }
+
+    if (appctx.app_args.size() == 0) {
+        appctx.app_args.reserve(2);
+        appctx.app_args.emplace_back(argv[0]);
+        appctx.app_args.emplace_back(filename);
     }
 
 #if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 2

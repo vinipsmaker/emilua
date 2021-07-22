@@ -231,7 +231,7 @@ public:
         log(priority, log_domain<Domain>::name, format_str, std::move(args));
     }
 
-    std::vector<std::string_view> app_args; //< everything after "--"
+    std::vector<std::string_view> app_args;
     std::atomic_int exit_code = 0;
 
     std::vector<std::filesystem::path> emilua_path;
