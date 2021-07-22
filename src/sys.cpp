@@ -5,6 +5,8 @@
 
 #include <emilua/sys.hpp>
 
+#include <boost/process/environment.hpp>
+
 #include <emilua/dispatch_table.hpp>
 
 namespace emilua {
@@ -23,10 +25,23 @@ inline int sys_args(lua_State* L)
     return 1;
 }
 
+inline int sys_env(lua_State* L)
+{
+    auto env = boost::this_process::environment();
+    lua_createtable(L, /*narr=*/0, /*nrec=*/env.size());
+    for (const auto& e: env) {
+        push(L, e.get_name());
+        push(L, e.to_string());
+        lua_rawset(L, -3);
+    }
+    return 1;
+}
+
 static int sys_mt_index(lua_State* L)
 {
     return dispatch_table::dispatch(
         hana::make_tuple(
+            hana::make_pair(BOOST_HANA_STRING("env"), sys_env),
             hana::make_pair(BOOST_HANA_STRING("args"), sys_args)
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {

@@ -3,6 +3,7 @@
 == 0.4
 
 * Add `sys.args`.
+* Add `sys.env`.
 
 == 0.3
 
