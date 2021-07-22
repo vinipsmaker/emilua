@@ -88,6 +88,24 @@ int main(int argc, char *argv[])
     int main_ctx_concurrency_hint = BOOST_ASIO_CONCURRENCY_HINT_SAFE;
     emilua::app_context appctx;
 
+#define NEXT_ARG(OPTION, LABEL) do {                                \
+        if (YYCURSOR = *++cur_arg ; YYCURSOR != nullptr) {          \
+            goto LABEL;                                             \
+        } else {                                                    \
+            std::cerr << "missing value for option `" OPTION "`\n"; \
+            return 2;                                               \
+        }                                                           \
+    } while(0)
+
+#define ERRARG(OPTION)                                                        \
+    do {                                                                      \
+        fmt::print(                                                           \
+            stderr,                                                           \
+            FMT_STRING("value `{}` not supported for option `" OPTION "`\n"), \
+            *cur_arg);                                                        \
+        return 2;                                                             \
+    } while(0)
+
     /*!re2c
     re2c:define:YYCTYPE = char;
     re2c:yyfill:enable = 0;
@@ -96,8 +114,8 @@ int main(int argc, char *argv[])
     end = "\x00";
     filename = [^\x00-][^\x00]*;
     */
-    const char* YYCURSOR;
-    const char* YYMARKER;
+    char* YYCURSOR;
+    char* YYMARKER;
     char** cur_arg = argv;
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wgnu-case-range"
@@ -160,33 +178,19 @@ opt_long:
             LUAJIT_VERSION << std::endl;
         return 0;
     }
-    "main-context-concurrency-hint=1" {end} {
-        main_ctx_concurrency_hint = 1;
-        goto opt;
+    "main-context-concurrency-hint=" {
+        *cur_arg = YYCURSOR;
+        goto opt_main_context_concurrency_hint;
     }
     "main-context-concurrency-hint" {end} {
-        if (YYCURSOR = *++cur_arg ; YYCURSOR != nullptr) {
-            goto opt_main_context_concurrency_hint;
-        } else {
-            std::cerr <<
-                "missing value for argument"
-                " `--main-context-concurrency-hint`\n";
-            return 2;
-        }
+        NEXT_ARG("--main-context-concurrency-hint",
+                 opt_main_context_concurrency_hint);
     }
     %}
 
 opt_main_context_concurrency_hint:
     %{
-    * {
-        fmt::print(
-            stderr,
-            FMT_STRING(
-                "value `{}` not supported for option"
-                " `--main-context-concurrency-hint`\n"),
-            *cur_arg);
-        return 2;
-    }
+    * { ERRARG("--main-context-concurrency-hint"); }
     "1" {end} {
         main_ctx_concurrency_hint = 1;
         goto opt;
