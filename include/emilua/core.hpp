@@ -500,9 +500,11 @@ public:
     }
 
     void notify_errmem();
+    void notify_exit_request();
 
     void notify_deadlock(std::string msg);
     void notify_cleanup_error(lua_State* coro);
+
 
     // Use it to detect cycles when loading modules from external packages.
     std::set<std::string, TransparentStringComp> visited_external_packages;
@@ -523,6 +525,7 @@ private:
     strand_type strand_;
     bool valid_;
     bool lua_errmem;
+    bool exit_request;
     bool suppress_tail_errors = false;
     lua_State* L_;
     lua_State* current_fiber_;

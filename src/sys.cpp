@@ -276,6 +276,27 @@ static int sys_signal_set_mt_index(lua_State* L)
 static int sys_signal_raise(lua_State* L)
 {
     lua_Integer signal_number = luaL_checkinteger(L, 1);
+
+    // SIGKILL and SIGSTOP are the only signals that cannot be caught, blocked,
+    // or ignored. If we allowed any child VM to raise these signals, then the
+    // protection to only allow the main VM to force-exit the process would be
+    // moot.
+    if (
+#ifdef SIGKILL
+        signal_number == SIGKILL ||
+#endif
+#ifdef SIGSTOP
+        signal_number == SIGSTOP ||
+#endif
+        false
+    ) {
+        auto& vm_ctx = get_vm_context(L);
+        if (vm_ctx.appctx.main_vm.lock().get() != &vm_ctx) {
+            push(L, std::errc::operation_not_permitted);
+            return lua_error(L);
+        }
+    }
+
     int ret = std::raise(signal_number);
     if (ret != 0) {
         push(L, errc::raise_error, "ret", ret);
@@ -314,13 +335,62 @@ inline int sys_signal(lua_State* L)
     return 1;
 }
 
+static int sys_exit(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    int exit_code = luaL_optint(L, 1, EXIT_SUCCESS);
+
+    auto& vm_ctx = get_vm_context(L);
+    if (vm_ctx.appctx.main_vm.lock().get() == &vm_ctx) {
+        if (lua_type(L, 2) == LUA_TTABLE) {
+            lua_getfield(L, 2, "force");
+            switch (lua_type(L, -1)) {
+            case LUA_TNIL:
+                break;
+            case LUA_TNUMBER:
+                switch (lua_tointeger(L, -1)) {
+                case 0:
+                    break;
+                case 1:
+                    push(L, std::errc::not_supported);
+                    return lua_error(L);
+                case 2:
+                    std::quick_exit(exit_code);
+                default:
+                    push(L, std::errc::invalid_argument, "arg", "force");
+                    return lua_error(L);
+                }
+                break;
+            default:
+                push(L, std::errc::invalid_argument, "arg", 2);
+                return lua_error(L);
+            }
+        }
+
+        vm_ctx.appctx.exit_code = exit_code;
+    } else if (lua_type(L, 2) != LUA_TNIL) {
+        push(L, std::errc::operation_not_permitted);
+        return lua_error(L);
+    }
+
+    vm_ctx.notify_exit_request();
+    return lua_yield(L, 0);
+}
+
 static int sys_mt_index(lua_State* L)
 {
     return dispatch_table::dispatch(
         hana::make_tuple(
             hana::make_pair(BOOST_HANA_STRING("env"), sys_env),
             hana::make_pair(BOOST_HANA_STRING("signal"), sys_signal),
-            hana::make_pair(BOOST_HANA_STRING("args"), sys_args)
+            hana::make_pair(BOOST_HANA_STRING("args"), sys_args),
+            hana::make_pair(
+                BOOST_HANA_STRING("exit"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, sys_exit);
+                    return 1;
+                })
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);

@@ -14,6 +14,23 @@ anything passed after `--` in the command line.
 
 The environment variables.
 
+== Functions
+
+=== `exit([code: number [, opts: table]])`
+
+Exit the VM. Other VMs in the process are not stopped.
+
+If caller is the main VM, `code` is used as the application exit code (defaults
+to `0`).
+
+If caller is the main VM, then `opts` is a table that accepts the following
+options:
+
+`force=0`:: Nothing. That's the default behaviour.
+`force=1`:: Not implemented yet.
+`force=2`:: Exit the process forcefully (little to none cleanup steps are
+performed).
+
 == Modules
 
 === `signal`

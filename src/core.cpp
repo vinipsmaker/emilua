@@ -119,6 +119,7 @@ vm_context::vm_context(emilua::app_context& appctx, strand_type strand)
     , strand_(std::move(strand))
     , valid_(true)
     , lua_errmem(false)
+    , exit_request(false)
     , L_(luaL_newstate())
     , current_fiber_(nullptr)
 {
@@ -261,7 +262,7 @@ void vm_context::fiber_prologue_trivial(lua_State* new_current_fiber)
 void vm_context::fiber_epilogue(int resume_result)
 {
     assert(valid_);
-    if (lua_errmem || failed_cleanup_handler_coro) {
+    if (lua_errmem || failed_cleanup_handler_coro || exit_request) {
         close();
         return;
     }
@@ -409,6 +410,11 @@ void vm_context::fiber_epilogue(int resume_result)
 void vm_context::notify_errmem()
 {
     lua_errmem = true;
+}
+
+void vm_context::notify_exit_request()
+{
+    exit_request = true;
 }
 
 void vm_context::notify_deadlock(std::string msg)
