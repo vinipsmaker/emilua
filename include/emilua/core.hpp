@@ -201,6 +201,8 @@ public:
 class BOOST_SYMBOL_VISIBLE plugin;
 #endif // EMILUA_CONFIG_ENABLE_PLUGINS
 
+class vm_context;
+
 class app_context
 {
 private:
@@ -233,6 +235,8 @@ public:
 
     std::vector<std::string_view> app_args;
     std::atomic_int exit_code = 0;
+
+    std::weak_ptr<vm_context> main_vm;
 
     std::vector<std::filesystem::path> emilua_path;
 
@@ -301,8 +305,6 @@ public:
 private:
     int code;
 };
-
-class vm_context;
 
 void set_interrupter(lua_State* L, vm_context& vm_ctx);
 
@@ -679,6 +681,7 @@ enum class errc {
     channel_closed,
     no_senders,
     internal_module,
+    raise_error,
 };
 
 const std::error_category& category();

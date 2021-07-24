@@ -12,6 +12,7 @@
 #include <boost/preprocessor/stringize.hpp>
 #include <boost/predef/os/windows.h>
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/signal_set.hpp>
 
 #include <emilua/state.hpp>
 
@@ -226,6 +227,9 @@ end:
 # error Invalid thread support level
 #endif
 
+    // workaround https://github.com/chriskohlhoff/asio/issues/418
+    boost::asio::signal_set{ioctx, SIGTERM, SIGINT};
+
     {
         const char* env = std::getenv("EMILUA_PATH");
         if (env) {
@@ -264,6 +268,7 @@ end:
     try {
         auto vm_ctx = emilua::make_vm(ioctx, appctx, filename,
                                       emilua::ContextType::main);
+        appctx.main_vm = vm_ctx;
         vm_ctx->strand().post([vm_ctx]() {
             vm_ctx->fiber_resume_trivial(vm_ctx->L());
         }, std::allocator<void>{});

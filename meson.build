@@ -127,6 +127,7 @@ bytecode_src = [
     'bytecode/timer.lua',
     'bytecode/cond.lua',
     'bytecode/json.lua',
+    'bytecode/sys.lua',
     'bytecode/tls.lua',
     'bytecode/ip.lua',
 ]

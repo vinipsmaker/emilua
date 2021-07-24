@@ -13,3 +13,46 @@ anything passed after `--` in the command line.
 === `env: table`
 
 The environment variables.
+
+== Modules
+
+=== `signal`
+
+Has the following types:
+
+* link:../sys.signal.set/[`set`].
+
+Has the following functions:
+
+* `raise(signal: number)`: sends a signal to the calling process.
+
+Has the following constants:
+
+* `SIGABRT`.
+* `SIGFPE`.
+* `SIGILL`.
+* `SIGINT`.
+* `SIGSEGV`.
+* `SIGTERM`.
+
+Has the following (UNIX) constants (availability depending on the host system):
+
+* `SIGALRM`.
+* `SIGBUS`.
+* `SIGCHLD`.
+* `SIGCONT`.
+* `SIGHUP`.
+* `SIGKILL`.
+* `SIGPIPE`.
+* `SIGTRAP`.
+* `SIGUSR1`.
+* `SIGUSR2`.
+* `SIGWINCH`.
+
+Has the following (Windows) constants (availability depending on the host
+system):
+
+* `SIGBREAK`.
+
+NOTE: Signal handling also works on Windows, as the Microsoft Visual C++ runtime
+library maps console events like Ctrl+C to the equivalent signal.

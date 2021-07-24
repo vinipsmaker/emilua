@@ -4,6 +4,7 @@
 
 * Add `sys.args`.
 * Add `sys.env`.
+* Add `sys.signal`.
 
 == 0.3
 
