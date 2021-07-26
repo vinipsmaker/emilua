@@ -362,6 +362,15 @@ static int sys_exit(lua_State* L)
                     return lua_error(L);
                 }
                 break;
+            case LUA_TSTRING: {
+                auto force = tostringview(L);
+                if (force == "abort") {
+                    std::abort();
+                } else {
+                    push(L, std::errc::invalid_argument, "arg", "force");
+                    return lua_error(L);
+                }
+            }
             default:
                 push(L, std::errc::invalid_argument, "arg", 2);
                 return lua_error(L);
