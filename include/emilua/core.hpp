@@ -234,7 +234,7 @@ public:
     }
 
     std::vector<std::string_view> app_args;
-    std::atomic_int exit_code = 0;
+    int exit_code = 0;
 
     std::weak_ptr<vm_context> main_vm;
 
