@@ -12,7 +12,6 @@
 #include <boost/preprocessor/stringize.hpp>
 #include <boost/predef/os/windows.h>
 #include <boost/asio/io_context.hpp>
-#include <boost/asio/signal_set.hpp>
 
 #include <emilua/state.hpp>
 
@@ -226,9 +225,6 @@ end:
 #else
 # error Invalid thread support level
 #endif
-
-    // workaround https://github.com/chriskohlhoff/asio/issues/418
-    boost::asio::signal_set{ioctx, SIGTERM, SIGINT};
 
     {
         const char* env = std::getenv("EMILUA_PATH");
