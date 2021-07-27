@@ -275,19 +275,20 @@ static int sys_signal_set_mt_index(lua_State* L)
 
 static int sys_signal_raise(lua_State* L)
 {
-    lua_Integer signal_number = luaL_checkinteger(L, 1);
+    int signal_number = luaL_checkinteger(L, 1);
+
+#define EMILUA_DETAIL_IS_SIG_X_OR(SIG) signal_number == SIG ||
+#define EMILUA_IS_SIG_X_OR(SIG) BOOST_PP_IIF( \
+        BOOST_VMD_IS_NUMBER(SIG), EMILUA_DETAIL_IS_SIG_X_OR, BOOST_VMD_EMPTY \
+    )(SIG)
 
     // SIGKILL and SIGSTOP are the only signals that cannot be caught, blocked,
     // or ignored. If we allowed any child VM to raise these signals, then the
     // protection to only allow the main VM to force-exit the process would be
     // moot.
     if (
-#ifdef SIGKILL
-        signal_number == SIGKILL ||
-#endif
-#ifdef SIGSTOP
-        signal_number == SIGSTOP ||
-#endif
+        EMILUA_IS_SIG_X_OR(SIGKILL)
+        EMILUA_IS_SIG_X_OR(SIGSTOP)
         false
     ) {
         auto& vm_ctx = get_vm_context(L);
@@ -296,6 +297,75 @@ static int sys_signal_raise(lua_State* L)
             return lua_error(L);
         }
     }
+
+    // Unless the main VM has a handler installed (the check doesn't need to be
+    // race-free... that's not a problem) for these signals, forbid slave VMs
+    // from raising them.
+    //
+    // Also I don't really like this blacklist-based implementation. A
+    // whitelist-based implementation would be safer. However I'll allow the
+    // blacklist approach just this time because we don't see new signals
+    // popping up everyday.
+    if (
+        // Default action is to terminate the process
+        EMILUA_IS_SIG_X_OR(SIGALRM)
+        EMILUA_IS_SIG_X_OR(SIGEMT)
+        EMILUA_IS_SIG_X_OR(SIGHUP)
+        EMILUA_IS_SIG_X_OR(SIGINT)
+        EMILUA_IS_SIG_X_OR(SIGIO)
+        EMILUA_IS_SIG_X_OR(SIGLOST)
+        EMILUA_IS_SIG_X_OR(SIGPIPE)
+        EMILUA_IS_SIG_X_OR(SIGPOLL)
+        EMILUA_IS_SIG_X_OR(SIGPROF)
+        EMILUA_IS_SIG_X_OR(SIGPWR)
+        EMILUA_IS_SIG_X_OR(SIGSTKFLT)
+        EMILUA_IS_SIG_X_OR(SIGTERM)
+        EMILUA_IS_SIG_X_OR(SIGUSR1)
+        EMILUA_IS_SIG_X_OR(SIGUSR2)
+        EMILUA_IS_SIG_X_OR(SIGVTALRM)
+
+        // Default action is to terminate the process and dump core
+        EMILUA_IS_SIG_X_OR(SIGABRT)
+        EMILUA_IS_SIG_X_OR(SIGBUS)
+        EMILUA_IS_SIG_X_OR(SIGFPE)
+        EMILUA_IS_SIG_X_OR(SIGILL)
+        EMILUA_IS_SIG_X_OR(SIGIOT)
+        EMILUA_IS_SIG_X_OR(SIGQUIT)
+        EMILUA_IS_SIG_X_OR(SIGSEGV)
+        EMILUA_IS_SIG_X_OR(SIGSYS)
+        EMILUA_IS_SIG_X_OR(SIGTRAP)
+        EMILUA_IS_SIG_X_OR(SIGUNUSED)
+        EMILUA_IS_SIG_X_OR(SIGXCPU)
+        EMILUA_IS_SIG_X_OR(SIGXFSZ)
+
+        // Default action is to stop the process
+        EMILUA_IS_SIG_X_OR(SIGTSTP)
+        EMILUA_IS_SIG_X_OR(SIGTTIN)
+        EMILUA_IS_SIG_X_OR(SIGTTOU)
+
+        false
+    ) {
+#ifdef _POSIX_C_SOURCE
+        auto& vm_ctx = get_vm_context(L);
+        if (vm_ctx.appctx.main_vm.lock().get() != &vm_ctx) {
+            struct sigaction curact;
+            if (
+                sigaction(signal_number, /*act=*/NULL, /*oldact=*/&curact) == -1
+            ) {
+                push(L, std::error_code{errno, std::system_category()});
+                return lua_error(L);
+            }
+
+            if (curact.sa_handler == SIG_DFL) {
+                push(L, std::errc::operation_not_permitted);
+                return lua_error(L);
+            }
+        }
+#endif // _POSIX_C_SOURCE
+    }
+
+#undef EMILUA_IS_SIG_X_OR
+#undef EMILUA_DETAIL_IS_SIG_X_OR
 
     int ret = std::raise(signal_number);
     if (ret != 0) {
