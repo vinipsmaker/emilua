@@ -236,7 +236,7 @@ public:
     std::vector<std::string_view> app_args;
     int exit_code = 0;
 
-    std::weak_ptr<vm_context> main_vm;
+    std::weak_ptr<vm_context> master_vm;
 
     std::vector<std::filesystem::path> emilua_path;
 
@@ -505,6 +505,10 @@ public:
     void notify_deadlock(std::string msg);
     void notify_cleanup_error(lua_State* coro);
 
+    bool is_master() const noexcept
+    {
+        return this == appctx.master_vm.lock().get();
+    }
 
     // Use it to detect cycles when loading modules from external packages.
     std::set<std::string, TransparentStringComp> visited_external_packages;

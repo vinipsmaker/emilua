@@ -32,7 +32,7 @@ static int sys_signal_set_new(lua_State* L)
     int nargs = lua_gettop(L);
 
     auto& vm_ctx = get_vm_context(L);
-    if (vm_ctx.appctx.main_vm.lock().get() != &vm_ctx) {
+    if (!vm_ctx.is_master()) {
         push(L, std::errc::operation_not_permitted);
         return lua_error(L);
     }
@@ -289,7 +289,7 @@ static int sys_signal_raise(lua_State* L)
     )(SIG)
 
     auto& vm_ctx = get_vm_context(L);
-    if (&vm_ctx != vm_ctx.appctx.main_vm.lock().get()) {
+    if (!vm_ctx.is_master()) {
         // SIGKILL and SIGSTOP are the only signals that cannot be caught,
         // blocked, or ignored. If we allowed any child VM to raise these
         // signals, then the protection to only allow the main VM to force-exit
@@ -388,7 +388,7 @@ static int sys_exit(lua_State* L)
     int exit_code = luaL_optint(L, 1, EXIT_SUCCESS);
 
     auto& vm_ctx = get_vm_context(L);
-    if (vm_ctx.appctx.main_vm.lock().get() == &vm_ctx) {
+    if (vm_ctx.is_master()) {
         if (lua_type(L, 2) == LUA_TTABLE) {
             lua_getfield(L, 2, "force");
             switch (lua_type(L, -1)) {

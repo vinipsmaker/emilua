@@ -268,7 +268,7 @@ end:
     try {
         auto vm_ctx = emilua::make_vm(ioctx, appctx, filename,
                                       emilua::ContextType::main);
-        appctx.main_vm = vm_ctx;
+        appctx.master_vm = vm_ctx;
         vm_ctx->strand().post([vm_ctx]() {
             vm_ctx->fiber_resume_trivial(vm_ctx->L());
         }, std::allocator<void>{});
