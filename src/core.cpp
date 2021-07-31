@@ -66,28 +66,29 @@ void app_context::log(int priority, std::string_view domain,
 {
     thread_local fmt::memory_buffer buf;
     buf.clear();
+    auto out = fmt::appender(buf);
     switch (priority) {
     case /*LOG_EMERG=*/0:
     case /*LOG_ALERT=*/1:
     case /*LOG_CRIT=*/2:
     case /*LOG_ERR=*/3:
         if (stdout_has_color) {
-            fmt::format_to(buf, FMT_STRING("<_>\033[31;1m[{}] "), domain);
+            fmt::format_to(out, FMT_STRING("<_>\033[31;1m[{}] "), domain);
             buf.data()[1] = '0' + priority;
             break;
         }
         [[fallthrough]];
     case /*LOG_WARNING=*/4:
         if (stdout_has_color) {
-            fmt::format_to(buf, FMT_STRING("<4>\033[93;1m[{}] "), domain);
+            fmt::format_to(out, FMT_STRING("<4>\033[93;1m[{}] "), domain);
             break;
         }
         [[fallthrough]];
     default:
-        fmt::format_to(buf, FMT_STRING("<_>[{}] "), domain);
+        fmt::format_to(out, FMT_STRING("<_>[{}] "), domain);
         buf.data()[1] = '0' + priority;
     }
-    fmt::vformat_to(buf, format_str, args);
+    fmt::vformat_to(out, format_str, args);
     if (stdout_has_color && priority <= /*LOG_WARNING=*/4) {
         std::string_view tail = "\033[22;39m\n";
         buf.append(tail.data(), tail.data() + tail.size());

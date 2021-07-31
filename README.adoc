@@ -61,7 +61,7 @@ end
 * {cpp}17 compiler (GCC 10 or newer should work).
 * LuaJIT.
 * Boost.Asio (and other Boost libraries as well).
-* https://fmt.dev/[fmt].
+* https://fmt.dev/[fmt] 8.0 or later.
 * `re2c`.
 * `xxd`.
 
