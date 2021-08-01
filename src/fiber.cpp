@@ -97,14 +97,13 @@ static int fiber_join(lua_State* L)
 
                 vm_ctx->strand().post(
                     [vm_ctx,current_fiber]() {
-                        vm_ctx->fiber_prologue(
+                        vm_ctx->fiber_resume(
                             current_fiber,
-                            [&]() {
-                                lua_pushboolean(current_fiber, 0);
-                                push(current_fiber, errc::interrupted);
-                            });
-                        int res = lua_resume(current_fiber, 2);
-                        vm_ctx->fiber_epilogue(res);
+                            hana::make_set(
+                                hana::make_pair(
+                                    vm_context::options::arguments,
+                                    hana::make_tuple(
+                                        false, errc::interrupted))));
                     },
                     std::allocator<void>{}
                 );
@@ -401,7 +400,9 @@ static int spawn(lua_State* L)
     lua_xmove(L, new_fiber, 1);
 
     vm_ctx->strand().post([vm_ctx,new_fiber]() {
-        vm_ctx->fiber_resume_trivial(new_fiber);
+        vm_ctx->fiber_resume(
+            new_fiber,
+            hana::make_set(vm_context::options::skip_clear_interrupter));
     }, std::allocator<void>{});
 
     {
@@ -424,7 +425,9 @@ static int this_fiber_yield(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     vm_ctx->strand().defer(
         [vm_ctx,current_fiber]() {
-            vm_ctx->fiber_resume_trivial(current_fiber);
+            vm_ctx->fiber_resume(
+                current_fiber,
+                hana::make_set(vm_context::options::skip_clear_interrupter));
         },
         std::allocator<void>{}
     );

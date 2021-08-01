@@ -558,11 +558,12 @@ static int chan_send(lua_State* L)
 
                     sender.vm_ctx->strand().post(
                         [vm_ctx=sender.vm_ctx, fiber=sender.fiber]() {
-                            vm_ctx->fiber_prologue(
+                            vm_ctx->fiber_resume(
                                 fiber,
-                                [&]() { push(fiber, errc::interrupted); });
-                            int res = lua_resume(fiber, 1);
-                            vm_ctx->fiber_epilogue(res);
+                                hana::make_set(
+                                    hana::make_pair(
+                                        vm_context::options::arguments,
+                                        hana::make_tuple(errc::interrupted))));
                         },
                         std::allocator<void>{}
                     );
@@ -591,23 +592,26 @@ static int chan_send(lua_State* L)
             vm_ctx->inbox.recv_fiber = nullptr;
             vm_ctx->inbox.work_guard.reset();
 
-            vm_ctx->fiber_prologue(
+            auto deserializer = [&sender](lua_State* recv_fiber) {
+                lua_pushlightuserdata(recv_fiber, &sender.msg);
+                lua_pushcclosure(recv_fiber, deserializer_closure, 1);
+            };
+            vm_ctx->fiber_resume(
                 recv_fiber,
-                [&]() {
-                    lua_pushnil(recv_fiber);
-                    lua_pushlightuserdata(recv_fiber, &sender.msg);
-                    lua_pushcclosure(recv_fiber, deserializer_closure, 1);
-                });
-            int res = lua_resume(recv_fiber, 2);
-            vm_ctx->fiber_epilogue(res);
+                hana::make_set(
+                    hana::make_pair(
+                        vm_context::options::arguments,
+                        hana::make_tuple(std::nullopt, deserializer))));
 
             sender.wake_on_destruct = false;
             sender.vm_ctx->strand().post(
                 [vm_ctx=sender.vm_ctx, fiber=sender.fiber]() {
-                    vm_ctx->fiber_prologue(fiber);
-                    lua_pushnil(fiber);
-                    int res = lua_resume(fiber, 1);
-                    vm_ctx->fiber_epilogue(res);
+                    auto opt_args = vm_context::options::arguments;
+                    vm_ctx->fiber_resume(
+                        fiber,
+                        hana::make_set(
+                            hana::make_pair(
+                                opt_args, hana::make_tuple(std::nullopt))));
                 },
                 std::allocator<void>{}
             );
@@ -670,9 +674,7 @@ static int chan_recv(lua_State* L)
 
         sender.vm_ctx->strand().post(
             [vm_ctx=sender.vm_ctx, fiber=sender.fiber]() {
-                vm_ctx->fiber_prologue(fiber);
-                int res = lua_resume(fiber, 0);
-                vm_ctx->fiber_epilogue(res);
+                vm_ctx->fiber_resume(fiber);
             },
             std::allocator<void>{}
         );
@@ -701,11 +703,12 @@ static int chan_recv(lua_State* L)
 
             vm_ctx.strand().post(
                 [vm_ctx=vm_ctx.shared_from_this(), recv_fiber]() {
-                    vm_ctx->fiber_prologue(
+                    vm_ctx->fiber_resume(
                         recv_fiber,
-                        [&]() { push(recv_fiber, errc::interrupted); });
-                    int res = lua_resume(recv_fiber, 1);
-                    vm_ctx->fiber_epilogue(res);
+                        hana::make_set(
+                            hana::make_pair(
+                                vm_context::options::arguments,
+                                hana::make_tuple(errc::interrupted))));
                 },
                 std::allocator<void>{}
             );
@@ -744,11 +747,12 @@ static int inbox_close(lua_State* L)
         vm_ctx.inbox.work_guard.reset();
 
         vm_ctx.strand().post([vm_ctx=vm_ctx.shared_from_this(), recv_fiber]() {
-            vm_ctx->fiber_prologue(
+            auto opt_args = vm_context::options::arguments;
+            vm_ctx->fiber_resume(
                 recv_fiber,
-                [&]() { push(recv_fiber, errc::channel_closed); });
-            int res = lua_resume(recv_fiber, 1);
-            vm_ctx->fiber_epilogue(res);
+                hana::make_set(
+                    hana::make_pair(
+                        opt_args, hana::make_tuple(errc::channel_closed))));
         }, std::allocator<void>{});
     }
 
@@ -967,7 +971,9 @@ static int spawn_vm(lua_State* L)
         new (buf) actor_address{*new_vm_ctx};
 
         new_vm_ctx->strand().post([new_vm_ctx]() {
-            new_vm_ctx->fiber_resume_trivial(new_vm_ctx->L());
+            new_vm_ctx->fiber_resume(
+                new_vm_ctx->L(),
+                hana::make_set(vm_context::options::skip_clear_interrupter));
         }, std::allocator<void>{});
 
         return 1;

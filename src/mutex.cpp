@@ -78,7 +78,8 @@ static int mutex_unlock(lua_State* L)
     auto next = handle->pending.front();
     handle->pending.pop_front();
     vm_ctx->strand().post([vm_ctx,next]() {
-        vm_ctx->fiber_resume_trivial(next);
+        vm_ctx->fiber_resume(
+            next, hana::make_set(vm_context::options::skip_clear_interrupter));
     }, std::allocator<void>{});
     return 0;
 }

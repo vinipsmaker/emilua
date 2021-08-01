@@ -14,7 +14,6 @@
 #include <boost/vmd/empty.hpp>
 
 #include <emilua/dispatch_table.hpp>
-#include <emilua/fiber.hpp>
 
 namespace emilua {
 
@@ -97,27 +96,13 @@ static int sys_signal_set_wait(lua_State* L)
         vm_ctx->strand_using_defer(),
         [vm_ctx,current_fiber](const boost::system::error_code& ec,
                                int signal_number) {
-            std::error_code std_ec = ec;
-            vm_ctx->fiber_prologue(
+            auto opt_args = vm_context::options::arguments;
+            vm_ctx->fiber_resume(
                 current_fiber,
-                [&]() {
-                    if (ec == asio::error::operation_aborted) {
-                        rawgetp(current_fiber, LUA_REGISTRYINDEX,
-                                &fiber_list_key);
-                        lua_pushthread(current_fiber);
-                        lua_rawget(current_fiber, -2);
-                        lua_rawgeti(current_fiber, -1,
-                                    FiberDataIndex::INTERRUPTED);
-                        bool interrupted = lua_toboolean(current_fiber, -1);
-                        lua_pop(current_fiber, 3);
-                        if (interrupted)
-                            std_ec = errc::interrupted;
-                    }
-                    push(current_fiber, std_ec);
-                    lua_pushinteger(current_fiber, signal_number);
-                });
-            int res = lua_resume(current_fiber, 2);
-            vm_ctx->fiber_epilogue(res);
+                hana::make_set(
+                    vm_context::options::auto_detect_interrupt,
+                    hana::make_pair(
+                        opt_args, hana::make_tuple(ec, signal_number))));
         }
     ));
 

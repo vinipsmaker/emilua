@@ -7,47 +7,9 @@
 
 #include <emilua/core.hpp>
 
-#define EMILUA_IMPL_INITIAL_FIBER_DATA_CAPACITY 9
-#define EMILUA_IMPL_INITIAL_MODULE_FIBER_DATA_CAPACITY 8
-
-// EMILUA_IMPL_INITIAL_MODULE_FIBER_DATA_CAPACITY currently takes into
-// consideration:
-//
-// * STACK
-// * LEAF
-// * CONTEXT
-// * INTERRUPTION_DISABLED
-// * JOINER
-// * STATUS
-// * SOURCE_PATH
-// * LOCAL_STORAGE
-
 namespace emilua {
 
-extern char fiber_list_key;
 extern char yield_reason_is_native_key;
-
-enum FiberDataIndex: lua_Integer
-{
-    JOINER = 1,
-    STATUS,
-    SOURCE_PATH,
-    SUSPENSION_DISALLOWED,
-    LOCAL_STORAGE,
-    STACKTRACE,
-
-    // data used by the interruption system {{{
-    INTERRUPTION_DISABLED,
-    INTERRUPTED,
-    INTERRUPTER,
-    USER_HANDLE, //< "augmented joiner"
-    // }}}
-
-    // data only available for modules:
-    STACK,
-    LEAF,
-    CONTEXT
-};
 
 enum FiberStatus: lua_Integer
 {

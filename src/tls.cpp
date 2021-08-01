@@ -8,7 +8,6 @@
 #include <boost/asio/ssl.hpp>
 
 #include <emilua/dispatch_table.hpp>
-#include <emilua/fiber.hpp>
 #include <emilua/tls.hpp>
 #include <emilua/ip.hpp>
 
@@ -162,26 +161,12 @@ static int socket_handshake(lua_State* L)
     s->async_handshake(HANDSHAKE, asio::bind_executor(
         vm_ctx->strand_using_defer(),
         [vm_ctx,current_fiber](const boost::system::error_code& ec) {
-            std::error_code std_ec = ec;
-            vm_ctx->fiber_prologue(
+            auto opt_args = vm_context::options::arguments;
+            vm_ctx->fiber_resume(
                 current_fiber,
-                [&]() {
-                    if (ec == asio::error::operation_aborted) {
-                        rawgetp(current_fiber, LUA_REGISTRYINDEX,
-                                &fiber_list_key);
-                        lua_pushthread(current_fiber);
-                        lua_rawget(current_fiber, -2);
-                        lua_rawgeti(current_fiber, -1,
-                                    FiberDataIndex::INTERRUPTED);
-                        bool interrupted = lua_toboolean(current_fiber, -1);
-                        lua_pop(current_fiber, 3);
-                        if (interrupted)
-                            std_ec = errc::interrupted;
-                    }
-                    push(current_fiber, std_ec);
-                });
-            int res = lua_resume(current_fiber, 1);
-            vm_ctx->fiber_epilogue(res);
+                hana::make_set(
+                    vm_context::options::auto_detect_interrupt,
+                    hana::make_pair(opt_args, hana::make_tuple(ec))));
         }
     ));
 

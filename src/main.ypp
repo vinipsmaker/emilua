@@ -26,6 +26,7 @@ extern "C" {
 #endif // EMILUA_CONFIG_ENABLE_COLOR
 
 namespace asio = boost::asio;
+namespace hana = boost::hana;
 namespace fs = std::filesystem;
 
 static constexpr auto help_text = FMT_STRING(
@@ -266,7 +267,10 @@ end:
                                       emilua::ContextType::main);
         appctx.master_vm = vm_ctx;
         vm_ctx->strand().post([vm_ctx]() {
-            vm_ctx->fiber_resume_trivial(vm_ctx->L());
+            vm_ctx->fiber_resume(
+                vm_ctx->L(),
+                hana::make_set(
+                    emilua::vm_context::options::skip_clear_interrupter));
         }, std::allocator<void>{});
     } catch (std::exception& e) {
         std::cerr << "Error starting the lua VM: " << e.what() << std::endl;

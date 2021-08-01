@@ -14,6 +14,16 @@
 #include <boost/config.hpp>
 
 #include <boost/hana/functional/overload.hpp>
+#include <boost/hana/functional/compose.hpp>
+#include <boost/hana/functional/always.hpp>
+#include <boost/hana/core/is_a.hpp>
+#include <boost/hana/for_each.hpp>
+#include <boost/hana/none_of.hpp>
+#include <boost/hana/equal.hpp>
+#include <boost/hana/pair.hpp>
+#include <boost/hana/size.hpp>
+#include <boost/hana/type.hpp>
+#include <boost/hana/set.hpp>
 
 #include <boost/outcome/basic_result.hpp>
 #include <boost/outcome/policy/all_narrow.hpp>
@@ -25,6 +35,7 @@
 #include <system_error>
 #include <string_view>
 #include <filesystem>
+#include <optional>
 #include <variant>
 #include <atomic>
 #include <deque>
@@ -43,6 +54,21 @@ extern "C" {
 #if EMILUA_CONFIG_ENABLE_PLUGINS
 #include <boost/shared_ptr.hpp>
 #endif // EMILUA_CONFIG_ENABLE_PLUGINS
+
+#define EMILUA_IMPL_INITIAL_FIBER_DATA_CAPACITY 9
+#define EMILUA_IMPL_INITIAL_MODULE_FIBER_DATA_CAPACITY 8
+
+// EMILUA_IMPL_INITIAL_MODULE_FIBER_DATA_CAPACITY currently takes into
+// consideration:
+//
+// * STACK
+// * LEAF
+// * CONTEXT
+// * INTERRUPTION_DISABLED
+// * JOINER
+// * STATUS
+// * SOURCE_PATH
+// * LOCAL_STORAGE
 
 #define EMILUA_CHECK_SUSPEND_ALLOWED(VM_CTX, L)             \
     if (!emilua::detail::unsafe_can_suspend((VM_CTX), (L))) \
@@ -71,6 +97,29 @@ extern char raw_error_key;
 extern char raw_type_key;
 extern char raw_pairs_key;
 extern char raw_ipairs_key;
+extern char fiber_list_key;
+
+enum FiberDataIndex: lua_Integer
+{
+    JOINER = 1,
+    STATUS,
+    SOURCE_PATH,
+    SUSPENSION_DISALLOWED,
+    LOCAL_STORAGE,
+    STACKTRACE,
+
+    // data used by the interruption system {{{
+    INTERRUPTION_DISABLED,
+    INTERRUPTED,
+    INTERRUPTER,
+    USER_HANDLE, //< "augmented joiner"
+    // }}}
+
+    // data only available for modules:
+    STACK,
+    LEAF,
+    CONTEXT
+};
 
 template<class T, class EC = std::error_code>
 using result = outcome::basic_result<
@@ -404,6 +453,22 @@ public:
 class vm_context: public std::enable_shared_from_this<vm_context>
 {
 public:
+    struct options
+    {
+        // If your code hasn't set an interrupter in the first place, then
+        // you're safe to use this option.
+        static constexpr struct skip_clear_interrupter_t {}
+            skip_clear_interrupter{};
+
+        static constexpr struct arguments_t {} arguments{};
+
+        // Convert from `asio::error::operation_aborted` to `errc::interrupted`
+        // iff `FiberDataIndex::INTERRUPTED` has been set for the fiber about to
+        // be resumed.
+        static constexpr
+        struct auto_detect_interrupt_t {} auto_detect_interrupt{};
+    };
+
     vm_context(app_context& appctx, strand_type strand);
     ~vm_context();
 
@@ -446,58 +511,8 @@ public:
         return valid_;
     }
 
-    void fiber_resume(lua_State* fiber)
-    {
-        fiber_prologue(fiber);
-        int res = lua_resume(fiber, 0);
-        fiber_epilogue(res);
-    }
-
-    void fiber_resume_trivial(lua_State* fiber)
-    {
-        fiber_prologue_trivial(fiber);
-        int res = lua_resume(fiber, 0);
-        fiber_epilogue(res);
-    }
-
-    /// The difference between normal and trivial APIs is that trivial functions
-    /// won't clear the interrupter. If your code hasn't set an interrupter in
-    /// the first place, then you're safe to use them. They also expect to only
-    /// be called to resume coroutines with 0 arguments pushed onto the stack.
-    void fiber_prologue_trivial(lua_State* new_current_fiber);
-    void fiber_epilogue(int resume_result);
-
-    template<class F>
-    void fiber_prologue(lua_State* new_current_fiber, F&& args_pusher)
-    {
-        fiber_prologue(new_current_fiber);
-
-        try {
-            args_pusher();
-        } catch (...) {
-            // On Lua errors, current exception should be empty. And
-            // `args_pusher` should only be calling Lua functions. It is an
-            // error to throw arbitrary exceptions from `args_pusher`.
-            assert(!static_cast<bool>(std::current_exception()));
-
-            notify_errmem();
-            close();
-            throw dead_vm_error{dead_vm_error::reason::mem};
-        }
-    }
-
-    /// Use this overload when you don't expect to push any argument onto the
-    /// stack.
-    void fiber_prologue(lua_State* new_current_fiber)
-    {
-        fiber_prologue_trivial(new_current_fiber);
-
-        // There is no need for a try-catch block here. Only throwing function
-        // in set_interrupter() is lua_rawseti(). lua_rawseti() shouldn't throw
-        // on LUA_ERRMEM for `nil` assignment.
-        lua_pushnil(current_fiber_);
-        set_interrupter(current_fiber_, *this);
-    }
+    template<class HanaSet = std::decay_t<decltype(hana::make_set())>>
+    void fiber_resume(lua_State* new_current_fiber, HanaSet&& options = {});
 
     void notify_errmem();
     void notify_exit_request();
@@ -526,6 +541,9 @@ public:
     std::weak_ptr<asio::io_context> ioctxref;
 
 private:
+    void fiber_prologue(lua_State* new_current_fiber);
+    void fiber_epilogue(int resume_result);
+
     strand_type strand_;
     bool valid_;
     bool lua_errmem;
@@ -610,6 +628,13 @@ inline void push(lua_State* L, const std::filesystem::path& path)
 {
     auto p = path.string();
     lua_pushlstring(L, p.data(), p.size());
+}
+
+template<class F>
+inline
+auto push(lua_State* L, F&& pusher) -> decltype(std::forward<F>(pusher)(L))
+{
+    return std::forward<F>(pusher)(L);
 }
 
 inline std::string_view tostringview(lua_State* L, int index = -1)
@@ -727,6 +752,93 @@ struct std::is_error_code_enum<emilua::errc>: std::true_type {};
 
 namespace emilua {
 
+template<class HanaSet>
+void vm_context::fiber_resume(lua_State* new_current_fiber, HanaSet&& options)
+{
+    static constexpr auto is_skip_clear_interrupter = hana::compose(
+        hana::equal.to(hana::type_c<options::skip_clear_interrupter_t>),
+        hana::typeid_);
+    static constexpr auto is_auto_detect_interrupt = hana::compose(
+        hana::equal.to(hana::type_c<options::auto_detect_interrupt_t>),
+        hana::typeid_);
+    static constexpr auto is_arguments = [](auto&& x) {
+        return hana::if_(
+            hana::is_a<hana::pair_tag>(x),
+            [](auto&& x) {
+                return hana::typeid_(hana::first(x)) ==
+                    hana::type_c<options::arguments_t>;
+            },
+            hana::always(hana::false_c)
+        )(x);
+    };
+
+    static constexpr decltype(hana::any_of(options, is_auto_detect_interrupt))
+        has_auto_detect_interrupt;
+
+    fiber_prologue(new_current_fiber);
+
+    if (hana::none_of(options, is_skip_clear_interrupter)) {
+        // There is no need for a try-catch block here. Only throwing function
+        // in set_interrupter() is lua_rawseti(). lua_rawseti() shouldn't throw
+        // on LUA_ERRMEM for `nil` assignment.
+        lua_pushnil(new_current_fiber);
+        set_interrupter(new_current_fiber, *this);
+    }
+
+    int narg = 0;
+
+    try {
+        hana::find_if(options, is_arguments) | [&](auto&& x) {
+            auto push2 = hana::overload(
+                [&](const boost::system::error_code& ec) {
+                    std::error_code std_ec = ec;
+                    if (has_auto_detect_interrupt) {
+                        if (ec == asio::error::operation_aborted) {
+                            rawgetp(new_current_fiber, LUA_REGISTRYINDEX,
+                                    &fiber_list_key);
+                            lua_pushthread(new_current_fiber);
+                            lua_rawget(new_current_fiber, -2);
+                            lua_rawgeti(new_current_fiber, -1,
+                                        FiberDataIndex::INTERRUPTED);
+                            bool interrupted =
+                                lua_toboolean(new_current_fiber, -1);
+                            lua_pop(new_current_fiber, 3);
+                            if (interrupted)
+                                std_ec = errc::interrupted;
+                        }
+                    }
+                    push(new_current_fiber, std_ec);
+                },
+                [&](std::nullopt_t) { lua_pushnil(new_current_fiber); },
+                [&](bool b) { lua_pushboolean(new_current_fiber, b ? 1 : 0); },
+                [&](auto n) -> std::enable_if_t<std::is_integral_v<decltype(n)>>
+                { lua_pushinteger(new_current_fiber, n); },
+                [&](lua_Number n) { lua_pushnumber(new_current_fiber, n); },
+                [&](const auto& x) -> std::enable_if_t<
+                    !std::is_integral_v<std::decay_t<decltype(x)>> &&
+                    !std::is_floating_point_v<std::decay_t<decltype(x)>>
+                > { push(new_current_fiber, x); }
+            );
+
+            narg += hana::size(hana::second(x));
+            hana::for_each(hana::second(x), push2);
+            return hana::nothing;
+        };
+    } catch (...) {
+        // On Lua errors, current exception should be empty. And the try-block
+        // should only be calling Lua functions. It is an error to throw
+        // arbitrary exceptions at this point.
+        assert(!static_cast<bool>(std::current_exception()));
+
+        notify_errmem();
+        close();
+        throw dead_vm_error{dead_vm_error::reason::mem};
+    }
+
+    int res = lua_resume(new_current_fiber, narg);
+    fiber_epilogue(res);
+}
+
 inline actor_address::actor_address(vm_context& vm_ctx)
     : dest{vm_ctx.weak_from_this()}
     , work_guard{vm_ctx.work_guard()}
@@ -776,11 +888,11 @@ inline actor_address::~actor_address()
         vm_ctx->inbox.recv_fiber = nullptr;
         vm_ctx->inbox.work_guard.reset();
 
-        vm_ctx->fiber_prologue(
+        auto opt_args = vm_context::options::arguments;
+        vm_ctx->fiber_resume(
             recv_fiber,
-            [&]() { push(recv_fiber, errc::no_senders); });
-        int res = lua_resume(recv_fiber, 1);
-        vm_ctx->fiber_epilogue(res);
+            hana::make_set(
+                hana::make_pair(opt_args, hana::make_tuple(errc::no_senders))));
     }, std::allocator<void>{});
 }
 
@@ -814,11 +926,12 @@ inline inbox_t::sender_state::~sender_state()
         return;
 
     vm_ctx->strand().post([vm_ctx=vm_ctx, fiber=fiber]() {
-        vm_ctx->fiber_prologue(
+        auto opt_args = vm_context::options::arguments;
+        vm_ctx->fiber_resume(
             fiber,
-            [&]() { push(fiber, errc::channel_closed); });
-        int res = lua_resume(fiber, 1);
-        vm_ctx->fiber_epilogue(res);
+            hana::make_set(
+                hana::make_pair(
+                    opt_args, hana::make_tuple(errc::channel_closed))));
     }, std::allocator<void>{});
 }
 
@@ -828,11 +941,12 @@ inbox_t::sender_state::operator=(inbox_t::sender_state&& o)
 {
     if (wake_on_destruct) {
         vm_ctx->strand().post([vm_ctx=vm_ctx, fiber=fiber]() {
-            vm_ctx->fiber_prologue(
+            auto opt_args = vm_context::options::arguments;
+            vm_ctx->fiber_resume(
                 fiber,
-                [&]() { push(fiber, errc::channel_closed); });
-            int res = lua_resume(fiber, 1);
-            vm_ctx->fiber_epilogue(res);
+                hana::make_set(
+                    hana::make_pair(
+                        opt_args, hana::make_tuple(errc::channel_closed))));
         }, std::allocator<void>{});
     }
 

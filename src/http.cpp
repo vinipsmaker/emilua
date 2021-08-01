@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 Vinícius dos Santos Oliveira
+/* Copyright (c) 2020, 2021 Vinícius dos Santos Oliveira
 
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
@@ -12,7 +12,6 @@
 #include <boost/http/algorithm/query.hpp>
 
 #include <emilua/dispatch_table.hpp>
-#include <emilua/fiber.hpp>
 #include <emilua/http.hpp>
 #include <emilua/tls.hpp>
 #include <emilua/ip.hpp>
@@ -843,34 +842,18 @@ int socket_close<TlsSocket>(lua_State* L)
     s->socket.next_layer().async_shutdown(asio::bind_executor(
         vm_ctx->strand_using_defer(),
         [vm_ctx,current_fiber,s](const boost::system::error_code& ec) {
-            std::error_code std_ec = ec;
-            vm_ctx->fiber_prologue(
+            --s->nbusy;
+
+            boost::system::error_code ec2;
+            s->socket.next_layer().next_layer().close(ec2);
+            if (ec) ec2 = ec;
+
+            auto opt_args = vm_context::options::arguments;
+            vm_ctx->fiber_resume(
                 current_fiber,
-                [&]() {
-                    boost::system::error_code ec2;
-                    s->socket.next_layer().next_layer().close(ec2);
-
-                    --s->nbusy;
-                    if (ec == asio::error::operation_aborted) {
-                        rawgetp(current_fiber, LUA_REGISTRYINDEX,
-                                &fiber_list_key);
-                        lua_pushthread(current_fiber);
-                        lua_rawget(current_fiber, -2);
-                        lua_rawgeti(current_fiber, -1,
-                                    FiberDataIndex::INTERRUPTED);
-                        bool interrupted = lua_toboolean(current_fiber, -1);
-                        lua_pop(current_fiber, 3);
-                        if (interrupted)
-                            std_ec = errc::interrupted;
-                    }
-
-                    if (!std_ec)
-                        std_ec = ec2;
-
-                    push(current_fiber, std_ec);
-                });
-            int res = lua_resume(current_fiber, 1);
-            vm_ctx->fiber_epilogue(res);
+                hana::make_set(
+                    vm_context::options::auto_detect_interrupt,
+                    hana::make_pair(opt_args, hana::make_tuple(ec2))));
         }
     ));
 
@@ -953,27 +936,14 @@ static int socket_read_request(lua_State* L)
         ) {
             boost::ignore_unused(b1);
             msg->has_writer = false;
-            std::error_code std_ec = ec;
-            vm_ctx->fiber_prologue(
+            --*nbusy;
+
+            auto opt_args = vm_context::options::arguments;
+            vm_ctx->fiber_resume(
                 current_fiber,
-                [&]() {
-                    --*nbusy;
-                    if (ec == asio::error::operation_aborted) {
-                        rawgetp(current_fiber, LUA_REGISTRYINDEX,
-                                &fiber_list_key);
-                        lua_pushthread(current_fiber);
-                        lua_rawget(current_fiber, -2);
-                        lua_rawgeti(current_fiber, -1,
-                                    FiberDataIndex::INTERRUPTED);
-                        bool interrupted = lua_toboolean(current_fiber, -1);
-                        lua_pop(current_fiber, 3);
-                        if (interrupted)
-                            std_ec = errc::interrupted;
-                    }
-                    push(current_fiber, std_ec);
-                });
-            int res = lua_resume(current_fiber, 1);
-            vm_ctx->fiber_epilogue(res);
+                hana::make_set(
+                    vm_context::options::auto_detect_interrupt,
+                    hana::make_pair(opt_args, hana::make_tuple(ec))));
         }
     ));
 
@@ -1037,27 +1007,14 @@ static int socket_write_response(lua_State* L)
             const boost::system::error_code& ec
         ) {
             msg->nreaders--;
-            std::error_code std_ec = ec;
-            vm_ctx->fiber_prologue(
+            --*nbusy;
+
+            auto opt_args = vm_context::options::arguments;
+            vm_ctx->fiber_resume(
                 current_fiber,
-                [&]() {
-                    --*nbusy;
-                    if (ec == asio::error::operation_aborted) {
-                        rawgetp(current_fiber, LUA_REGISTRYINDEX,
-                                &fiber_list_key);
-                        lua_pushthread(current_fiber);
-                        lua_rawget(current_fiber, -2);
-                        lua_rawgeti(current_fiber, -1,
-                                    FiberDataIndex::INTERRUPTED);
-                        bool interrupted = lua_toboolean(current_fiber, -1);
-                        lua_pop(current_fiber, 3);
-                        if (interrupted)
-                            std_ec = errc::interrupted;
-                    }
-                    push(current_fiber, std_ec);
-                });
-            int res = lua_resume(current_fiber, 1);
-            vm_ctx->fiber_epilogue(res);
+                hana::make_set(
+                    vm_context::options::auto_detect_interrupt,
+                    hana::make_pair(opt_args, hana::make_tuple(ec))));
         }
     ));
 
@@ -1101,27 +1058,14 @@ static int socket_write_response_continue(lua_State* L)
         [vm_ctx,current_fiber,nbusy=&s->nbusy](
             const boost::system::error_code& ec
         ) {
-            std::error_code std_ec = ec;
-            vm_ctx->fiber_prologue(
+            --*nbusy;
+
+            auto opt_args = vm_context::options::arguments;
+            vm_ctx->fiber_resume(
                 current_fiber,
-                [&]() {
-                    --*nbusy;
-                    if (ec == asio::error::operation_aborted) {
-                        rawgetp(current_fiber, LUA_REGISTRYINDEX,
-                                &fiber_list_key);
-                        lua_pushthread(current_fiber);
-                        lua_rawget(current_fiber, -2);
-                        lua_rawgeti(current_fiber, -1,
-                                    FiberDataIndex::INTERRUPTED);
-                        bool interrupted = lua_toboolean(current_fiber, -1);
-                        lua_pop(current_fiber, 3);
-                        if (interrupted)
-                            std_ec = errc::interrupted;
-                    }
-                    push(current_fiber, std_ec);
-                });
-            int res = lua_resume(current_fiber, 1);
-            vm_ctx->fiber_epilogue(res);
+                hana::make_set(
+                    vm_context::options::auto_detect_interrupt,
+                    hana::make_pair(opt_args, hana::make_tuple(ec))));
         }
     ));
 
@@ -1185,27 +1129,14 @@ static int socket_write_response_metadata(lua_State* L)
             const boost::system::error_code& ec
         ) {
             msg->nreaders--;
-            std::error_code std_ec = ec;
-            vm_ctx->fiber_prologue(
+            --*nbusy;
+
+            auto opt_args = vm_context::options::arguments;
+            vm_ctx->fiber_resume(
                 current_fiber,
-                [&]() {
-                    --*nbusy;
-                    if (ec == asio::error::operation_aborted) {
-                        rawgetp(current_fiber, LUA_REGISTRYINDEX,
-                                &fiber_list_key);
-                        lua_pushthread(current_fiber);
-                        lua_rawget(current_fiber, -2);
-                        lua_rawgeti(current_fiber, -1,
-                                    FiberDataIndex::INTERRUPTED);
-                        bool interrupted = lua_toboolean(current_fiber, -1);
-                        lua_pop(current_fiber, 3);
-                        if (interrupted)
-                            std_ec = errc::interrupted;
-                    }
-                    push(current_fiber, std_ec);
-                });
-            int res = lua_resume(current_fiber, 1);
-            vm_ctx->fiber_epilogue(res);
+                hana::make_set(
+                    vm_context::options::auto_detect_interrupt,
+                    hana::make_pair(opt_args, hana::make_tuple(ec))));
         }
     ));
 
@@ -1283,27 +1214,14 @@ static int socket_write(lua_State* L)
                 const boost::system::error_code& ec
             ) {
                 msg->nreaders--;
-                std::error_code std_ec = ec;
-                vm_ctx->fiber_prologue(
+                --*nbusy;
+
+                auto opt_args = vm_context::options::arguments;
+                vm_ctx->fiber_resume(
                     current_fiber,
-                    [&]() {
-                        --*nbusy;
-                        if (ec == asio::error::operation_aborted) {
-                            rawgetp(current_fiber, LUA_REGISTRYINDEX,
-                                    &fiber_list_key);
-                            lua_pushthread(current_fiber);
-                            lua_rawget(current_fiber, -2);
-                            lua_rawgeti(current_fiber, -1,
-                                        FiberDataIndex::INTERRUPTED);
-                            bool interrupted = lua_toboolean(current_fiber, -1);
-                            lua_pop(current_fiber, 3);
-                            if (interrupted)
-                                std_ec = errc::interrupted;
-                        }
-                        push(current_fiber, std_ec);
-                    });
-                int res = lua_resume(current_fiber, 1);
-                vm_ctx->fiber_epilogue(res);
+                    hana::make_set(
+                        vm_context::options::auto_detect_interrupt,
+                        hana::make_pair(opt_args, hana::make_tuple(ec))));
             }
         ));
     };
@@ -1384,27 +1302,14 @@ static int socket_write_trailers(lua_State* L)
                 const boost::system::error_code& ec
             ) {
                 msg->nreaders--;
-                std::error_code std_ec = ec;
-                vm_ctx->fiber_prologue(
+                --*nbusy;
+
+                auto opt_args = vm_context::options::arguments;
+                vm_ctx->fiber_resume(
                     current_fiber,
-                    [&]() {
-                        --*nbusy;
-                        if (ec == asio::error::operation_aborted) {
-                            rawgetp(current_fiber, LUA_REGISTRYINDEX,
-                                    &fiber_list_key);
-                            lua_pushthread(current_fiber);
-                            lua_rawget(current_fiber, -2);
-                            lua_rawgeti(current_fiber, -1,
-                                        FiberDataIndex::INTERRUPTED);
-                            bool interrupted = lua_toboolean(current_fiber, -1);
-                            lua_pop(current_fiber, 3);
-                            if (interrupted)
-                                std_ec = errc::interrupted;
-                        }
-                        push(current_fiber, std_ec);
-                    });
-                int res = lua_resume(current_fiber, 1);
-                vm_ctx->fiber_epilogue(res);
+                    hana::make_set(
+                        vm_context::options::auto_detect_interrupt,
+                        hana::make_pair(opt_args, hana::make_tuple(ec))));
             }
         ));
     };
@@ -1451,27 +1356,14 @@ static int socket_write_end_of_message(lua_State* L)
         [vm_ctx,current_fiber,nbusy=&s->nbusy](
             const boost::system::error_code& ec
         ) {
-            std::error_code std_ec = ec;
-            vm_ctx->fiber_prologue(
+            --*nbusy;
+
+            auto opt_args = vm_context::options::arguments;
+            vm_ctx->fiber_resume(
                 current_fiber,
-                [&]() {
-                    --*nbusy;
-                    if (ec == asio::error::operation_aborted) {
-                        rawgetp(current_fiber, LUA_REGISTRYINDEX,
-                                &fiber_list_key);
-                        lua_pushthread(current_fiber);
-                        lua_rawget(current_fiber, -2);
-                        lua_rawgeti(current_fiber, -1,
-                                    FiberDataIndex::INTERRUPTED);
-                        bool interrupted = lua_toboolean(current_fiber, -1);
-                        lua_pop(current_fiber, 3);
-                        if (interrupted)
-                            std_ec = errc::interrupted;
-                    }
-                    push(current_fiber, std_ec);
-                });
-            int res = lua_resume(current_fiber, 1);
-            vm_ctx->fiber_epilogue(res);
+                hana::make_set(
+                    vm_context::options::auto_detect_interrupt,
+                    hana::make_pair(opt_args, hana::make_tuple(ec))));
         }
     ));
 
@@ -1535,27 +1427,14 @@ static int socket_write_request(lua_State* L)
             const boost::system::error_code& ec
         ) {
             msg->nreaders--;
-            std::error_code std_ec = ec;
-            vm_ctx->fiber_prologue(
+            --*nbusy;
+
+            auto opt_args = vm_context::options::arguments;
+            vm_ctx->fiber_resume(
                 current_fiber,
-                [&]() {
-                    --*nbusy;
-                    if (ec == asio::error::operation_aborted) {
-                        rawgetp(current_fiber, LUA_REGISTRYINDEX,
-                                &fiber_list_key);
-                        lua_pushthread(current_fiber);
-                        lua_rawget(current_fiber, -2);
-                        lua_rawgeti(current_fiber, -1,
-                                    FiberDataIndex::INTERRUPTED);
-                        bool interrupted = lua_toboolean(current_fiber, -1);
-                        lua_pop(current_fiber, 3);
-                        if (interrupted)
-                            std_ec = errc::interrupted;
-                    }
-                    push(current_fiber, std_ec);
-                });
-            int res = lua_resume(current_fiber, 1);
-            vm_ctx->fiber_epilogue(res);
+                hana::make_set(
+                    vm_context::options::auto_detect_interrupt,
+                    hana::make_pair(opt_args, hana::make_tuple(ec))));
         }
     ));
 
@@ -1619,27 +1498,14 @@ static int socket_write_request_metadata(lua_State* L)
             const boost::system::error_code& ec
         ) {
             msg->nreaders--;
-            std::error_code std_ec = ec;
-            vm_ctx->fiber_prologue(
+            --*nbusy;
+
+            auto opt_args = vm_context::options::arguments;
+            vm_ctx->fiber_resume(
                 current_fiber,
-                [&]() {
-                    --*nbusy;
-                    if (ec == asio::error::operation_aborted) {
-                        rawgetp(current_fiber, LUA_REGISTRYINDEX,
-                                &fiber_list_key);
-                        lua_pushthread(current_fiber);
-                        lua_rawget(current_fiber, -2);
-                        lua_rawgeti(current_fiber, -1,
-                                    FiberDataIndex::INTERRUPTED);
-                        bool interrupted = lua_toboolean(current_fiber, -1);
-                        lua_pop(current_fiber, 3);
-                        if (interrupted)
-                            std_ec = errc::interrupted;
-                    }
-                    push(current_fiber, std_ec);
-                });
-            int res = lua_resume(current_fiber, 1);
-            vm_ctx->fiber_epilogue(res);
+                hana::make_set(
+                    vm_context::options::auto_detect_interrupt,
+                    hana::make_pair(opt_args, hana::make_tuple(ec))));
         }
     ));
 
@@ -1704,27 +1570,14 @@ static int socket_read_response(lua_State* L)
         ) {
             boost::ignore_unused(b1);
             msg->has_writer = false;
-            std::error_code std_ec = ec;
-            vm_ctx->fiber_prologue(
+            --*nbusy;
+
+            auto opt_args = vm_context::options::arguments;
+            vm_ctx->fiber_resume(
                 current_fiber,
-                [&]() {
-                    --*nbusy;
-                    if (ec == asio::error::operation_aborted) {
-                        rawgetp(current_fiber, LUA_REGISTRYINDEX,
-                                &fiber_list_key);
-                        lua_pushthread(current_fiber);
-                        lua_rawget(current_fiber, -2);
-                        lua_rawgeti(current_fiber, -1,
-                                    FiberDataIndex::INTERRUPTED);
-                        bool interrupted = lua_toboolean(current_fiber, -1);
-                        lua_pop(current_fiber, 3);
-                        if (interrupted)
-                            std_ec = errc::interrupted;
-                    }
-                    push(current_fiber, std_ec);
-                });
-            int res = lua_resume(current_fiber, 1);
-            vm_ctx->fiber_epilogue(res);
+                hana::make_set(
+                    vm_context::options::auto_detect_interrupt,
+                    hana::make_pair(opt_args, hana::make_tuple(ec))));
         }
     ));
 
@@ -1801,27 +1654,14 @@ static int socket_read_some(lua_State* L)
             ) {
                 boost::ignore_unused(b1);
                 msg->has_writer = false;
-                std::error_code std_ec = ec;
-                vm_ctx->fiber_prologue(
+                --*nbusy;
+
+                auto opt_args = vm_context::options::arguments;
+                vm_ctx->fiber_resume(
                     current_fiber,
-                    [&]() {
-                        --*nbusy;
-                        if (ec == asio::error::operation_aborted) {
-                            rawgetp(current_fiber, LUA_REGISTRYINDEX,
-                                    &fiber_list_key);
-                            lua_pushthread(current_fiber);
-                            lua_rawget(current_fiber, -2);
-                            lua_rawgeti(current_fiber, -1,
-                                        FiberDataIndex::INTERRUPTED);
-                            bool interrupted = lua_toboolean(current_fiber, -1);
-                            lua_pop(current_fiber, 3);
-                            if (interrupted)
-                                std_ec = errc::interrupted;
-                        }
-                        push(current_fiber, std_ec);
-                    });
-                int res = lua_resume(current_fiber, 1);
-                vm_ctx->fiber_epilogue(res);
+                    hana::make_set(
+                        vm_context::options::auto_detect_interrupt,
+                        hana::make_pair(opt_args, hana::make_tuple(ec))));
             }
         ));
     };

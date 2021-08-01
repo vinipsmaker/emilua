@@ -77,11 +77,12 @@ static int cond_wait(lua_State* L)
 
             handle->pending.erase(it);
             vm_ctx->strand().post([vm_ctx,current_fiber]() {
-                vm_ctx->fiber_prologue(
+                auto opt_args = vm_context::options::arguments;
+                vm_ctx->fiber_resume(
                     current_fiber,
-                    [&]() { push(current_fiber, errc::interrupted); });
-                int res = lua_resume(current_fiber, 1);
-                vm_ctx->fiber_epilogue(res);
+                    hana::make_set(
+                        hana::make_pair(
+                            opt_args, hana::make_tuple(errc::interrupted))));
             }, std::allocator<void>{});
             return 0;
         },
@@ -98,7 +99,9 @@ static int cond_wait(lua_State* L)
         auto next = mutex_handle->pending.front();
         mutex_handle->pending.pop_front();
         vm_ctx->strand().post([vm_ctx,next]() {
-            vm_ctx->fiber_resume_trivial(next);
+            vm_ctx->fiber_resume(
+                next,
+                hana::make_set(vm_context::options::skip_clear_interrupter));
         }, std::allocator<void>{});
     }
     // }}}

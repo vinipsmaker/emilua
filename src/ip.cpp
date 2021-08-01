@@ -7,7 +7,6 @@
 #include <boost/asio/ip/tcp.hpp>
 
 #include <emilua/dispatch_table.hpp>
-#include <emilua/fiber.hpp>
 #include <emilua/ip.hpp>
 
 namespace emilua {
@@ -497,26 +496,12 @@ static int tcp_socket_connect(lua_State* L)
     s->async_connect(ep, asio::bind_executor(
         vm_ctx->strand_using_defer(),
         [vm_ctx,current_fiber](const boost::system::error_code& ec) {
-            std::error_code std_ec = ec;
-            vm_ctx->fiber_prologue(
+            auto opt_args = vm_context::options::arguments;
+            vm_ctx->fiber_resume(
                 current_fiber,
-                [&]() {
-                    if (ec == asio::error::operation_aborted) {
-                        rawgetp(current_fiber, LUA_REGISTRYINDEX,
-                                &fiber_list_key);
-                        lua_pushthread(current_fiber);
-                        lua_rawget(current_fiber, -2);
-                        lua_rawgeti(current_fiber, -1,
-                                    FiberDataIndex::INTERRUPTED);
-                        bool interrupted = lua_toboolean(current_fiber, -1);
-                        lua_pop(current_fiber, 3);
-                        if (interrupted)
-                            std_ec = errc::interrupted;
-                    }
-                    push(current_fiber, std_ec);
-                });
-            int res = lua_resume(current_fiber, 1);
-            vm_ctx->fiber_epilogue(res);
+                hana::make_set(
+                    vm_context::options::auto_detect_interrupt,
+                    hana::make_pair(opt_args, hana::make_tuple(ec))));
         }
     ));
 
@@ -591,39 +576,29 @@ static int tcp_acceptor_accept(lua_State* L)
         vm_ctx->strand_using_defer(),
         [vm_ctx,current_fiber](const boost::system::error_code& ec,
                                asio::ip::tcp::socket peer) {
-            std::error_code std_ec = ec;
-            vm_ctx->fiber_prologue(
+            vm_ctx->fiber_resume(
                 current_fiber,
-                [&]() {
-                    if (ec == asio::error::operation_aborted) {
-                        rawgetp(current_fiber, LUA_REGISTRYINDEX,
-                                &fiber_list_key);
-                        lua_pushthread(current_fiber);
-                        lua_rawget(current_fiber, -2);
-                        lua_rawgeti(current_fiber, -1,
-                                    FiberDataIndex::INTERRUPTED);
-                        bool interrupted = lua_toboolean(current_fiber, -1);
-                        lua_pop(current_fiber, 3);
-                        if (interrupted)
-                            std_ec = errc::interrupted;
-                    }
-                    push(current_fiber, std_ec);
-                    if (ec) {
-                        lua_pushnil(current_fiber);
-                    } else {
-                        auto s = reinterpret_cast<asio::ip::tcp::socket*>(
-                            lua_newuserdata(
-                                current_fiber, sizeof(asio::ip::tcp::socket)
-                            )
-                        );
-                        rawgetp(current_fiber, LUA_REGISTRYINDEX,
-                                &ip_tcp_socket_mt_key);
-                        setmetatable(current_fiber, -2);
-                        new (s) asio::ip::tcp::socket{std::move(peer)};
-                    }
-                });
-            int res = lua_resume(current_fiber, 2);
-            vm_ctx->fiber_epilogue(res);
+                hana::make_set(
+                    vm_context::options::auto_detect_interrupt,
+                    hana::make_pair(
+                        vm_context::options::arguments,
+                        hana::make_tuple(
+                            ec,
+                            [&ec,&peer](lua_State* fiber) {
+                                if (ec) {
+                                    lua_pushnil(fiber);
+                                } else {
+                                    using Socket = asio::ip::tcp::socket;
+                                    auto s = reinterpret_cast<Socket*>(
+                                        lua_newuserdata(fiber, sizeof(Socket))
+                                    );
+                                    rawgetp(fiber, LUA_REGISTRYINDEX,
+                                            &ip_tcp_socket_mt_key);
+                                    setmetatable(fiber, -2);
+                                    new (s) Socket{std::move(peer)};
+                                }
+                            }))
+                ));
         }
     ));
 
@@ -1142,73 +1117,56 @@ static int tcp_resolver_resolve(lua_State* L)
                 const boost::system::error_code& ec,
                 asio::ip::tcp::resolver::results_type results
             ) {
-                std::error_code std_ec = ec;
-                vm_ctx->fiber_prologue(
+                auto push_results = [&ec,&results](lua_State* fib) {
+                    if (ec) {
+                        lua_pushnil(fib);
+                    } else {
+                        lua_createtable(fib, /*narr=*/results.size(),
+                                        /*nrec=*/0);
+                        lua_pushliteral(fib, "ep_addr");
+                        lua_pushliteral(fib, "ep_port");
+                        lua_pushliteral(fib, "host_name");
+                        lua_pushliteral(fib, "service_name");
+
+                        int i = 1;
+                        for (const auto& res: results) {
+                            lua_createtable(fib, /*narr=*/0, /*nrec=*/4);
+
+                            lua_pushvalue(fib, -1 -4);
+                            auto a = reinterpret_cast<asio::ip::address*>(
+                                lua_newuserdata(fib, sizeof(asio::ip::address))
+                            );
+                            rawgetp(fib, LUA_REGISTRYINDEX, &ip_address_mt_key);
+                            setmetatable(fib, -2);
+                            new (a) asio::ip::address{res.endpoint().address()};
+                            lua_rawset(fib, -3);
+
+                            lua_pushvalue(fib, -1 -3);
+                            lua_pushinteger(fib, res.endpoint().port());
+                            lua_rawset(fib, -3);
+
+                            lua_pushvalue(fib, -1 -2);
+                            push(fib, res.host_name());
+                            lua_rawset(fib, -3);
+
+                            lua_pushvalue(fib, -1 -1);
+                            push(fib, res.service_name());
+                            lua_rawset(fib, -3);
+
+                            lua_rawseti(fib, -6, i++);
+                        }
+                        lua_pop(fib, 4);
+                    }
+                };
+
+                vm_ctx->fiber_resume(
                     current_fiber,
-                    [&]() {
-                        if (ec == asio::error::operation_aborted) {
-                            rawgetp(current_fiber, LUA_REGISTRYINDEX,
-                                    &fiber_list_key);
-                            lua_pushthread(current_fiber);
-                            lua_rawget(current_fiber, -2);
-                            lua_rawgeti(current_fiber, -1,
-                                        FiberDataIndex::INTERRUPTED);
-                            bool interrupted = lua_toboolean(current_fiber, -1);
-                            lua_pop(current_fiber, 3);
-                            if (interrupted)
-                                std_ec = errc::interrupted;
-                        }
-                        push(current_fiber, std_ec);
-                        if (ec) {
-                            lua_pushnil(current_fiber);
-                        } else {
-                            lua_createtable(current_fiber,
-                                            /*narr=*/results.size(),
-                                            /*nrec=*/0);
-                            lua_pushliteral(current_fiber, "ep_addr");
-                            lua_pushliteral(current_fiber, "ep_port");
-                            lua_pushliteral(current_fiber, "host_name");
-                            lua_pushliteral(current_fiber, "service_name");
-
-                            int i = 1;
-                            for (const auto& res: results) {
-                                lua_createtable(current_fiber,
-                                                /*narr=*/0, /*nrec=*/4);
-
-                                lua_pushvalue(current_fiber, -1 -4);
-                                auto a = reinterpret_cast<asio::ip::address*>(
-                                    lua_newuserdata(
-                                        current_fiber, sizeof(asio::ip::address)
-                                    )
-                                );
-                                rawgetp(current_fiber, LUA_REGISTRYINDEX,
-                                        &ip_address_mt_key);
-                                setmetatable(current_fiber, -2);
-                                new (a) asio::ip::address{
-                                    res.endpoint().address()
-                                };
-                                lua_rawset(current_fiber, -3);
-
-                                lua_pushvalue(current_fiber, -1 -3);
-                                lua_pushinteger(current_fiber,
-                                                res.endpoint().port());
-                                lua_rawset(current_fiber, -3);
-
-                                lua_pushvalue(current_fiber, -1 -2);
-                                push(current_fiber, res.host_name());
-                                lua_rawset(current_fiber, -3);
-
-                                lua_pushvalue(current_fiber, -1 -1);
-                                push(current_fiber, res.service_name());
-                                lua_rawset(current_fiber, -3);
-
-                                lua_rawseti(current_fiber, -6, i++);
-                            }
-                            lua_pop(current_fiber, 4);
-                        }
-                    });
-                int res = lua_resume(current_fiber, 2);
-                vm_ctx->fiber_epilogue(res);
+                    hana::make_set(
+                        vm_context::options::auto_detect_interrupt,
+                        hana::make_pair(
+                            vm_context::options::arguments,
+                            hana::make_tuple(ec, push_results))
+                    ));
             }
         )
     );

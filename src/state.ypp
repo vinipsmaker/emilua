@@ -348,7 +348,9 @@ static int require(lua_State* L)
             *commit_package_as_loaded = true;
 
         vm_ctx->strand().defer([vm_ctx,module_fiber]() {
-            vm_ctx->fiber_resume_trivial(module_fiber);
+            vm_ctx->fiber_resume(
+                module_fiber,
+                hana::make_set(vm_context::options::skip_clear_interrupter));
         }, std::allocator<void>{});
 
         return lua_yield(L, 0);

@@ -249,7 +249,7 @@ void vm_context::close()
     });
 }
 
-void vm_context::fiber_prologue_trivial(lua_State* new_current_fiber)
+void vm_context::fiber_prologue(lua_State* new_current_fiber)
 {
     assert(strand_.running_in_this_thread());
     if (!valid_)
@@ -380,6 +380,8 @@ void vm_context::fiber_epilogue(int resume_result)
             }
 
             fiber_prologue(joiner);
+            lua_pushnil(joiner);
+            set_interrupter(joiner, *this);
             int res = lua_resume(joiner, nret + 1);
             // I'm assuming the compiler will eliminate this tail recursive call
             // or else we may experience stack overflow on really really long
