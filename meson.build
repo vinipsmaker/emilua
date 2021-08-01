@@ -54,8 +54,7 @@ bytecode_gen = generator(
 re2c_gen = generator(
     find_program('re2c'),
     output: '@BASENAME@.cpp',
-    # TODO: enable depfile on next re2c release
-    #depfile : '@PLAINNAME@.d',
+    depfile : '@PLAINNAME@.d',
     arguments: [
         '-W', # Turn on all warnings
         '--flex-syntax',
@@ -63,7 +62,7 @@ re2c_gen = generator(
         '--empty-class', 'match-none',
         '--input-encoding', 'ascii',
         '-I', '@CURRENT_SOURCE_DIR@/include',
-        #'--depfile', '@DEPFILE@',
+        '--depfile', '@DEPFILE@',
         '@INPUT@', '-o', '@OUTPUT@'
     ]
 )
