@@ -301,22 +301,28 @@ void vm_context::fiber_epilogue(int resume_result)
             }
 
             if (resume_result == LUA_ERRRUN) {
-                lua_rawgeti(current_fiber_, -2, FiberDataIndex::STACKTRACE);
-                lua_pushvalue(current_fiber_, -5);
-                auto err_obj = inspect_errobj(current_fiber_);
-                if (auto e = std::get_if<std::error_code>(&err_obj) ;
-                    !e || *e != errc::interrupted || is_main) {
-                    print_panic(current_fiber_, is_main,
-                                errobj_to_string(err_obj),
-                                tostringview(current_fiber_, -2));
-                }
-                if (is_main) {
-                    // TODO: call uncaught-hook
-                    suppress_tail_errors = true;
+                try {
+                    lua_rawgeti(current_fiber_, -2, FiberDataIndex::STACKTRACE);
+                    lua_pushvalue(current_fiber_, -5);
+                    auto err_obj = inspect_errobj(current_fiber_);
+                    if (auto e = std::get_if<std::error_code>(&err_obj) ;
+                        !e || *e != errc::interrupted || is_main) {
+                        print_panic(current_fiber_, is_main,
+                                    errobj_to_string(err_obj),
+                                    tostringview(current_fiber_, -2));
+                    }
+                    if (is_main) {
+                        // TODO: call uncaught-hook
+                        suppress_tail_errors = true;
+                        close();
+                        return;
+                    }
+                    lua_pop(current_fiber_, 2);
+                } catch (...) {
+                    lua_errmem = true;
                     close();
                     return;
                 }
-                lua_pop(current_fiber_, 2);
             }
 
             lua_pushthread(current_fiber_);
@@ -351,13 +357,19 @@ void vm_context::fiber_epilogue(int resume_result)
 
             bool interruption_caught = false;
             if (resume_result == LUA_ERRRUN) {
-                auto err_obj = inspect_errobj(joiner);
-                if (auto e = std::get_if<std::error_code>(&err_obj) ;
-                    e && *e == errc::interrupted) {
-                    lua_pop(joiner, 2);
-                    lua_pushboolean(joiner, 1);
-                    nret = 0;
-                    interruption_caught = true;
+                try {
+                    auto err_obj = inspect_errobj(joiner);
+                    if (auto e = std::get_if<std::error_code>(&err_obj) ;
+                        e && *e == errc::interrupted) {
+                        lua_pop(joiner, 2);
+                        lua_pushboolean(joiner, 1);
+                        nret = 0;
+                        interruption_caught = true;
+                    }
+                } catch (...) {
+                    lua_errmem = true;
+                    close();
+                    return;
                 }
             }
             if (join_handle) {
