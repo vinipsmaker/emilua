@@ -249,17 +249,6 @@ void vm_context::close()
     });
 }
 
-void vm_context::fiber_prologue(lua_State* new_current_fiber)
-{
-    assert(strand_.running_in_this_thread());
-    if (!valid_)
-        throw dead_vm_error{};
-
-    assert(lua_status(new_current_fiber) == 0 ||
-           lua_status(new_current_fiber) == LUA_YIELD);
-    current_fiber_ = new_current_fiber;
-}
-
 void vm_context::fiber_epilogue(int resume_result)
 {
     assert(valid_);
@@ -379,7 +368,7 @@ void vm_context::fiber_epilogue(int resume_result)
                 // and modules' fibers never expose a join handle to the user
             }
 
-            fiber_prologue(joiner);
+            current_fiber_ = joiner;
             lua_pushnil(joiner);
             set_interrupter(joiner, *this);
             int res = lua_resume(joiner, nret + 1);

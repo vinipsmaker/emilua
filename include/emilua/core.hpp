@@ -323,38 +323,6 @@ public:
     static asio::io_context::id id;
 };
 
-class dead_vm_error: public std::runtime_error
-{
-public:
-    enum class reason
-    {
-        unknown,
-        mem,
-    };
-
-    dead_vm_error()
-        : std::runtime_error{""}
-        , code{0}
-    {}
-
-    dead_vm_error(reason r)
-        : std::runtime_error{nullptr}
-        , code{static_cast<int>(r)}
-    {}
-
-    virtual const char* what() const noexcept override
-    {
-        static const char* reasons[] = {
-            "Lua VM is dead",
-            "Lua VM is dead due to LUA_ERRMEM"
-        };
-        return reasons[code];
-    }
-
-private:
-    int code;
-};
-
 void set_interrupter(lua_State* L, vm_context& vm_ctx);
 
 struct actor_address
@@ -541,7 +509,6 @@ public:
     std::weak_ptr<asio::io_context> ioctxref;
 
 private:
-    void fiber_prologue(lua_State* new_current_fiber);
     void fiber_epilogue(int resume_result);
 
     strand_type strand_;
@@ -775,7 +742,13 @@ void vm_context::fiber_resume(lua_State* new_current_fiber, HanaSet&& options)
     static constexpr decltype(hana::any_of(options, is_auto_detect_interrupt))
         has_auto_detect_interrupt;
 
-    fiber_prologue(new_current_fiber);
+    assert(strand_.running_in_this_thread());
+    if (!valid_)
+        return;
+
+    assert(lua_status(new_current_fiber) == 0 ||
+           lua_status(new_current_fiber) == LUA_YIELD);
+    current_fiber_ = new_current_fiber;
 
     if (hana::none_of(options, is_skip_clear_interrupter)) {
         // There is no need for a try-catch block here. Only throwing function
@@ -832,7 +805,7 @@ void vm_context::fiber_resume(lua_State* new_current_fiber, HanaSet&& options)
 
         notify_errmem();
         close();
-        throw dead_vm_error{dead_vm_error::reason::mem};
+        return;
     }
 
     int res = lua_resume(new_current_fiber, narg);

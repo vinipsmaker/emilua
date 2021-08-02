@@ -277,14 +277,7 @@ end:
         return 1;
     }
 
-    for (;;) {
-        try {
-            ioctx.run();
-            break;
-        } catch (const emilua::dead_vm_error&) {
-            continue;
-        }
-    }
+    ioctx.run();
 
     {
         std::unique_lock<std::mutex> lk{appctx.extra_threads_count_mtx};

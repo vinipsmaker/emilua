@@ -927,15 +927,7 @@ static int spawn_vm(lua_State* L)
             ++vm_ctx.appctx.extra_threads_count;
         }
         std::thread{[&appctx=vm_ctx.appctx,new_ioctx]() mutable {
-            for (;;) {
-                try {
-                    new_ioctx->run();
-                    break;
-                } catch (const emilua::dead_vm_error&) {
-                    continue;
-                }
-            }
-
+            new_ioctx->run();
             new_ioctx.reset();
 
             std::unique_lock<std::mutex> lk{appctx.extra_threads_count_mtx};
@@ -1023,16 +1015,7 @@ static int spawn_ctx_threads(lua_State* L)
                 &ioctx=vm_ctx.strand().context(),
                 guard=vm_ctx.ioctxref.lock()
             ]() mutable {
-                for (;;) {
-                    try {
-                        // doesn't need a work guard
-                        ioctx.run();
-                        break;
-                    } catch (const emilua::dead_vm_error&) {
-                        continue;
-                    }
-                }
-
+                ioctx.run(); //< doesn't need a work guard
                 guard.reset();
 
                 std::unique_lock<std::mutex> lk{appctx.extra_threads_count_mtx};
