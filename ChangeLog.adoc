@@ -5,6 +5,7 @@
 * Add `sys.args`.
 * Add `sys.env`.
 * Add `sys.signal`.
+* Add `sys.exit`.
 
 == 0.3
 

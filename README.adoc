@@ -87,6 +87,7 @@ This will download the extra dependencies:
 == Install
 
 * https://aur.archlinux.org/packages/emilua/[ArchLinux].
+* https://guix.gnu.org/[GUIX]: Emilua is available from the main repository.
 
 == BUILD
 
