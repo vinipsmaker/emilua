@@ -32,6 +32,8 @@ execution engine for Lua.
   proper configure flags to enable even more aggressive optimizations. Check
   <https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/overview/core/concurrency_hint.html>
   for more info.
++
+The default is _HINT=safe_.
 
 *-h, --help*::
 

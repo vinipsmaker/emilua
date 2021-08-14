@@ -198,6 +198,10 @@ opt_main_context_concurrency_hint:
         main_ctx_concurrency_hint = 1;
         goto opt;
     }
+    "safe" {end} {
+        main_ctx_concurrency_hint = BOOST_ASIO_CONCURRENCY_HINT_SAFE;
+        goto opt;
+    }
     %}
 #pragma GCC diagnostic pop
 end:
