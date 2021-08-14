@@ -61,12 +61,24 @@ Has the following (UNIX) constants (availability depending on the host system):
 * `SIGCHLD`.
 * `SIGCONT`.
 * `SIGHUP`.
+* `SIGIO`.
 * `SIGKILL`.
 * `SIGPIPE`.
+* `SIGPROF`.
+* `SIGQUIT`.
+* `SIGSTOP`.
+* `SIGSYS`.
 * `SIGTRAP`.
+* `SIGTSTP`.
+* `SIGTTIN`.
+* `SIGTTOU`.
+* `SIGURG`.
 * `SIGUSR1`.
 * `SIGUSR2`.
+* `SIGVTALRM`.
 * `SIGWINCH`.
+* `SIGXCPU`.
+* `SIGXFSZ`.
 
 Has the following (Windows) constants (availability depending on the host
 system):
