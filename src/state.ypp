@@ -11,6 +11,7 @@
 #include <emilua/detail/core.hpp>
 #include <emilua/dispatch_table.hpp>
 #include <emilua/scope_cleanup.hpp>
+#include <emilua/byte_span.hpp>
 #include <emilua/lua_shim.hpp>
 #include <emilua/fiber.hpp>
 #include <emilua/actor.hpp>
@@ -738,6 +739,14 @@ static int require(lua_State* L)
                     }
                 ),
                 hana::make_pair(
+                    BOOST_HANA_STRING("byte_span"),
+                    [](lua_State* L) -> int {
+                        lua_pushboolean(L, 1);
+                        rawgetp(L, LUA_REGISTRYINDEX, &byte_span_key);
+                        return 2;
+                    }
+                ),
+                hana::make_pair(
                     BOOST_HANA_STRING("println"),
                     [](lua_State* L) -> int {
                         lua_pushboolean(L, 1);
@@ -1124,6 +1133,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     init_ip(L);
     init_tls(L);
     init_sys(L);
+    init_byte_span(L);
 
 #if EMILUA_CONFIG_ENABLE_HTTP
     init_http(L);

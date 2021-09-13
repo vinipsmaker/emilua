@@ -1,0 +1,97 @@
++++
+title = "byte_span"
++++
+
+:_:
+
+[source,lua]
+----
+local byte_span = require 'byte_span'
+----
+
+A span of bytes. In Emilua, they're used as network buffers.
+
+[NOTE]
+.Plugin authors
+====
+This class is intended for network buffers in a proactor-based network API
+(i.e. true asynchronous IO). A NIC could be writing to this memory region while
+the program is running. This has the same effect of another thread writing to
+the same memory region.
+
+If you're writing state machines, do not construct the state machine on top of
+the memory region pointed by a `byte_span`. It's not safe to store state here as
+buggy Lua applications could mutate this area in a racy way. Only use the memory
+region as the result of operations.
+
+A future Emilua release could introduce read-write locks, but as of now I'm
+unconvinced of their advantages here.
+====
+
+It's modeled after
+http://blog.golang.org/2011/01/go-slices-usage-and-internals.html[Golang's
+slices]. However 1-indexed access is used.
+
+== Functions
+
+=== `new(length: number[, capacity: number]) -> byte_span`
+
+Constructor.
+
+When the `capacity` argument is omitted, it defaults to the specified `length`.
+
+NOTE: If we go for elegance (as found among mathematicians, for instance), it
+should be possible to create spans with `capacity=0`. However this elegance will
+buy _nothing_. In practice, it'd just force the internal code to have a lot more
+of checks for no good reason (an empty `byte_span` can *not* be used in any real
+operation). Emilua follows the pragmatic approach and forbids spans with
+`capacity=0`. You can have spans with `length=0`, but you cannot have spans with
+`capacity=0`.
+
+=== `slice(self[, start: number, end: number]) -> byte_span`
+
+Returns a new `byte_span` that points to a slice of the same memory region.
+
+The `start` and `end` indices are optional; they default to `1` and the
+``byte_span``'s length respectively.
+
+We can grow a `byte_span` to its capacity by slicing it again.
+
+Invalid ranges (e.g. `start` below `1`, a `byte_span` running beyond its
+capacity, negative indexes, ...) will raise `EINVAL`.
+
+=== `copy(self, src: byte_span|string) -> number`
+
+Copy `src` into `self`.
+
+Returns the number of elements copied.
+
+Copying between slices of different lengths is supported (it'll copy only up to
+the smaller number of elements). In addition it can handle source and
+destination spans that share the same underlying memory, handling overlapping
+spans correctly.
+
+=== `append(self, ...: byte_span|string) -> byte_span`
+
+Returns a new `byte_span` by appending trailing arguments into `self`. If
+``self``'s capacity is enough to hold all data, the underlying memory is
+modified in place. Otherwise the returned `byte_span` will point to newly
+allocated memory{_}footnote:[Allocation strategy (the new ``byte_span``'s
+capacity) is left unspecified and may change among Emilua releases.].
+
+== Properties
+
+=== `capacity: number`
+
+The capacity.
+
+== Metamethods
+
+* `__tostring()`
+* `__len()`
+* `__index()`
+* `__newindex()`
+* `__eq()`
+
+NOTE: You can index the spans by numerical valued keys and the numerical (ASCII)
+value for the underlying byte will be returned (or assigned on `__newindex()`).

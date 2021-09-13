@@ -105,6 +105,7 @@ incdir = [
 
 src = [
     'src/scope_cleanup.cpp',
+    'src/byte_span.cpp',
     'src/lua_shim.cpp',
     'src/fiber.cpp',
     'src/mutex.cpp',
@@ -360,6 +361,31 @@ if get_option('enable_tests')
             'json12',
             'json13',
             'json14',
+        ],
+        'byte_span' : [
+            # new(), __len(), capacity
+            'byte_span1',
+            'byte_span2',
+            'byte_span3',
+            'byte_span4',
+            'byte_span5',
+            'byte_span6',
+
+            # slice(), __index(), __newindex(), __eq()
+            'byte_span7',
+            'byte_span8',
+            'byte_span9',
+            'byte_span10',
+            'byte_span11',
+            'byte_span12',
+            'byte_span13',
+            'byte_span14',
+
+            # copy(),  __tostring()
+            'byte_span15',
+
+            # append()
+            'byte_span16',
         ],
     }
 
