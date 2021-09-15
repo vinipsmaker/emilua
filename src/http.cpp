@@ -847,6 +847,9 @@ int socket_close<TlsSocket>(lua_State* L)
     s->socket.next_layer().async_shutdown(asio::bind_executor(
         vm_ctx->strand_using_defer(),
         [vm_ctx,current_fiber,s](const boost::system::error_code& ec) {
+            if (!vm_ctx->valid())
+                return;
+
             --s->nbusy;
 
             boost::system::error_code ec2;
@@ -941,6 +944,10 @@ static int socket_read_request(lua_State* L)
         ) {
             boost::ignore_unused(b1);
             msg->has_writer = false;
+
+            if (!vm_ctx->valid())
+                return;
+
             --*nbusy;
 
             auto opt_args = vm_context::options::arguments;
@@ -1012,6 +1019,10 @@ static int socket_write_response(lua_State* L)
             const boost::system::error_code& ec
         ) {
             msg->nreaders--;
+
+            if (!vm_ctx->valid())
+                return;
+
             --*nbusy;
 
             auto opt_args = vm_context::options::arguments;
@@ -1063,6 +1074,9 @@ static int socket_write_response_continue(lua_State* L)
         [vm_ctx,current_fiber,nbusy=&s->nbusy](
             const boost::system::error_code& ec
         ) {
+            if (!vm_ctx->valid())
+                return;
+
             --*nbusy;
 
             auto opt_args = vm_context::options::arguments;
@@ -1134,6 +1148,10 @@ static int socket_write_response_metadata(lua_State* L)
             const boost::system::error_code& ec
         ) {
             msg->nreaders--;
+
+            if (!vm_ctx->valid())
+                return;
+
             --*nbusy;
 
             auto opt_args = vm_context::options::arguments;
@@ -1219,6 +1237,10 @@ static int socket_write(lua_State* L)
                 const boost::system::error_code& ec
             ) {
                 msg->nreaders--;
+
+                if (!vm_ctx->valid())
+                    return;
+
                 --*nbusy;
 
                 auto opt_args = vm_context::options::arguments;
@@ -1307,6 +1329,10 @@ static int socket_write_trailers(lua_State* L)
                 const boost::system::error_code& ec
             ) {
                 msg->nreaders--;
+
+                if (!vm_ctx->valid())
+                    return;
+
                 --*nbusy;
 
                 auto opt_args = vm_context::options::arguments;
@@ -1361,6 +1387,9 @@ static int socket_write_end_of_message(lua_State* L)
         [vm_ctx,current_fiber,nbusy=&s->nbusy](
             const boost::system::error_code& ec
         ) {
+            if (!vm_ctx->valid())
+                return;
+
             --*nbusy;
 
             auto opt_args = vm_context::options::arguments;
@@ -1432,6 +1461,10 @@ static int socket_write_request(lua_State* L)
             const boost::system::error_code& ec
         ) {
             msg->nreaders--;
+
+            if (!vm_ctx->valid())
+                return;
+
             --*nbusy;
 
             auto opt_args = vm_context::options::arguments;
@@ -1503,6 +1536,10 @@ static int socket_write_request_metadata(lua_State* L)
             const boost::system::error_code& ec
         ) {
             msg->nreaders--;
+
+            if (!vm_ctx->valid())
+                return;
+
             --*nbusy;
 
             auto opt_args = vm_context::options::arguments;
@@ -1575,6 +1612,10 @@ static int socket_read_response(lua_State* L)
         ) {
             boost::ignore_unused(b1);
             msg->has_writer = false;
+
+            if (!vm_ctx->valid())
+                return;
+
             --*nbusy;
 
             auto opt_args = vm_context::options::arguments;
@@ -1659,6 +1700,10 @@ static int socket_read_some(lua_State* L)
             ) {
                 boost::ignore_unused(b1);
                 msg->has_writer = false;
+
+                if (!vm_ctx->valid())
+                    return;
+
                 --*nbusy;
 
                 auto opt_args = vm_context::options::arguments;
