@@ -53,14 +53,14 @@ struct Response
 };
 
 template<class T>
-struct Socket
+struct HttpSocket
 {
     struct Buffer
     {
         char data[EMILUA_HTTP_SOCKET_BUFFER_SIZE];
     };
 
-    Socket(std::add_rvalue_reference_t<T> s)
+    HttpSocket(std::add_rvalue_reference_t<T> s)
         : buffer{std::make_shared<Buffer>()}
         , socket{asio::buffer(buffer->data), std::move(s)}
     {}

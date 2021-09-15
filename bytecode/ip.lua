@@ -26,6 +26,22 @@ f:write(connect_bytecode)
 f:close()
 connect_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
 
+local function data_op_bootstrap(error, native)
+    return function(...)
+        local e, bytes_transferred = native(...)
+        if e then
+            error(e, 0)
+        end
+        return bytes_transferred
+    end
+end
+
+data_op_bytecode = string.dump(data_op_bootstrap, true)
+f = io.open(OUTPUT, 'wb')
+f:write(data_op_bytecode)
+f:close()
+data_op_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
+
 local function accept_bootstrap(error, native)
     return function(...)
         local e, v = native(...)
@@ -72,6 +88,16 @@ f:write(connect_cdef)
 f:write('};')
 f:write(string.format('std::size_t connect_bytecode_size = %i;',
                       #connect_bytecode))
+
+f:write([[
+unsigned char data_op_bytecode[] = {
+]])
+
+f:write(data_op_cdef)
+
+f:write('};')
+f:write(string.format('std::size_t data_op_bytecode_size = %i;',
+                      #data_op_bytecode))
 
 f:write([[
 unsigned char accept_bytecode[] = {

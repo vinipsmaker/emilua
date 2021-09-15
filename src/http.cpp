@@ -142,7 +142,12 @@ static int socket_new(lua_State* L)
 
     rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_socket_mt_key);
     if (lua_rawequal(L, -1, -2)) {
-        tcp_sock = reinterpret_cast<decltype(tcp_sock)>(lua_touserdata(L, 1));
+        auto s = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+        tcp_sock = &s->socket;
+        if (s->nbusy > 0) {
+            push(L, std::errc::device_or_resource_busy);
+            return lua_error(L);
+        }
     } else {
         rawgetp(L, LUA_REGISTRYINDEX, &tls_socket_mt_key);
         if (!lua_rawequal(L, -1, -3)) {
@@ -155,12 +160,12 @@ static int socket_new(lua_State* L)
 
     auto make = [&](auto& s1) {
         using T = std::decay_t<decltype(s1)>;
-        auto s = reinterpret_cast<Socket<T>*>(lua_newuserdata(
-            L, sizeof(Socket<T>)
+        auto s = reinterpret_cast<HttpSocket<T>*>(lua_newuserdata(
+            L, sizeof(HttpSocket<T>)
         ));
         rawgetp(L, LUA_REGISTRYINDEX, get_http_mt_key<T>::get());
         setmetatable(L, -2);
-        new (s) Socket<T>{std::move(s1)};
+        new (s) HttpSocket<T>{std::move(s1)};
 
         lua_pushnil(L);
         setmetatable(L, 1);
@@ -783,7 +788,7 @@ static int socket_close(lua_State* L);
 template<>
 int socket_close<asio::ip::tcp::socket>(lua_State* L)
 {
-    auto s = reinterpret_cast<Socket<asio::ip::tcp::socket>*>(
+    auto s = reinterpret_cast<HttpSocket<asio::ip::tcp::socket>*>(
         lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
@@ -814,7 +819,7 @@ int socket_close<TlsSocket>(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<Socket<TlsSocket>*>(lua_touserdata(L, 1));
+    auto s = reinterpret_cast<HttpSocket<TlsSocket>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -829,7 +834,7 @@ int socket_close<TlsSocket>(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto s = reinterpret_cast<Socket<TlsSocket>*>(
+            auto s = reinterpret_cast<HttpSocket<TlsSocket>*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
             get_lowest_layer(s->socket).close(ignored_ec);
@@ -863,7 +868,7 @@ int socket_close<TlsSocket>(lua_State* L)
 template<class T>
 static int socket_lock_client_to_http10(lua_State* L)
 {
-    auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
+    auto s = reinterpret_cast<HttpSocket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -887,7 +892,7 @@ static int socket_read_request(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
+    auto s = reinterpret_cast<HttpSocket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -918,7 +923,7 @@ static int socket_read_request(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto s = reinterpret_cast<Socket<T>*>(
+            auto s = reinterpret_cast<HttpSocket<T>*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
             get_lowest_layer(s->socket).close(ignored_ec);
@@ -959,7 +964,7 @@ static int socket_write_response(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
+    auto s = reinterpret_cast<HttpSocket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -990,7 +995,7 @@ static int socket_write_response(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto s = reinterpret_cast<Socket<T>*>(
+            auto s = reinterpret_cast<HttpSocket<T>*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
             get_lowest_layer(s->socket).close(ignored_ec);
@@ -1028,7 +1033,7 @@ static int socket_write_response_continue(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
+    auto s = reinterpret_cast<HttpSocket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1043,7 +1048,7 @@ static int socket_write_response_continue(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto s = reinterpret_cast<Socket<T>*>(
+            auto s = reinterpret_cast<HttpSocket<T>*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
             get_lowest_layer(s->socket).close(ignored_ec);
@@ -1081,7 +1086,7 @@ static int socket_write_response_metadata(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
+    auto s = reinterpret_cast<HttpSocket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1112,7 +1117,7 @@ static int socket_write_response_metadata(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto s = reinterpret_cast<Socket<T>*>(
+            auto s = reinterpret_cast<HttpSocket<T>*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
             get_lowest_layer(s->socket).close(ignored_ec);
@@ -1152,7 +1157,7 @@ static int socket_write(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
+    auto s = reinterpret_cast<HttpSocket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1196,7 +1201,7 @@ static int socket_write(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto s = reinterpret_cast<Socket<T>*>(
+            auto s = reinterpret_cast<HttpSocket<T>*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
             get_lowest_layer(s->socket).close(ignored_ec);
@@ -1240,7 +1245,7 @@ static int socket_write_trailers(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
+    auto s = reinterpret_cast<HttpSocket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1284,7 +1289,7 @@ static int socket_write_trailers(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto s = reinterpret_cast<Socket<T>*>(
+            auto s = reinterpret_cast<HttpSocket<T>*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
             get_lowest_layer(s->socket).close(ignored_ec);
@@ -1326,7 +1331,7 @@ static int socket_write_end_of_message(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
+    auto s = reinterpret_cast<HttpSocket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1341,7 +1346,7 @@ static int socket_write_end_of_message(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto s = reinterpret_cast<Socket<T>*>(
+            auto s = reinterpret_cast<HttpSocket<T>*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
             get_lowest_layer(s->socket).close(ignored_ec);
@@ -1379,7 +1384,7 @@ static int socket_write_request(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
+    auto s = reinterpret_cast<HttpSocket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1410,7 +1415,7 @@ static int socket_write_request(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto s = reinterpret_cast<Socket<T>*>(
+            auto s = reinterpret_cast<HttpSocket<T>*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
             get_lowest_layer(s->socket).close(ignored_ec);
@@ -1450,7 +1455,7 @@ static int socket_write_request_metadata(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
+    auto s = reinterpret_cast<HttpSocket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1481,7 +1486,7 @@ static int socket_write_request_metadata(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto s = reinterpret_cast<Socket<T>*>(
+            auto s = reinterpret_cast<HttpSocket<T>*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
             get_lowest_layer(s->socket).close(ignored_ec);
@@ -1521,7 +1526,7 @@ static int socket_read_response(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
+    auto s = reinterpret_cast<HttpSocket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1552,7 +1557,7 @@ static int socket_read_response(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto s = reinterpret_cast<Socket<T>*>(
+            auto s = reinterpret_cast<HttpSocket<T>*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
             get_lowest_layer(s->socket).close(ignored_ec);
@@ -1593,7 +1598,7 @@ static int socket_read_some(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
+    auto s = reinterpret_cast<HttpSocket<T>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1635,7 +1640,7 @@ static int socket_read_some(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto s = reinterpret_cast<Socket<T>*>(
+            auto s = reinterpret_cast<HttpSocket<T>*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
             get_lowest_layer(s->socket).close(ignored_ec);
@@ -1674,7 +1679,7 @@ static int socket_read_some(lua_State* L)
 template<class T>
 inline int socket_is_open(lua_State* L)
 {
-    auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
+    auto s = reinterpret_cast<HttpSocket<T>*>(lua_touserdata(L, 1));
     lua_pushboolean(L, s->socket.is_open() ? 1 : 0);
     return 1;
 }
@@ -1682,7 +1687,7 @@ inline int socket_is_open(lua_State* L)
 template<class T>
 inline int socket_read_state(lua_State* L)
 {
-    auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
+    auto s = reinterpret_cast<HttpSocket<T>*>(lua_touserdata(L, 1));
     std::string_view ret;
     switch (s->socket.read_state()) {
     case http::read_state::empty:
@@ -1705,7 +1710,7 @@ inline int socket_read_state(lua_State* L)
 template<class T>
 inline int socket_write_state(lua_State* L)
 {
-    auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
+    auto s = reinterpret_cast<HttpSocket<T>*>(lua_touserdata(L, 1));
     std::string_view ret;
     switch (s->socket.write_state()) {
     case http::write_state::empty:
@@ -1728,7 +1733,7 @@ inline int socket_write_state(lua_State* L)
 template<class T>
 inline int socket_is_write_response_native_stream(lua_State* L)
 {
-    auto s = reinterpret_cast<Socket<T>*>(lua_touserdata(L, 1));
+    auto s = reinterpret_cast<HttpSocket<T>*>(lua_touserdata(L, 1));
     if (s->socket.read_state() == http::read_state::empty) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1990,7 +1995,7 @@ void init_http(lua_State* L)
             lua_rawset(L, -3);
 
             lua_pushliteral(L, "__gc");
-            lua_pushcfunction(L, finalizer<Socket<T>>);
+            lua_pushcfunction(L, finalizer<HttpSocket<T>>);
             lua_rawset(L, -3);
         }
         lua_rawset(L, LUA_REGISTRYINDEX);

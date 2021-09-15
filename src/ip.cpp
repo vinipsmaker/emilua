@@ -5,14 +5,18 @@
 
 #include <boost/asio/ip/address.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/write.hpp>
 
 #include <emilua/dispatch_table.hpp>
+#include <emilua/byte_span.hpp>
 #include <emilua/ip.hpp>
 
 namespace emilua {
 
 extern unsigned char connect_bytecode[];
 extern std::size_t connect_bytecode_size;
+extern unsigned char data_op_bytecode[];
+extern std::size_t data_op_bytecode_size;
 extern unsigned char accept_bytecode[];
 extern std::size_t accept_bytecode_size;
 extern unsigned char resolve_bytecode[];
@@ -25,6 +29,9 @@ char ip_tcp_acceptor_mt_key;
 char ip_tcp_resolver_mt_key;
 
 static char tcp_socket_connect_key;
+static char tcp_socket_read_some_key;
+static char tcp_socket_write_some_key;
+static char tcp_socket_write_key;
 static char tcp_acceptor_accept_key;
 static char tcp_resolver_resolve_key;
 
@@ -439,12 +446,12 @@ static int address_mt_le(lua_State* L)
 static int tcp_socket_new(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
-    auto a = reinterpret_cast<asio::ip::tcp::socket*>(
-        lua_newuserdata(L, sizeof(asio::ip::tcp::socket))
+    auto a = reinterpret_cast<tcp_socket*>(
+        lua_newuserdata(L, sizeof(tcp_socket))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_socket_mt_key);
     setmetatable(L, -2);
-    new (a) asio::ip::tcp::socket{vm_ctx.strand().context()};
+    new (a) tcp_socket{vm_ctx.strand().context()};
     return 1;
 }
 
@@ -455,7 +462,7 @@ static int tcp_socket_connect(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<asio::ip::tcp::socket*>(lua_touserdata(L, 1));
+    auto s = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -484,18 +491,24 @@ static int tcp_socket_connect(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto s = reinterpret_cast<asio::ip::tcp::socket*>(
+            auto s = reinterpret_cast<tcp_socket*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
-            s->cancel(ignored_ec);
+            s->socket.cancel(ignored_ec);
             return 0;
         },
         1);
     set_interrupter(L, *vm_ctx);
 
-    s->async_connect(ep, asio::bind_executor(
+    ++s->nbusy;
+    s->socket.async_connect(ep, asio::bind_executor(
         vm_ctx->strand_using_defer(),
-        [vm_ctx,current_fiber](const boost::system::error_code& ec) {
+        [vm_ctx,current_fiber,s](const boost::system::error_code& ec) {
+            if (!vm_ctx->valid())
+                return;
+
+            --s->nbusy;
+
             auto opt_args = vm_context::options::arguments;
             vm_ctx->fiber_resume(
                 current_fiber,
@@ -508,6 +521,226 @@ static int tcp_socket_connect(lua_State* L)
     return lua_yield(L, 0);
 }
 
+static int tcp_socket_read_some(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto vm_ctx = get_vm_context(L).shared_from_this();
+    auto current_fiber = vm_ctx->current_fiber();
+    EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
+
+    auto s = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    if (!s || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    if (!bs || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    lua_pushvalue(L, 1);
+    lua_pushcclosure(
+        L,
+        [](lua_State* L) -> int {
+            auto s = reinterpret_cast<tcp_socket*>(
+                lua_touserdata(L, lua_upvalueindex(1)));
+            boost::system::error_code ignored_ec;
+            s->socket.cancel(ignored_ec);
+            return 0;
+        },
+        1);
+    set_interrupter(L, *vm_ctx);
+
+    ++s->nbusy;
+    s->socket.async_read_some(
+        asio::buffer(bs->data.get(), bs->size),
+        asio::bind_executor(
+            vm_ctx->strand_using_defer(),
+            [vm_ctx,current_fiber,buf=bs->data,s](
+                const boost::system::error_code& ec,
+                std::size_t bytes_transferred
+            ) {
+                if (!vm_ctx->valid())
+                    return;
+
+                --s->nbusy;
+
+                boost::ignore_unused(buf);
+                auto opt_args = vm_context::options::arguments;
+                vm_ctx->fiber_resume(
+                    current_fiber,
+                    hana::make_set(
+                        vm_context::options::auto_detect_interrupt,
+                        hana::make_pair(
+                            opt_args,
+                            hana::make_tuple(ec, bytes_transferred))));
+            }
+        )
+    );
+
+    return lua_yield(L, 0);
+}
+
+static int tcp_socket_write_some(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto vm_ctx = get_vm_context(L).shared_from_this();
+    auto current_fiber = vm_ctx->current_fiber();
+    EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
+
+    auto s = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    if (!s || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    if (!bs || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    lua_pushvalue(L, 1);
+    lua_pushcclosure(
+        L,
+        [](lua_State* L) -> int {
+            auto s = reinterpret_cast<tcp_socket*>(
+                lua_touserdata(L, lua_upvalueindex(1)));
+            boost::system::error_code ignored_ec;
+            s->socket.cancel(ignored_ec);
+            return 0;
+        },
+        1);
+    set_interrupter(L, *vm_ctx);
+
+    ++s->nbusy;
+    s->socket.async_write_some(
+        asio::buffer(bs->data.get(), bs->size),
+        asio::bind_executor(
+            vm_ctx->strand_using_defer(),
+            [vm_ctx,current_fiber,buf=bs->data,s](
+                const boost::system::error_code& ec,
+                std::size_t bytes_transferred
+            ) {
+                if (!vm_ctx->valid())
+                    return;
+
+                --s->nbusy;
+
+                boost::ignore_unused(buf);
+                auto opt_args = vm_context::options::arguments;
+                vm_ctx->fiber_resume(
+                    current_fiber,
+                    hana::make_set(
+                        vm_context::options::auto_detect_interrupt,
+                        hana::make_pair(
+                            opt_args,
+                            hana::make_tuple(ec, bytes_transferred))));
+            }
+        )
+    );
+
+    return lua_yield(L, 0);
+}
+
+static int tcp_socket_write(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto vm_ctx = get_vm_context(L).shared_from_this();
+    auto current_fiber = vm_ctx->current_fiber();
+    EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
+
+    auto s = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    if (!s || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    if (!bs || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    lua_pushvalue(L, 1);
+    lua_pushcclosure(
+        L,
+        [](lua_State* L) -> int {
+            auto s = reinterpret_cast<tcp_socket*>(
+                lua_touserdata(L, lua_upvalueindex(1)));
+            boost::system::error_code ignored_ec;
+            s->socket.cancel(ignored_ec);
+            return 0;
+        },
+        1);
+    set_interrupter(L, *vm_ctx);
+
+    ++s->nbusy;
+    asio::async_write(
+        s->socket,
+        asio::buffer(bs->data.get(), bs->size),
+        asio::bind_executor(
+            vm_ctx->strand_using_defer(),
+            [vm_ctx,current_fiber,buf=bs->data,s](
+                const boost::system::error_code& ec,
+                std::size_t bytes_transferred
+            ) {
+                if (!vm_ctx->valid())
+                    return;
+
+                --s->nbusy;
+
+                boost::ignore_unused(buf);
+                auto opt_args = vm_context::options::arguments;
+                vm_ctx->fiber_resume(
+                    current_fiber,
+                    hana::make_set(
+                        vm_context::options::auto_detect_interrupt,
+                        hana::make_pair(
+                            opt_args,
+                            hana::make_tuple(ec, bytes_transferred))));
+            }
+        )
+    );
+
+    return lua_yield(L, 0);
+}
+
 static int tcp_socket_mt_index(lua_State* L)
 {
     return dispatch_table::dispatch(
@@ -516,6 +749,27 @@ static int tcp_socket_mt_index(lua_State* L)
                 BOOST_HANA_STRING("connect"),
                 [](lua_State* L) -> int {
                     rawgetp(L, LUA_REGISTRYINDEX, &tcp_socket_connect_key);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("read_some"),
+                [](lua_State* L) -> int {
+                    rawgetp(L, LUA_REGISTRYINDEX, &tcp_socket_read_some_key);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("write_some"),
+                [](lua_State* L) -> int {
+                    rawgetp(L, LUA_REGISTRYINDEX, &tcp_socket_write_some_key);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("write"),
+                [](lua_State* L) -> int {
+                    rawgetp(L, LUA_REGISTRYINDEX, &tcp_socket_write_key);
                     return 1;
                 }
             )
@@ -588,14 +842,13 @@ static int tcp_acceptor_accept(lua_State* L)
                                 if (ec) {
                                     lua_pushnil(fiber);
                                 } else {
-                                    using Socket = asio::ip::tcp::socket;
-                                    auto s = reinterpret_cast<Socket*>(
-                                        lua_newuserdata(fiber, sizeof(Socket))
-                                    );
+                                    auto s = reinterpret_cast<tcp_socket*>(
+                                        lua_newuserdata(
+                                            fiber, sizeof(tcp_socket)));
                                     rawgetp(fiber, LUA_REGISTRYINDEX,
                                             &ip_tcp_socket_mt_key);
                                     setmetatable(fiber, -2);
-                                    new (s) Socket{std::move(peer)};
+                                    new (s) tcp_socket{std::move(peer)};
                                 }
                             }))
                 ));
@@ -1377,7 +1630,7 @@ void init_ip(lua_State* L)
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__gc");
-        lua_pushcfunction(L, finalizer<asio::ip::tcp::socket>);
+        lua_pushcfunction(L, finalizer<tcp_socket>);
         lua_rawset(L, -3);
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
@@ -1424,6 +1677,33 @@ void init_ip(lua_State* L)
     assert(res == 0); boost::ignore_unused(res);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, tcp_socket_connect);
+    lua_call(L, 2, 1);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &tcp_socket_read_some_key);
+    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
+                          data_op_bytecode_size, nullptr);
+    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+    lua_pushcfunction(L, tcp_socket_read_some);
+    lua_call(L, 2, 1);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &tcp_socket_write_some_key);
+    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
+                          data_op_bytecode_size, nullptr);
+    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+    lua_pushcfunction(L, tcp_socket_write_some);
+    lua_call(L, 2, 1);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &tcp_socket_write_key);
+    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
+                          data_op_bytecode_size, nullptr);
+    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+    lua_pushcfunction(L, tcp_socket_write);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
