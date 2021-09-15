@@ -71,13 +71,22 @@ the smaller number of elements). In addition it can handle source and
 destination spans that share the same underlying memory, handling overlapping
 spans correctly.
 
-=== `append(self, ...: byte_span|string) -> byte_span`
+=== `append() -> byte_span`
+
+[source,lua]
+----
+function append(self, ...: byte_span|string) -> byte_span -- <1>
+function append(...: byte_span|string) -> byte_span       -- <2>
+----
 
 Returns a new `byte_span` by appending trailing arguments into `self`. If
 ``self``'s capacity is enough to hold all data, the underlying memory is
 modified in place. Otherwise the returned `byte_span` will point to newly
 allocated memory{_}footnote:[Allocation strategy (the new ``byte_span``'s
 capacity) is left unspecified and may change among Emilua releases.].
+
+For the second overload (non-member function), a new byte span is created from
+scratch.
 
 == Properties
 

@@ -179,7 +179,7 @@ static int byte_span_copy(lua_State* L)
     return 1;
 }
 
-static int byte_span_append(lua_State* L)
+static int byte_span_member_append(lua_State* L)
 {
     int nargs = lua_gettop(L);
 
@@ -254,6 +254,68 @@ static int byte_span_append(lua_State* L)
     }
 }
 
+static int byte_span_non_member_append(lua_State* L)
+{
+    int nargs = lua_gettop(L);
+
+    if (nargs == 0) {
+        push(L, std::errc::invalid_argument);
+        return lua_error(L);
+    }
+
+    std::vector<std::string_view> slices;
+    slices.reserve(nargs);
+
+    for (int i = 1 ; i <= nargs ; ++i) {
+        switch (lua_type(L, i)) {
+        default:
+            push(L, std::errc::invalid_argument, "arg", i);
+            return lua_error(L);
+        case LUA_TSTRING:
+            slices.emplace_back(tostringview(L, i));
+            break;
+        case LUA_TUSERDATA: {
+            if (!lua_getmetatable(L, i) || !lua_rawequal(L, -1, -2)) {
+                push(L, std::errc::invalid_argument, "arg", i);
+                return lua_error(L);
+            }
+            lua_pop(L, 1);
+            auto src_bs = reinterpret_cast<byte_span_handle*>(
+                lua_touserdata(L, i));
+            slices.emplace_back(
+                reinterpret_cast<char*>(src_bs->data.get()), src_bs->size);
+        }
+        }
+    }
+
+    try {
+        boost::safe_numerics::safe<lua_Integer> total_size = 0;
+        for (const auto& s: slices) total_size += s.size();
+        if (total_size == 0) {
+            push(L, std::errc::result_out_of_range);
+            return lua_error(L);
+        }
+
+        auto dst_bs = reinterpret_cast<byte_span_handle*>(
+            lua_newuserdata(L, sizeof(byte_span_handle))
+        );
+        rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+        setmetatable(L, -2);
+        new (dst_bs) byte_span_handle{total_size, total_size};
+
+        std::size_t idx = 0;
+        for (const auto& s: slices) {
+            std::memcpy(dst_bs->data.get() + idx, s.data(), s.size());
+            idx += s.size();
+        }
+
+        return 1;
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    }
+}
+
 inline int byte_span_capacity(lua_State* L)
 {
     auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 1));
@@ -294,7 +356,7 @@ static int byte_span_mt_index(lua_State* L)
             hana::make_pair(
                 BOOST_HANA_STRING("append"),
                 [](lua_State* L) -> int {
-                    lua_pushcfunction(L, byte_span_append);
+                    lua_pushcfunction(L, byte_span_member_append);
                     return 1;
                 }
             ),
@@ -337,10 +399,14 @@ static int byte_span_mt_newindex(lua_State* L)
 void init_byte_span(lua_State* L)
 {
     lua_pushlightuserdata(L, &byte_span_key);
-    lua_createtable(L, /*narr=*/0, /*nrec=*/1);
+    lua_createtable(L, /*narr=*/0, /*nrec=*/2);
     {
         lua_pushliteral(L, "new");
         lua_pushcfunction(L, byte_span_new);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "append");
+        lua_pushcfunction(L, byte_span_non_member_append);
         lua_rawset(L, -3);
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
