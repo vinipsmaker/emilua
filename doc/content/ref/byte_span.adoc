@@ -40,14 +40,6 @@ Constructor.
 
 When the `capacity` argument is omitted, it defaults to the specified `length`.
 
-NOTE: If we go for elegance (as found among mathematicians, for instance), it
-should be possible to create spans with `capacity=0`. However this elegance will
-buy _nothing_. In practice, it'd just force the internal code to have a lot more
-of checks for no good reason (an empty `byte_span` can *not* be used in any real
-operation). Emilua follows the pragmatic approach and forbids spans with
-`capacity=0`. You can have spans with `length=0`, but you cannot have spans with
-`capacity=0`.
-
 === `slice(self[, start: number, end: number]) -> byte_span`
 
 Returns a new `byte_span` that points to a slice of the same memory region.
@@ -75,8 +67,8 @@ spans correctly.
 
 [source,lua]
 ----
-function append(self, ...: byte_span|string) -> byte_span -- <1>
-function append(...: byte_span|string) -> byte_span       -- <2>
+function append(self, ...: byte_span|string|nil) -> byte_span -- <1>
+function append(...: byte_span|string|nil) -> byte_span       -- <2>
 ----
 
 Returns a new `byte_span` by appending trailing arguments into `self`. If
