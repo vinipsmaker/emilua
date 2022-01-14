@@ -9,17 +9,16 @@ project(
 # https://github.com/mesonbuild/meson/issues/2320
 subdir('include/emilua')
 
-boost_modules = []
-
 if get_option('thread_support_level') >= 1
-    boost_modules += 'thread'
+    thread_dep = dependency('threads')
+else
+    thread_dep = dependency('', required : false)
 endif
 
 luajit = dependency('luajit', version : '>=2.0.5')
 boost = dependency(
     'boost',
     version : '>=1.72',
-    modules : boost_modules,
     static : true
 )
 fmt = dependency('fmt', version : '>=6.2.1')
@@ -158,6 +157,7 @@ emilua_bin = executable(
     re2c_gen.process(re2c_src),
     cpp_pch : 'pch/pchheader.hpp',
     dependencies : [
+        thread_dep,
         boost,
         luajit,
         fmt,
