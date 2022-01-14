@@ -40,6 +40,7 @@
 #include <atomic>
 #include <deque>
 #include <mutex>
+#include <map>
 #include <set>
 
 extern "C" {
