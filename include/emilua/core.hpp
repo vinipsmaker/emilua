@@ -434,6 +434,18 @@ public:
         // Convert from `asio::error::operation_aborted` to `errc::interrupted`
         // iff `FiberDataIndex::INTERRUPTED` has been set for the fiber about to
         // be resumed.
+        //
+        // If the implementation for your IO operation has the following
+        // workflow:
+        //
+        // 1. Set interrupter to cancel the underlying IO operation
+        //    (i.e. handler will be called with
+        //    `ec=asio::error::operation_aborted`).
+        // 2. Initiates the async operation.
+        //
+        // Then this option will take care of the usual boilerplate to awake the
+        // fiber with the proper reason (i.e. fiber interrupted). Check
+        // implementation for details.
         static constexpr
         struct auto_detect_interrupt_t {} auto_detect_interrupt{};
     };
@@ -767,7 +779,16 @@ void vm_context::fiber_resume(lua_State* new_current_fiber, HanaSet&& options)
                 [&](const boost::system::error_code& ec) {
                     std::error_code std_ec = ec;
                     if (has_auto_detect_interrupt) {
+                        // `auto_detect_interrupt` means the user has set an
+                        // interrupter that will cancel the underlying IO
+                        // operation. Therefore the completion handler must have
+                        // been called with `ec=asio::error::operation_aborted`
+                        // (otherwise we want to defer interruption handling
+                        // until the next interruption/suspendion point anyway).
                         if (ec == asio::error::operation_aborted) {
+                            // A call to `fib:interrupt()` will set
+                            // `FiberDataIndex::INTERRUPTED` for `fib`
+                            // automatically.
                             rawgetp(new_current_fiber, LUA_REGISTRYINDEX,
                                     &fiber_list_key);
                             lua_pushthread(new_current_fiber);
