@@ -15,3 +15,5 @@ print(bs:slice(1, 3))
 
 bs = bs:append('oo')
 print(bs:append(' ', bs, ' ', bs))
+
+print(byte_span.append(nil, bs))

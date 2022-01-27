@@ -307,6 +307,7 @@ static int byte_span_non_member_append(lua_State* L)
     std::vector<std::string_view> slices;
     slices.reserve(nargs);
 
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
     for (int i = 1 ; i <= nargs ; ++i) {
         switch (lua_type(L, i)) {
         default:
