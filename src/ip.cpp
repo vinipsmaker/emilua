@@ -1412,6 +1412,19 @@ static int tcp_acceptor_set_option(lua_State* L)
     return dispatch_table::dispatch(
         hana::make_tuple(
             hana::make_pair(
+                BOOST_HANA_STRING("debug"),
+                [&]() -> int {
+                    luaL_checktype(L, 3, LUA_TBOOLEAN);
+                    asio::socket_base::debug o(lua_toboolean(L, 3));
+                    acceptor->set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
+            ),
+            hana::make_pair(
                 BOOST_HANA_STRING("reuse_address"),
                 [&]() -> int {
                     luaL_checktype(L, 3, LUA_TBOOLEAN);
@@ -1467,6 +1480,19 @@ static int tcp_acceptor_get_option(lua_State* L)
     boost::system::error_code ec;
     return dispatch_table::dispatch(
         hana::make_tuple(
+            hana::make_pair(
+                BOOST_HANA_STRING("debug"),
+                [&]() -> int {
+                    asio::socket_base::debug o;
+                    acceptor->get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushboolean(L, o.value());
+                    return 1;
+                }
+            ),
             hana::make_pair(
                 BOOST_HANA_STRING("reuse_address"),
                 [&]() -> int {

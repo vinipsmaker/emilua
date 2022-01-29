@@ -45,6 +45,10 @@ Boost.Asio documentation].
 https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/enable_connection_aborted.html[Check
 Boost.Asio documentation].
 
+`"debug"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/debug.html[Check
+Boost.Asio documentation].
+
 === `get_option(self, opt: string) -> value`
 
 Get an option from the acceptor.
@@ -57,6 +61,10 @@ Boost.Asio documentation].
 
 `"enable_connection_aborted"`::
 https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/enable_connection_aborted.html[Check
+Boost.Asio documentation].
+
+`"debug"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/debug.html[Check
 Boost.Asio documentation].
 
 === `bind(self, addr: ip.address|string, port: number)`
