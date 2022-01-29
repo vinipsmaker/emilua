@@ -117,6 +117,22 @@ static int request_continue_required(lua_State* L)
     return 1;
 }
 
+static int request_upgrade_desired(lua_State* L)
+{
+    auto m = reinterpret_cast<std::shared_ptr<Request>*>(lua_touserdata(L, 1));
+    if (!m || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &http_request_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    lua_pushboolean(L, request_upgrade_desired(**m));
+    return 1;
+}
+
 static int response_new(lua_State* L)
 {
     auto r = reinterpret_cast<std::shared_ptr<Response>*>(
@@ -1920,7 +1936,7 @@ void init_http(lua_State* L)
 
         lua_pushliteral(L, "request");
         {
-            lua_createtable(L, /*narr=*/0, /*nrec=*/2);
+            lua_createtable(L, /*narr=*/0, /*nrec=*/3);
 
             lua_pushliteral(L, "new");
             lua_pushcfunction(L, request_new);
@@ -1928,6 +1944,10 @@ void init_http(lua_State* L)
 
             lua_pushliteral(L, "continue_required");
             lua_pushcfunction(L, request_continue_required);
+            lua_rawset(L, -3);
+
+            lua_pushliteral(L, "upgrade_desired");
+            lua_pushcfunction(L, request_upgrade_desired);
             lua_rawset(L, -3);
         }
         lua_rawset(L, -3);

@@ -27,6 +27,21 @@ sooner reject messages that would be discarded anyway.
 The name _required_ is used instead _supported_, because an action from the
 server is required.
 
+=== `upgrade_desired(req: http.request) -> boolean`
+
+Check if the client desires to initiate a protocol upgrade.
+
+The desired protocols are present in the `"upgrade"` header as a comma-separated
+list.
+
+WARNING: You MUST *NOT* upgrade to a protocol listed in the `"upgrade"` header
+if this function returns `false`.
+
+The upgrade desire can always be safely ignored.
+
+The user MUST wait till the whole request is received before proceeding to the
+protocol upgrade.
+
 == Attributes
 
 === `method: string`
