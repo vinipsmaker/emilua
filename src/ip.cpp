@@ -741,6 +741,330 @@ static int tcp_socket_write(lua_State* L)
     return lua_yield(L, 0);
 }
 
+static int tcp_socket_set_option(lua_State* L)
+{
+    lua_settop(L, 4);
+    luaL_checktype(L, 2, LUA_TSTRING);
+
+    auto socket = reinterpret_cast<asio::ip::tcp::socket*>(
+        lua_touserdata(L, 1));
+    if (!socket || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    boost::system::error_code ec;
+    return dispatch_table::dispatch(
+        hana::make_tuple(
+            hana::make_pair(
+                BOOST_HANA_STRING("no_delay"),
+                [&]() -> int {
+                    luaL_checktype(L, 3, LUA_TBOOLEAN);
+                    asio::ip::tcp::no_delay o(lua_toboolean(L, 3));
+                    socket->set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("send_low_watermark"),
+                [&]() -> int {
+                    luaL_checktype(L, 3, LUA_TNUMBER);
+                    asio::socket_base::send_low_watermark o(
+                        lua_tointeger(L, 3));
+                    socket->set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("send_buffer_size"),
+                [&]() -> int {
+                    luaL_checktype(L, 3, LUA_TNUMBER);
+                    asio::socket_base::send_buffer_size o(lua_tointeger(L, 3));
+                    socket->set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("receive_low_watermark"),
+                [&]() -> int {
+                    luaL_checktype(L, 3, LUA_TNUMBER);
+                    asio::socket_base::receive_low_watermark o(
+                        lua_tointeger(L, 3));
+                    socket->set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("receive_buffer_size"),
+                [&]() -> int {
+                    luaL_checktype(L, 3, LUA_TNUMBER);
+                    asio::socket_base::receive_buffer_size o(
+                        lua_tointeger(L, 3));
+                    socket->set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("out_of_band_inline"),
+                [&]() -> int {
+                    luaL_checktype(L, 3, LUA_TBOOLEAN);
+                    asio::socket_base::out_of_band_inline o(
+                        lua_toboolean(L, 3));
+                    socket->set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("linger"),
+                [&]() -> int {
+                    luaL_checktype(L, 3, LUA_TBOOLEAN);
+                    luaL_checktype(L, 4, LUA_TNUMBER);
+                    asio::socket_base::linger o(
+                        lua_toboolean(L, 3), lua_tointeger(L, 4));
+                    socket->set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("keep_alive"),
+                [&]() -> int {
+                    luaL_checktype(L, 3, LUA_TBOOLEAN);
+                    asio::socket_base::keep_alive o(lua_toboolean(L, 3));
+                    socket->set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("do_not_route"),
+                [&]() -> int {
+                    luaL_checktype(L, 3, LUA_TBOOLEAN);
+                    asio::socket_base::do_not_route o(lua_toboolean(L, 3));
+                    socket->set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("debug"),
+                [&]() -> int {
+                    luaL_checktype(L, 3, LUA_TBOOLEAN);
+                    asio::socket_base::debug o(lua_toboolean(L, 3));
+                    socket->set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
+            )
+        ),
+        [L](std::string_view /*key*/) -> int {
+            push(L, std::errc::not_supported);
+            return lua_error(L);
+        },
+        tostringview(L, 2)
+    );
+}
+
+static int tcp_socket_get_option(lua_State* L)
+{
+    luaL_checktype(L, 2, LUA_TSTRING);
+
+    auto socket = reinterpret_cast<asio::ip::tcp::socket*>(
+        lua_touserdata(L, 1));
+    if (!socket || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    boost::system::error_code ec;
+    return dispatch_table::dispatch(
+        hana::make_tuple(
+            hana::make_pair(
+                BOOST_HANA_STRING("no_delay"),
+                [&]() -> int {
+                    asio::ip::tcp::no_delay o;
+                    socket->get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushboolean(L, o.value());
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("send_low_watermark"),
+                [&]() -> int {
+                    asio::socket_base::send_low_watermark o;
+                    socket->get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushinteger(L, o.value());
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("send_buffer_size"),
+                [&]() -> int {
+                    asio::socket_base::send_buffer_size o;
+                    socket->get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushinteger(L, o.value());
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("receive_low_watermark"),
+                [&]() -> int {
+                    asio::socket_base::receive_low_watermark o;
+                    socket->get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushinteger(L, o.value());
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("receive_buffer_size"),
+                [&]() -> int {
+                    asio::socket_base::receive_buffer_size o;
+                    socket->get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushinteger(L, o.value());
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("out_of_band_inline"),
+                [&]() -> int {
+                    asio::socket_base::out_of_band_inline o;
+                    socket->get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushboolean(L, o.value());
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("linger"),
+                [&]() -> int {
+                    asio::socket_base::linger o;
+                    socket->get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushboolean(L, o.enabled());
+                    lua_pushinteger(L, o.timeout());
+                    return 2;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("keep_alive"),
+                [&]() -> int {
+                    asio::socket_base::keep_alive o;
+                    socket->get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushboolean(L, o.value());
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("do_not_route"),
+                [&]() -> int {
+                    asio::socket_base::do_not_route o;
+                    socket->get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushboolean(L, o.value());
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("debug"),
+                [&]() -> int {
+                    asio::socket_base::debug o;
+                    socket->get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushboolean(L, o.value());
+                    return 1;
+                }
+            )
+        ),
+        [L](std::string_view /*key*/) -> int {
+            push(L, std::errc::not_supported);
+            return lua_error(L);
+        },
+        tostringview(L, 2)
+    );
+}
+
 static int tcp_socket_mt_index(lua_State* L)
 {
     return dispatch_table::dispatch(
@@ -770,6 +1094,20 @@ static int tcp_socket_mt_index(lua_State* L)
                 BOOST_HANA_STRING("write"),
                 [](lua_State* L) -> int {
                     rawgetp(L, LUA_REGISTRYINDEX, &tcp_socket_write_key);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("set_option"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, tcp_socket_set_option);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("get_option"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, tcp_socket_get_option);
                     return 1;
                 }
             )
