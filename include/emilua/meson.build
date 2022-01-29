@@ -13,6 +13,10 @@ conf.set_quoted('LIBROOTDIR', get_option('prefix') / get_option('libdir'))
 conf.set10('ENABLE_PLUGINS', get_option('enable_plugins'))
 conf.set10('ENABLE_COLOR', not get_option('disable_color'))
 conf.set10('ENABLE_HTTP', get_option('enable_http'))
+conf.set10(
+    'ENABLE_WEBSOCKET_PERMESSAGE_DEFLATE',
+    get_option('enable_websocket_permessage_deflate')
+)
 conf.set('THREAD_SUPPORT_LEVEL',  get_option('thread_support_level'))
 
 configure_file(

@@ -34,6 +34,7 @@
 
 #if EMILUA_CONFIG_ENABLE_HTTP
 #include <emilua/http.hpp>
+#include <emilua/websocket.hpp>
 #endif // EMILUA_CONFIG_ENABLE_HTTP
 
 namespace emilua {
@@ -804,6 +805,14 @@ static int require(lua_State* L)
                         return 2;
                     }
                 ),
+                hana::make_pair(
+                    BOOST_HANA_STRING("websocket"),
+                    [](lua_State* L) -> int {
+                        lua_pushboolean(L, 1);
+                        rawgetp(L, LUA_REGISTRYINDEX, &websocket_key);
+                        return 2;
+                    }
+                ),
 #endif // EMILUA_CONFIG_ENABLE_HTTP
                 hana::make_pair(
                     BOOST_HANA_STRING("ip"),
@@ -1137,6 +1146,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
 
 #if EMILUA_CONFIG_ENABLE_HTTP
     init_http(L);
+    init_websocket(L);
 #endif // EMILUA_CONFIG_ENABLE_HTTP
     // }}}
 

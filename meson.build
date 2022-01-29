@@ -28,9 +28,9 @@ find_program('xxd')
 
 add_project_arguments(
     '-DBOOST_DLL_USE_STD_FS',
-    '-DBOOST_ASIO_NO_DYNAMIC_BUFFER_V1',
     '-DBOOST_ASIO_DISABLE_CO_AWAIT',
     '-DBOOST_ASIO_DISABLE_STD_COROUTINE',
+    '-DBOOST_BEAST_USE_STD_STRING_VIEW',
     language : 'cpp',
 )
 
@@ -148,6 +148,9 @@ if get_option('enable_http')
     incdir += '3rd/boost.http/include'
     src += 'src/http.cpp'
     bytecode_src += 'bytecode/http.lua'
+
+    src += 'src/websocket.cpp'
+    bytecode_src += 'bytecode/websocket.lua'
 endif
 
 emilua_bin = executable(

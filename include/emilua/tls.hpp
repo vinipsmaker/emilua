@@ -8,6 +8,7 @@
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 
+#include <boost/beast/websocket/teardown.hpp>
 #include <boost/beast/ssl/ssl_stream.hpp>
 
 #include <emilua/core.hpp>
@@ -53,6 +54,17 @@ public:
         return *this;
     }
 };
+
+template<class TeardownHandler>
+inline void async_teardown(boost::beast::role_type role, TlsSocket& stream,
+                           TeardownHandler&& handler)
+{
+    using boost::beast::websocket::async_teardown;
+    async_teardown(
+        role,
+        static_cast<boost::beast::ssl_stream<asio::ip::tcp::socket>&>(stream),
+        std::forward<TeardownHandler>(handler));
+}
 
 void init_tls(lua_State* L);
 

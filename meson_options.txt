@@ -23,6 +23,11 @@ option(
     description : 'Whether to build the HTTP module.'
 )
 option(
+    'enable_websocket_permessage_deflate', type : 'boolean', value : true,
+    description : 'Whether to enable builtin support for the RFC7692' +
+        ' permessage-deflate extension.'
+)
+option(
     'version_suffix', type : 'string', value : '',
     description : 'A suffix string to append to version string'
 )
