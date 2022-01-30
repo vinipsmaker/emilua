@@ -664,9 +664,10 @@ static int websocket_read_some(lua_State* L)
         asio::buffer(bs->data.get(), bs->size),
         asio::bind_executor(
             vm_ctx->strand_using_defer(),
-            [bs,vm_ctx,current_fiber,s](const boost::system::error_code& ec,
-                                        std::size_t bytes_read) {
-                boost::ignore_unused(bs);
+            [buf=bs->data,vm_ctx,current_fiber,s](
+                const boost::system::error_code& ec, std::size_t bytes_read
+            ) {
+                boost::ignore_unused(buf);
 
                 std::string_view status;
                 if (!(*s)->is_message_done())
