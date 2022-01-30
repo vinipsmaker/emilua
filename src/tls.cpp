@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 Vinícius dos Santos Oliveira
+/* Copyright (c) 2020, 2022 Vinícius dos Santos Oliveira
 
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
@@ -8,6 +8,7 @@
 #include <boost/asio/ssl.hpp>
 
 #include <emilua/dispatch_table.hpp>
+#include <emilua/byte_span.hpp>
 #include <emilua/tls.hpp>
 #include <emilua/ip.hpp>
 
@@ -16,12 +17,19 @@ namespace emilua {
 extern unsigned char handshake_bytecode[];
 extern std::size_t handshake_bytecode_size;
 
+// from bytecode/ip.lua
+extern unsigned char data_op_bytecode[];
+extern std::size_t data_op_bytecode_size;
+
 char tls_key;
 char tls_ctx_mt_key;
 char tls_socket_mt_key;
 
 static char socket_client_handshake_key;
 static char socket_server_handshake_key;
+static char tls_socket_read_some_key;
+static char tls_socket_write_some_key;
+static char tls_socket_write_key;
 
 static int tls_ctx_new(lua_State* L)
 {
@@ -173,6 +181,205 @@ static int socket_handshake(lua_State* L)
     return lua_yield(L, 0);
 }
 
+static int tls_socket_read_some(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto vm_ctx = get_vm_context(L).shared_from_this();
+    auto current_fiber = vm_ctx->current_fiber();
+    EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
+
+    auto s = reinterpret_cast<TlsSocket*>(lua_touserdata(L, 1));
+    if (!s || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &tls_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    if (!bs || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    lua_pushvalue(L, 1);
+    lua_pushcclosure(
+        L,
+        [](lua_State* L) -> int {
+            auto s = reinterpret_cast<TlsSocket*>(
+                lua_touserdata(L, lua_upvalueindex(1)));
+            boost::system::error_code ignored_ec;
+            s->next_layer().cancel(ignored_ec);
+            return 0;
+        },
+        1);
+    set_interrupter(L, *vm_ctx);
+
+    s->async_read_some(
+        asio::buffer(bs->data.get(), bs->size),
+        asio::bind_executor(
+            vm_ctx->strand_using_defer(),
+            [vm_ctx,current_fiber,buf=bs->data](
+                const boost::system::error_code& ec,
+                std::size_t bytes_transferred
+            ) {
+                boost::ignore_unused(buf);
+                vm_ctx->fiber_resume(
+                    current_fiber,
+                    hana::make_set(
+                        vm_context::options::auto_detect_interrupt,
+                        hana::make_pair(
+                            vm_context::options::arguments,
+                            hana::make_tuple(ec, bytes_transferred))));
+            }
+        )
+    );
+
+    return lua_yield(L, 0);
+}
+
+static int tls_socket_write_some(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto vm_ctx = get_vm_context(L).shared_from_this();
+    auto current_fiber = vm_ctx->current_fiber();
+    EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
+
+    auto s = reinterpret_cast<TlsSocket*>(lua_touserdata(L, 1));
+    if (!s || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &tls_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    if (!bs || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    lua_pushvalue(L, 1);
+    lua_pushcclosure(
+        L,
+        [](lua_State* L) -> int {
+            auto s = reinterpret_cast<TlsSocket*>(
+                lua_touserdata(L, lua_upvalueindex(1)));
+            boost::system::error_code ignored_ec;
+            s->next_layer().cancel(ignored_ec);
+            return 0;
+        },
+        1);
+    set_interrupter(L, *vm_ctx);
+
+    s->async_write_some(
+        asio::buffer(bs->data.get(), bs->size),
+        asio::bind_executor(
+            vm_ctx->strand_using_defer(),
+            [vm_ctx,current_fiber,buf=bs->data](
+                const boost::system::error_code& ec,
+                std::size_t bytes_transferred
+            ) {
+                boost::ignore_unused(buf);
+                vm_ctx->fiber_resume(
+                    current_fiber,
+                    hana::make_set(
+                        vm_context::options::auto_detect_interrupt,
+                        hana::make_pair(
+                            vm_context::options::arguments,
+                            hana::make_tuple(ec, bytes_transferred))));
+            }
+        )
+    );
+
+    return lua_yield(L, 0);
+}
+
+static int tls_socket_write(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto vm_ctx = get_vm_context(L).shared_from_this();
+    auto current_fiber = vm_ctx->current_fiber();
+    EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
+
+    auto s = reinterpret_cast<TlsSocket*>(lua_touserdata(L, 1));
+    if (!s || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &tls_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    if (!bs || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    lua_pushvalue(L, 1);
+    lua_pushcclosure(
+        L,
+        [](lua_State* L) -> int {
+            auto s = reinterpret_cast<TlsSocket*>(
+                lua_touserdata(L, lua_upvalueindex(1)));
+            boost::system::error_code ignored_ec;
+            s->next_layer().cancel(ignored_ec);
+            return 0;
+        },
+        1);
+    set_interrupter(L, *vm_ctx);
+
+    asio::async_write(
+        *s,
+        asio::buffer(bs->data.get(), bs->size),
+        asio::bind_executor(
+            vm_ctx->strand_using_defer(),
+            [vm_ctx,current_fiber,buf=bs->data](
+                const boost::system::error_code& ec,
+                std::size_t bytes_transferred
+            ) {
+                boost::ignore_unused(buf);
+                vm_ctx->fiber_resume(
+                    current_fiber,
+                    hana::make_set(
+                        vm_context::options::auto_detect_interrupt,
+                        hana::make_pair(
+                            vm_context::options::arguments,
+                            hana::make_tuple(ec, bytes_transferred))));
+            }
+        )
+    );
+
+    return lua_yield(L, 0);
+}
+
 static int tls_socket_mt_index(lua_State* L)
 {
     return dispatch_table::dispatch(
@@ -188,6 +395,27 @@ static int tls_socket_mt_index(lua_State* L)
                 BOOST_HANA_STRING("server_handshake"),
                 [](lua_State* L) -> int {
                     rawgetp(L, LUA_REGISTRYINDEX, &socket_server_handshake_key);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("read_some"),
+                [](lua_State* L) -> int {
+                    rawgetp(L, LUA_REGISTRYINDEX, &tls_socket_read_some_key);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("write_some"),
+                [](lua_State* L) -> int {
+                    rawgetp(L, LUA_REGISTRYINDEX, &tls_socket_write_some_key);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("write"),
+                [](lua_State* L) -> int {
+                    rawgetp(L, LUA_REGISTRYINDEX, &tls_socket_write_key);
                     return 1;
                 }
             )
@@ -276,6 +504,33 @@ void init_tls(lua_State* L)
     lua_insert(L, -2);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, socket_handshake<asio::ssl::stream_base::server>);
+    lua_call(L, 2, 1);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &tls_socket_read_some_key);
+    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
+                          data_op_bytecode_size, nullptr);
+    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+    lua_pushcfunction(L, tls_socket_read_some);
+    lua_call(L, 2, 1);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &tls_socket_write_some_key);
+    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
+                          data_op_bytecode_size, nullptr);
+    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+    lua_pushcfunction(L, tls_socket_write_some);
+    lua_call(L, 2, 1);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &tls_socket_write_key);
+    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
+                          data_op_bytecode_size, nullptr);
+    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+    lua_pushcfunction(L, tls_socket_write);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 }
