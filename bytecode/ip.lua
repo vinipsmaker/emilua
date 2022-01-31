@@ -28,11 +28,11 @@ connect_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
 
 local function data_op_bootstrap(error, native)
     return function(...)
-        local e, bytes_transferred = native(...)
+        local e, bytes_transferred, sender_addr, sender_port = native(...)
         if e then
             error(e, 0)
         end
-        return bytes_transferred
+        return bytes_transferred, sender_addr, sender_port
     end
 end
 

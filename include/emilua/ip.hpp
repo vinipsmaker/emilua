@@ -5,6 +5,9 @@
 
 #pragma once
 
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/ip/udp.hpp>
+
 #include <emilua/core.hpp>
 
 namespace emilua {
@@ -26,6 +29,7 @@ struct Socket
 };
 
 using tcp_socket = Socket<asio::ip::tcp::socket>;
+using udp_socket = Socket<asio::ip::udp::socket>;
 
 void init_ip(lua_State* L);
 
