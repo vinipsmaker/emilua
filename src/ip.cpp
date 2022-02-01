@@ -3,7 +3,9 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
+#include <boost/asio/ip/multicast.hpp>
 #include <boost/asio/ip/address.hpp>
+#include <boost/asio/ip/unicast.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/write.hpp>
 
@@ -2182,6 +2184,118 @@ static int udp_socket_set_option(lua_State* L)
                     }
                     return 0;
                 }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("multicast_loop"),
+                [&]() -> int {
+                    luaL_checktype(L, 3, LUA_TBOOLEAN);
+                    asio::ip::multicast::enable_loopback o(lua_toboolean(L, 3));
+                    socket->socket.set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("multicast_hops"),
+                [&]() -> int {
+                    luaL_checktype(L, 3, LUA_TNUMBER);
+                    asio::ip::multicast::hops o(lua_tointeger(L, 3));
+                    socket->socket.set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("join_multicast_group"),
+                [&]() -> int {
+                    auto addr = reinterpret_cast<asio::ip::address*>(
+                        lua_touserdata(L, 3));
+                    if (!addr || !lua_getmetatable(L, 3)) {
+                        push(L, std::errc::invalid_argument, "arg", 3);
+                        return lua_error(L);
+                    }
+                    rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+                    if (!lua_rawequal(L, -1, -2)) {
+                        push(L, std::errc::invalid_argument, "arg", 3);
+                        return lua_error(L);
+                    }
+                    asio::ip::multicast::join_group o(*addr);
+                    socket->socket.set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("leave_multicast_group"),
+                [&]() -> int {
+                    auto addr = reinterpret_cast<asio::ip::address*>(
+                        lua_touserdata(L, 3));
+                    if (!addr || !lua_getmetatable(L, 3)) {
+                        push(L, std::errc::invalid_argument, "arg", 3);
+                        return lua_error(L);
+                    }
+                    rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+                    if (!lua_rawequal(L, -1, -2)) {
+                        push(L, std::errc::invalid_argument, "arg", 3);
+                        return lua_error(L);
+                    }
+                    asio::ip::multicast::leave_group o(*addr);
+                    socket->socket.set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("outbound_multicast_interface"),
+                [&]() -> int {
+                    auto addr = reinterpret_cast<asio::ip::address*>(
+                        lua_touserdata(L, 3));
+                    if (!addr || !lua_getmetatable(L, 3)) {
+                        push(L, std::errc::invalid_argument, "arg", 3);
+                        return lua_error(L);
+                    }
+                    rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+                    if (!lua_rawequal(L, -1, -2)) {
+                        push(L, std::errc::invalid_argument, "arg", 3);
+                        return lua_error(L);
+                    }
+                    if (!addr->is_v4()) {
+                        push(L, std::errc::invalid_argument, "arg", 3);
+                        return lua_error(L);
+                    }
+                    asio::ip::multicast::outbound_interface o(addr->to_v4());
+                    socket->socket.set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("unicast_hops"),
+                [&]() -> int {
+                    luaL_checktype(L, 3, LUA_TNUMBER);
+                    asio::ip::unicast::hops o(lua_tointeger(L, 3));
+                    socket->socket.set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
             )
         ),
         [L](std::string_view /*key*/) -> int {
@@ -2287,6 +2401,45 @@ static int udp_socket_get_option(lua_State* L)
                         return lua_error(L);
                     }
                     lua_pushboolean(L, o.value());
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("multicast_loop"),
+                [&]() -> int {
+                    asio::ip::multicast::enable_loopback o;
+                    socket->socket.get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushboolean(L, o.value());
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("multicast_hops"),
+                [&]() -> int {
+                    asio::ip::multicast::hops o;
+                    socket->socket.get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushinteger(L, o.value());
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("unicast_hops"),
+                [&]() -> int {
+                    asio::ip::unicast::hops o;
+                    socket->socket.get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushinteger(L, o.value());
                     return 1;
                 }
             )
