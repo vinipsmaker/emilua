@@ -162,6 +162,15 @@ Boost.Asio documentation].
 https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/reuse_address.html[Check
 Boost.Asio documentation].
 
+=== `io_control(self, command: string[, ...])`
+
+Perform an IO control command on the socket.
+
+Currently available commands are:
+
+`"bytes_readable"`:: Expects no arguments. Get the amount of data that can be
+read without blocking. Implements the `FIONREAD` IO control command.
+
 == Properties
 
 === `is_open: boolean`

@@ -2591,6 +2591,48 @@ static int udp_socket_send_to(lua_State* L)
     return lua_yield(L, 0);
 }
 
+static int udp_socket_io_control(lua_State* L)
+{
+    luaL_checktype(L, 2, LUA_TSTRING);
+
+    auto socket = reinterpret_cast<udp_socket*>(
+        lua_touserdata(L, 1));
+    if (!socket || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_udp_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    boost::system::error_code ec;
+    return dispatch_table::dispatch(
+        hana::make_tuple(
+            hana::make_pair(
+                BOOST_HANA_STRING("bytes_readable"),
+                [&]() -> int {
+                    asio::socket_base::bytes_readable command;
+                    socket->socket.io_control(command, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushnumber(L, command.get());
+                    return 1;
+                }
+            )
+        ),
+        [L](std::string_view /*key*/) -> int {
+            push(L, std::errc::not_supported);
+            return lua_error(L);
+        },
+        tostringview(L, 2)
+    );
+    return 0;
+}
+
 inline int udp_socket_is_open(lua_State* L)
 {
     auto sock = reinterpret_cast<udp_socket*>(lua_touserdata(L, 1));
@@ -2731,6 +2773,13 @@ static int udp_socket_mt_index(lua_State* L)
                 BOOST_HANA_STRING("send_to"),
                 [](lua_State* L) -> int {
                     rawgetp(L, LUA_REGISTRYINDEX, &udp_socket_send_to_key);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("io_control"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, udp_socket_io_control);
                     return 1;
                 }
             ),
