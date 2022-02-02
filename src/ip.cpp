@@ -767,7 +767,7 @@ static int tcp_socket_set_option(lua_State* L)
     return dispatch_table::dispatch(
         hana::make_tuple(
             hana::make_pair(
-                BOOST_HANA_STRING("no_delay"),
+                BOOST_HANA_STRING("tcp_no_delay"),
                 [&]() -> int {
                     luaL_checktype(L, 3, LUA_TBOOLEAN);
                     asio::ip::tcp::no_delay o(lua_toboolean(L, 3));
@@ -930,7 +930,7 @@ static int tcp_socket_get_option(lua_State* L)
     return dispatch_table::dispatch(
         hana::make_tuple(
             hana::make_pair(
-                BOOST_HANA_STRING("no_delay"),
+                BOOST_HANA_STRING("tcp_no_delay"),
                 [&]() -> int {
                     asio::ip::tcp::no_delay o;
                     socket->socket.get_option(o, ec);

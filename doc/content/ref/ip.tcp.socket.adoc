@@ -72,7 +72,7 @@ Set an option on the socket.
 
 Currently available options are:
 
-`"no_delay"`::
+`"tcp_no_delay"`::
 https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/ip__tcp/no_delay.html[Check
 Boost.Asio documentation].
 
@@ -118,7 +118,7 @@ Get an option from the socket.
 
 Currently available options are:
 
-`"no_delay"`::
+`"tcp_no_delay"`::
 https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/ip__tcp/no_delay.html[Check
 Boost.Asio documentation].
 
