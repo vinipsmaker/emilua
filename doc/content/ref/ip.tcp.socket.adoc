@@ -2,10 +2,6 @@
 title = "ip.tcp.socket"
 +++
 
-For now this is just an opaque type to be used elsewhere. Later down the road
-there will be a proper binding for this Boost.Asio abstraction. However we need
-to design a byte span Lua type before we get there.
-
 [source,lua]
 ----
 -- `socket_pair()` implementation is
@@ -27,6 +23,66 @@ print(nwritten)
 === `new() -> ip.tcp.socket`
 
 Constructor.
+
+=== `open(self, address_family: string|ip.address)`
+
+Open the socket.
+
+`address_family` can be either `"v4"` or `"v6"`. If you provide an `ip.address`
+object, the appropriate value will be inferred.
+
+=== `bind(self, addr: ip.address|string, port: number)`
+
+Bind the socket to the given local endpoint.
+
+=== `close(self)`
+
+Close the socket.
+
+Forward the call to
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/basic_stream_socket/close/overload2.html[the
+function with same name in Boost.Asio]:
+
+[quote]
+____
+Any asynchronous send, receive or connect operations will be cancelled
+immediately, and will complete with the `boost::asio::error::operation_aborted`
+error.
+____
+
+=== `cancel(self)`
+
+Cancel all asynchronous operations associated with the acceptor.
+
+Forward the call to
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/basic_stream_socket/cancel/overload2.html[the
+function with same name in Boost.Asio]:
+
+[quote]
+____
+This function causes all outstanding asynchronous connect, send and receive
+operations to finish immediately, and the handlers for cancelled operations will
+be passed the `boost::asio::error::operation_aborted` error.
+____
+
+=== `io_control(self, command: string[, ...])`
+
+Perform an IO control command on the socket.
+
+Currently available commands are:
+
+`"bytes_readable"`:: Expects no arguments. Get the amount of data that can be
+read without blocking. Implements the `FIONREAD` IO control command.
+
+=== `shutdown(self, what: string)`
+
+Disable sends or receives on the socket.
+
+`what` can be one of the following:
+
+`"receive"`:: Shutdown the receive side of the socket.
+`"send"`:: Shutdown the send side of the socket.
+`"both"`:: Shutdown both send and receive on the socket.
 
 === `connect(self, addr: ip.address, port: number)`
 
@@ -157,3 +213,25 @@ Boost.Asio documentation].
 `"debug"`::
 https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/debug.html[Check
 Boost.Asio documentation].
+
+== Properties
+
+=== `is_open: boolean`
+
+Whether the socket is open.
+
+=== `local_address: ip.address`
+
+The local address endpoint of the socket.
+
+=== `local_port: number`
+
+The local port endpoint of the socket.
+
+=== `remote_address: ip.address`
+
+The remote address endpoint of the socket.
+
+=== `remote_port: number`
+
+The remote port endpoint of the socket.
