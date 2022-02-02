@@ -6,6 +6,7 @@
 #include <boost/asio/ip/multicast.hpp>
 #include <boost/asio/ip/address.hpp>
 #include <boost/asio/ip/unicast.hpp>
+#include <boost/asio/ip/v6_only.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/write.hpp>
 
@@ -1170,6 +1171,19 @@ static int tcp_socket_set_option(lua_State* L)
                     }
                     return 0;
                 }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("v6_only"),
+                [&]() -> int {
+                    luaL_checktype(L, 3, LUA_TBOOLEAN);
+                    asio::ip::v6_only o(lua_toboolean(L, 3));
+                    socket->socket.set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
             )
         ),
         [L](std::string_view /*key*/) -> int {
@@ -1320,6 +1334,19 @@ static int tcp_socket_get_option(lua_State* L)
                 BOOST_HANA_STRING("debug"),
                 [&]() -> int {
                     asio::socket_base::debug o;
+                    socket->socket.get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushboolean(L, o.value());
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("v6_only"),
+                [&]() -> int {
+                    asio::ip::v6_only o;
                     socket->socket.get_option(o, ec);
                     if (ec) {
                         push(L, static_cast<std::error_code>(ec));
@@ -1844,6 +1871,19 @@ static int tcp_acceptor_set_option(lua_State* L)
                     }
                     return 0;
                 }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("v6_only"),
+                [&]() -> int {
+                    luaL_checktype(L, 3, LUA_TBOOLEAN);
+                    asio::ip::v6_only o(lua_toboolean(L, 3));
+                    acceptor->set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
             )
         ),
         [L](std::string_view /*key*/) -> int {
@@ -1903,6 +1943,19 @@ static int tcp_acceptor_get_option(lua_State* L)
                 BOOST_HANA_STRING("enable_connection_aborted"),
                 [&]() -> int {
                     asio::socket_base::enable_connection_aborted o;
+                    acceptor->get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushboolean(L, o.value());
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("v6_only"),
+                [&]() -> int {
+                    asio::ip::v6_only o;
                     acceptor->get_option(o, ec);
                     if (ec) {
                         push(L, static_cast<std::error_code>(ec));
@@ -2685,6 +2738,19 @@ static int udp_socket_set_option(lua_State* L)
                     }
                     return 0;
                 }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("v6_only"),
+                [&]() -> int {
+                    luaL_checktype(L, 3, LUA_TBOOLEAN);
+                    asio::ip::v6_only o(lua_toboolean(L, 3));
+                    socket->socket.set_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    return 0;
+                }
             )
         ),
         [L](std::string_view /*key*/) -> int {
@@ -2829,6 +2895,19 @@ static int udp_socket_get_option(lua_State* L)
                         return lua_error(L);
                     }
                     lua_pushinteger(L, o.value());
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("v6_only"),
+                [&]() -> int {
+                    asio::ip::v6_only o;
+                    socket->socket.get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushboolean(L, o.value());
                     return 1;
                 }
             )

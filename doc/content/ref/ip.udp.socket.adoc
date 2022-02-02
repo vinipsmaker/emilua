@@ -156,6 +156,10 @@ Boost.Asio documentation].
 https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ip%5F_unicast%5F_hops.html[Check
 Boost.Asio documentation].
 
+`"v6_only"`::
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ip%5F_v6_only.html[Check
+Boost.Asio documentation].
+
 === `get_option(self, opt: string) -> value`
 
 Get an option from the socket.
@@ -196,6 +200,10 @@ Boost.Asio documentation].
 
 `"unicast_hops"`::
 https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ip%5F_unicast%5F_hops.html[Check
+Boost.Asio documentation].
+
+`"v6_only"`::
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ip%5F_v6_only.html[Check
 Boost.Asio documentation].
 
 === `io_control(self, command: string[, ...])`

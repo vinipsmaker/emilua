@@ -49,6 +49,10 @@ Boost.Asio documentation].
 https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/debug.html[Check
 Boost.Asio documentation].
 
+`"v6_only"`::
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ip%5F_v6_only.html[Check
+Boost.Asio documentation].
+
 === `get_option(self, opt: string) -> value`
 
 Get an option from the acceptor.
@@ -65,6 +69,10 @@ Boost.Asio documentation].
 
 `"debug"`::
 https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/debug.html[Check
+Boost.Asio documentation].
+
+`"v6_only"`::
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ip%5F_v6_only.html[Check
 Boost.Asio documentation].
 
 === `bind(self, addr: ip.address|string, port: number)`
