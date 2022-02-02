@@ -148,7 +148,7 @@ Boost.Asio documentation].
 https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ip%5F_multicast%5F_leave_group.html[Check
 Boost.Asio documentation].
 
-`"outbound_multicast_interface"`::
+`"multicast_interface"`::
 https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ip%5F_multicast%5F_outbound_interface.html[Check
 Boost.Asio documentation].
 

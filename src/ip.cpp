@@ -2700,7 +2700,7 @@ static int udp_socket_set_option(lua_State* L)
                 }
             ),
             hana::make_pair(
-                BOOST_HANA_STRING("outbound_multicast_interface"),
+                BOOST_HANA_STRING("multicast_interface"),
                 [&]() -> int {
                     auto addr = reinterpret_cast<asio::ip::address*>(
                         lua_touserdata(L, 3));
