@@ -6,7 +6,7 @@ title = "http.socket"
 ----
 local r = ip.tcp.resolver.new()
 local s = ip.tcp.socket.new()
-s:connect(r:resolve('www.example.com', '')[1].ep_addr, 80)
+s:connect(r:resolve('www.example.com', '')[1].address, 80)
 s = http.socket.new(s)
 
 local req = http.request.new()

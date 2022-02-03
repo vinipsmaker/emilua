@@ -7,7 +7,7 @@ title = "tls.socket"
 tls_ctx = tls.ctx.new('tlsv13')
 
 local resolver = ip.tcp.resolver.new()
-local addr = resolver:resolve('www.example.com', '')[1].ep_addr
+local addr = resolver:resolve('www.example.com', '')[1].address
 
 local s = ip.tcp.socket.new()
 s:connect(addr, 443)

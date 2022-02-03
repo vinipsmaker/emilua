@@ -11,8 +11,8 @@ local results = resolver:resolve(
     bit.bor(flags.all_matching, flags.v4_mapped)
 )
 for _, e in pairs(results) do
-    print(e.ep_addr)
-    print(e.ep_port)
+    print(e.address)
+    print(e.port)
     print(e.host_name)
     print(e.service_name)
 end
@@ -32,11 +32,11 @@ finishes.
 `flags` is `0` or an or-combination of values from
 link:../ip.resolver_flag/[`ip.resolver_flag`].
 
-Returns a list of results. Each result will be a table with the following
+Returns a list of entries. Each entry will be a table with the following
 members:
 
-* `ep_addr: ip.address`.
-* `ep_port: number`.
+* `address: ip.address`.
+* `port: number`.
 * `host_name: string`.
 * `service_name: string`.
 

@@ -2186,8 +2186,8 @@ static int tcp_resolver_resolve(lua_State* L)
                     } else {
                         lua_createtable(fib, /*narr=*/results.size(),
                                         /*nrec=*/0);
-                        lua_pushliteral(fib, "ep_addr");
-                        lua_pushliteral(fib, "ep_port");
+                        lua_pushliteral(fib, "address");
+                        lua_pushliteral(fib, "port");
                         lua_pushliteral(fib, "host_name");
                         lua_pushliteral(fib, "service_name");
 
