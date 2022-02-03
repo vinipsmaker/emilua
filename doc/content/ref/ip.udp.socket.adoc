@@ -34,7 +34,7 @@ object, the appropriate value will be inferred.
 
 Bind the socket to the given local endpoint.
 
-=== `connect(self, addr: ip.address|string, port: number)`
+=== `connect(self, addr: ip.address, port: number)`
 
 Set the default destination address so datagrams can be sent using `send()` or
 `write()` without specifying a destination address.

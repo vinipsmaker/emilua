@@ -2441,47 +2441,25 @@ static int udp_socket_connect(lua_State* L)
         return lua_error(L);
     }
 
-    switch (lua_type(L, 2)) {
-    default:
+    auto addr = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 2));
+    if (!addr || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
-    case LUA_TUSERDATA: {
-        auto addr = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 2));
-        if (!addr || !lua_getmetatable(L, 2)) {
-            push(L, std::errc::invalid_argument, "arg", 2);
-            return lua_error(L);
-        }
-        rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
-        if (!lua_rawequal(L, -1, -2)) {
-            push(L, std::errc::invalid_argument, "arg", 2);
-            return lua_error(L);
-        }
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
 
-        asio::ip::udp::endpoint ep(*addr, lua_tointeger(L, 3));
-        boost::system::error_code ec;
-        sock->socket.connect(ep, ec);
-        if (ec) {
-            push(L, static_cast<std::error_code>(ec));
-            return lua_error(L);
-        }
-        return 0;
+    asio::ip::udp::endpoint ep(*addr, lua_tointeger(L, 3));
+    boost::system::error_code ec;
+    sock->socket.connect(ep, ec);
+    if (ec) {
+        push(L, static_cast<std::error_code>(ec));
+        return lua_error(L);
     }
-    case LUA_TSTRING: {
-        boost::system::error_code ec;
-        auto addr = asio::ip::make_address(lua_tostring(L, 2), ec);
-        if (ec) {
-            push(L, static_cast<std::error_code>(ec));
-            return lua_error(L);
-        }
-        asio::ip::udp::endpoint ep(addr, lua_tointeger(L, 3));
-        sock->socket.connect(ep, ec);
-        if (ec) {
-            push(L, static_cast<std::error_code>(ec));
-            return lua_error(L);
-        }
-        return 0;
-    }
-    }
+    return 0;
 }
 
 static int udp_socket_close(lua_State* L)
