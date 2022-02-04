@@ -6,15 +6,11 @@ title = "ip.udp.socket"
 ----
 local sock = ip.udp.socket.new()
 sock.open('v4')
+sock:bind(ip.address.any_v4(), 1234)
 
-spawn(function()
-    local buf = byte_span.new(1024)
-    local nread = b:read_some(buf)
-    print(buf:slice(1, nread))
-end):detach()
-
-local nwritten = a:write(byte_span.append('Hello World'))
-print(nwritten)
+local buf = byte_span.new(1024)
+local nread, remote_addr, remote_port = sock:receive(buf)
+sock:send_to(buf:slice(1, nread), remote_addr, remote_port)
 ----
 
 == Functions
@@ -36,8 +32,8 @@ Bind the socket to the given local endpoint.
 
 === `connect(self, addr: ip.address, port: number)`
 
-Set the default destination address so datagrams can be sent using `send()` or
-`write()` without specifying a destination address.
+Set the default destination address so datagrams can be sent using `send()`
+without specifying a destination address.
 
 === `close(self)`
 
