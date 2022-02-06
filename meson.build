@@ -137,6 +137,10 @@ re2c_src = [
     'src/main.ypp',
 ]
 
+if host_machine.system() != 'windows'
+    src += 'src/unix.cpp'
+endif
+
 if get_option('enable_plugins')
     src += 'src/plugin.cpp'
 endif

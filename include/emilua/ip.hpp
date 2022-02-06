@@ -8,7 +8,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ip/udp.hpp>
 
-#include <emilua/core.hpp>
+#include <emilua/socket_base.hpp>
 
 namespace emilua {
 
@@ -17,16 +17,6 @@ extern char ip_address_mt_key;
 extern char ip_tcp_socket_mt_key;
 extern char ip_tcp_acceptor_mt_key;
 extern char ip_tcp_resolver_mt_key;
-
-template<class T>
-struct Socket
-{
-    template<class... Args>
-    Socket(Args&&... args) : socket{std::forward<Args>(args)...} {}
-
-    T socket;
-    std::size_t nbusy = 0; //< TODO: use to errcheck transfers between actors
-};
 
 using tcp_socket = Socket<asio::ip::tcp::socket>;
 using udp_socket = Socket<asio::ip::udp::socket>;
