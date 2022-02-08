@@ -106,6 +106,7 @@ src = [
     'src/scope_cleanup.cpp',
     'src/byte_span.cpp',
     'src/lua_shim.cpp',
+    'src/stream.cpp',
     'src/fiber.cpp',
     'src/mutex.cpp',
     'src/timer.cpp',
@@ -119,6 +120,7 @@ src = [
 
 bytecode_src = [
     'bytecode/lua_shim.lua',
+    'bytecode/stream.lua',
     'bytecode/actor.lua',
     'bytecode/fiber.lua',
     'bytecode/scope.lua',

@@ -1,0 +1,43 @@
++++
+title = "stream"
++++
+
+== Functions
+
+=== `write(io_object, buffer: byte_span) -> number`
+
+Write all of the supplied data to the stream and blocks current fiber until it
+completes or errs.
+
+Returns the ``buffer``'s size (number of bytes written).
+
+https://www.boost.org/doc/libs/1_77_0/doc/html/boost_asio/reference/async_write/overload1.html[As
+in Boost.Asio]:
+
+[quote]
+____
+This operation is implemented in terms of zero or more calls to the stream's
+async_write_some function, and is known as a _composed operation_. The program
+must ensure that the stream performs no other write operations (such as
+async_write, the stream's async_write_some function, or any other composed
+operations that perform writes) until this operation completes.
+____
+
+=== `read(io_object, buffer: byte_span) -> number`
+
+Read data until the supplied buffer is full and blocks current fiber until it
+completes or errs.
+
+Returns the ``buffer``'s size (number of bytes read).
+
+https://www.boost.org/doc/libs/1_77_0/doc/html/boost_asio/reference/async_read/overload1.html[As
+in Boost.Asio]:
+
+[quote]
+____
+This operation is implemented in terms of zero or more calls to the stream's
+async_read_some function, and is known as a _composed operation_. The program
+must ensure that the stream performs no other read operations (such as
+async_read, the stream's async_read_some function, or any other composed
+operations that perform reads) until this operation completes.
+____
