@@ -1,0 +1,128 @@
++++
+title = "serial_port"
++++
+
+[source,lua]
+----
+local port = serial_port.new()
+port:open(name)
+----
+
+== Functions
+
+=== `new() -> serial_port`
+
+Constructor.
+
+=== `open(self, device: string)`
+
+Open the serial port using the specified device name.
+
+`device` is something like `"COM1"` on Windows, and `"/dev/ttyS0"` on POSIX
+platforms.
+
+=== `close(self)`
+
+Close the port.
+
+Forward the call to
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/basic_serial_port/close/overload2.html[the
+function with same name in Boost.Asio]:
+
+[quote]
+____
+Any asynchronous read or write operations will be cancelled immediately, and
+will complete with the `boost::asio::error::operation_aborted` error.
+____
+
+=== `cancel(self)`
+
+Cancel all asynchronous operations associated with the acceptor.
+
+Forward the call to
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/basic_serial_port/cancel/overload2.html[the
+function with same name in Boost.Asio]:
+
+[quote]
+____
+This function causes all outstanding asynchronous read or write operations to
+finish immediately, and the handlers for cancelled operations will be passed the
+`boost::asio::error::operation_aborted` error.
+____
+
+=== `send_break(self)`
+
+Send a break sequence to the serial port.
+
+This function causes a break sequence of platform-specific duration to be sent
+out the serial port.
+
+=== `read_some(self, buffer: byte_span) -> number`
+
+Read data from the port and blocks current fiber until it completes or errs.
+
+Returns the number of bytes read.
+
+=== `write_some(self, buffer: byte_span) -> number`
+
+Write data to the port and blocks current fiber until it completes or errs.
+
+Returns the number of bytes written.
+
+=== `set_option(self, opt: string, val)`
+
+Set an option on the port.
+
+Currently available options are:
+
+`"baud_rate"`::
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/serial_port_base__baud_rate.html[Check
+Boost.Asio documentation].
+
+`"flow_control"`::
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/serial_port_base__flow_control.html[Check
+Boost.Asio documentation].
+
+`"parity"`::
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/serial_port_base__parity.html[Check
+Boost.Asio documentation].
+
+`"stop_bits"`::
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/serial_port_base__stop_bits.html[Check
+Boost.Asio documentation].
+
+`"character_size"`::
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/serial_port_base__character_size.html[Check
+Boost.Asio documentation].
+
+=== `get_option(self, opt: string) -> value`
+
+Get an option from the port.
+
+Currently available options are:
+
+`"baud_rate"`::
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/serial_port_base__baud_rate.html[Check
+Boost.Asio documentation].
+
+`"flow_control"`::
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/serial_port_base__flow_control.html[Check
+Boost.Asio documentation].
+
+`"parity"`::
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/serial_port_base__parity.html[Check
+Boost.Asio documentation].
+
+`"stop_bits"`::
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/serial_port_base__stop_bits.html[Check
+Boost.Asio documentation].
+
+`"character_size"`::
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/serial_port_base__character_size.html[Check
+Boost.Asio documentation].
+
+== Properties
+
+=== `is_open: boolean`
+
+Whether the port is open.

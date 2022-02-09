@@ -11,6 +11,7 @@
 #include <emilua/detail/core.hpp>
 #include <emilua/dispatch_table.hpp>
 #include <emilua/scope_cleanup.hpp>
+#include <emilua/serial_port.hpp>
 #include <emilua/byte_span.hpp>
 #include <emilua/lua_shim.hpp>
 #include <emilua/stream.hpp>
@@ -847,6 +848,14 @@ static int require(lua_State* L)
                     }
                 ),
                 hana::make_pair(
+                    BOOST_HANA_STRING("serial_port"),
+                    [](lua_State* L) -> int {
+                        lua_pushboolean(L, 1);
+                        rawgetp(L, LUA_REGISTRYINDEX, &serial_port_key);
+                        return 2;
+                    }
+                ),
+                hana::make_pair(
                     BOOST_HANA_STRING("tls"),
                     [](lua_State* L) -> int {
                         lua_pushboolean(L, 1);
@@ -1167,6 +1176,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     init_tls(L);
     init_sys(L);
     init_byte_span(L);
+    init_serial_port(L);
     init_stream(L);
 
 #if BOOST_OS_UNIX

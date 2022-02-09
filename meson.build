@@ -104,6 +104,7 @@ incdir = [
 
 src = [
     'src/scope_cleanup.cpp',
+    'src/serial_port.cpp',
     'src/byte_span.cpp',
     'src/lua_shim.cpp',
     'src/stream.cpp',
