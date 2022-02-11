@@ -29,7 +29,6 @@ static char socket_client_handshake_key;
 static char socket_server_handshake_key;
 static char tls_socket_read_some_key;
 static char tls_socket_write_some_key;
-static char tls_socket_write_key;
 
 static int tls_ctx_new(lua_State* L)
 {

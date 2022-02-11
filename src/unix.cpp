@@ -32,7 +32,6 @@ static char unix_stream_acceptor_accept_key;
 static char unix_stream_socket_connect_key;
 static char unix_stream_socket_read_some_key;
 static char unix_stream_socket_write_some_key;
-static char unix_stream_socket_write_key;
 
 static int unix_datagram_socket_open(lua_State* L)
 {

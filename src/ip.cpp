@@ -36,7 +36,6 @@ char ip_udp_socket_mt_key;
 static char tcp_socket_connect_key;
 static char tcp_socket_read_some_key;
 static char tcp_socket_write_some_key;
-static char tcp_socket_write_key;
 static char tcp_acceptor_accept_key;
 static char tcp_resolver_resolve_key;
 static char udp_socket_receive_key;
