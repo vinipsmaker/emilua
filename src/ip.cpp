@@ -3,6 +3,7 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
+#include <boost/asio/ip/host_name.hpp>
 #include <boost/asio/ip/multicast.hpp>
 #include <boost/asio/ip/address.hpp>
 #include <boost/asio/ip/unicast.hpp>
@@ -41,6 +42,18 @@ static char tcp_resolver_resolve_key;
 static char udp_socket_receive_key;
 static char udp_socket_send_key;
 static char udp_socket_send_to_key;
+
+static int ip_host_name(lua_State* L)
+{
+    boost::system::error_code ec;
+    auto val = asio::ip::host_name(ec);
+    if (ec) {
+        push(L, static_cast<std::error_code>(ec));
+        return lua_error(L);
+    }
+    push(L, val);
+    return 1;
+}
 
 static int address_new(lua_State* L)
 {
@@ -3324,7 +3337,11 @@ void init_ip(lua_State* L)
 {
     lua_pushlightuserdata(L, &ip_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/5);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/6);
+
+        lua_pushliteral(L, "host_name");
+        lua_pushcfunction(L, ip_host_name);
+        lua_rawset(L, -3);
 
         lua_pushliteral(L, "address");
         {

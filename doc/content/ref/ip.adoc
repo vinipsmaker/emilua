@@ -19,3 +19,9 @@ Has the following types:
 === Other modules
 
 * link:../ip.resolver_flag/[`resolver_flag`].
+
+== Functions
+
+=== `host_name() -> string`
+
+Get the current host name.
