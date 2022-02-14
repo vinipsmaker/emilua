@@ -1,10 +1,10 @@
 +++
-title = "unix.datagram_protocol.socket"
+title = "unix.datagram_socket"
 +++
 
 [source,lua]
 ----
-local sock = unix.datagram_protocol.socket.new()
+local sock = unix.datagram_socket.new()
 sock.open()
 sock.bind('/tmp/9Lq7BNBnBycd6nxy.socket')
 
@@ -15,11 +15,11 @@ print(buf:slice(1, nread))
 
 == Functions
 
-=== `new() -> unix.datagram_protocol.socket`
+=== `new() -> unix.datagram_socket`
 
 Constructor.
 
-=== `pair() -> unix.datagram_protocol.socket, unix.datagram_protocol.socket`
+=== `pair() -> unix.datagram_socket, unix.datagram_socket`
 
 Create a pair of connected sockets.
 

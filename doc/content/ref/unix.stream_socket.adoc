@@ -1,10 +1,10 @@
 +++
-title = "unix.stream_protocol.socket"
+title = "unix.stream_socket"
 +++
 
 [source,lua]
 ----
-local a, b = unix.stream_protocol.socket.pair()
+local a, b = unix.stream_socket.pair()
 
 spawn(function()
     local buf = byte_span.new(1024)
@@ -18,11 +18,11 @@ print(nwritten)
 
 == Functions
 
-=== `new() -> unix.stream_protocol.socket`
+=== `new() -> unix.stream_socket`
 
 Constructor.
 
-=== `pair() -> unix.stream_protocol.socket, unix.stream_protocol.socket`
+=== `pair() -> unix.stream_socket, unix.stream_socket`
 
 Create a pair of connected sockets.
 

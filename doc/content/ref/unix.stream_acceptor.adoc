@@ -1,10 +1,10 @@
 +++
-title = "unix.stream_protocol.acceptor"
+title = "unix.stream_acceptor"
 +++
 
 [source,lua]
 ----
-local a = unix.stream_protocol.acceptor.new()
+local a = unix.stream_acceptor.new()
 a:open()
 a:bind('/tmp/9Lq7BNBnBycd6nxy.socket')
 a:listen()
@@ -19,7 +19,7 @@ end
 
 == Functions
 
-=== `new() -> unix.stream_protocol.acceptor`
+=== `new() -> unix.stream_acceptor`
 
 Constructor.
 
