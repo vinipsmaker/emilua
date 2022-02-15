@@ -35,3 +35,6 @@ option(
     'enable_plugins', type : 'boolean', value : true,
     description : 'Whether to enable module loading from native plugins'
 )
+option(
+    'enable_io_uring', type : 'boolean', value : false
+)

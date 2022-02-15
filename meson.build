@@ -38,6 +38,14 @@ if get_option('thread_support_level') == 0
     add_project_arguments('-DBOOST_ASIO_DISABLE_THREADS', language : 'cpp')
 endif
 
+if get_option('enable_io_uring')
+    liburing = dependency('liburing', version : '>=2.0')
+    add_project_arguments('-DBOOST_ASIO_HAS_IO_URING', language : 'cpp')
+    add_project_arguments('-DBOOST_ASIO_DISABLE_EPOLL', language : 'cpp')
+else
+    liburing = dependency('', required : false)
+endif
+
 bytecode_gen = generator(
     find_program(
         'luajit',
@@ -174,6 +182,7 @@ emilua_bin = executable(
         ssl,
         curses,
         libdl,
+        liburing,
     ],
     export_dynamic : get_option('enable_plugins'),
     include_directories : include_directories(incdir),
