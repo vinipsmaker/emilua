@@ -3,6 +3,11 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
+// workaround for Boost.Asio bug
+#if defined(BOOST_ASIO_HAS_IO_URING) && defined(BOOST_ASIO_DISABLE_EPOLL)
+#include <boost/asio/detail/scheduler.hpp>
+#endif // defined(BOOST_ASIO_HAS_IO_URING) && defined(BOOST_ASIO_DISABLE_EPOLL)
+
 #include <boost/asio/steady_timer.hpp>
 
 #include <emilua/dispatch_table.hpp>
