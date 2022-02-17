@@ -38,3 +38,8 @@ option(
 option(
     'enable_io_uring', type : 'boolean', value : false
 )
+option(
+    'enable_file_io', type : 'boolean', value : false,
+    description : 'Only available for proactor backends ' +
+        '(e.g. Windows/IOCP, Linux/io_uring)'
+)

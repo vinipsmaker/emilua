@@ -168,6 +168,10 @@ if get_option('enable_http')
     bytecode_src += 'bytecode/websocket.lua'
 endif
 
+if get_option('enable_file_io')
+    src += 'src/file.cpp'
+endif
+
 emilua_bin = executable(
     'emilua',
     src,

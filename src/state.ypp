@@ -44,6 +44,10 @@
 #include <emilua/websocket.hpp>
 #endif // EMILUA_CONFIG_ENABLE_HTTP
 
+#if EMILUA_CONFIG_ENABLE_FILE_IO
+#include <emilua/file.hpp>
+#endif // EMILUA_CONFIG_ENABLE_FILE_IO
+
 namespace emilua {
 
 using namespace std::string_view_literals;
@@ -829,6 +833,16 @@ static int require(lua_State* L)
                         return 2;
                     }
                 ),
+#if EMILUA_CONFIG_ENABLE_FILE_IO
+                hana::make_pair(
+                    BOOST_HANA_STRING("file"),
+                    [](lua_State* L) -> int {
+                        lua_pushboolean(L, 1);
+                        rawgetp(L, LUA_REGISTRYINDEX, &file_key);
+                        return 2;
+                    }
+                ),
+#endif // EMILUA_CONFIG_ENABLE_FILE_IO
 #if BOOST_OS_UNIX
                 hana::make_pair(
                     BOOST_HANA_STRING("unix"),
@@ -1187,6 +1201,10 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     init_http(L);
     init_websocket(L);
 #endif // EMILUA_CONFIG_ENABLE_HTTP
+
+#if EMILUA_CONFIG_ENABLE_FILE_IO
+    init_file(L);
+#endif // EMILUA_CONFIG_ENABLE_FILE_IO
     // }}}
 
     // default_modules_key {{{

@@ -17,6 +17,7 @@ conf.set10(
     'ENABLE_WEBSOCKET_PERMESSAGE_DEFLATE',
     get_option('enable_websocket_permessage_deflate')
 )
+conf.set10('ENABLE_FILE_IO', get_option('enable_file_io'))
 conf.set('THREAD_SUPPORT_LEVEL',  get_option('thread_support_level'))
 
 configure_file(
