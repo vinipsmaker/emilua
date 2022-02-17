@@ -20,10 +20,10 @@ local req = http.request.new()
 local res = http.response.new()
 
 print('Resolving ' .. host .. '...')
-local addr = ip.tcp.resolver.new():resolve(host, '')[1].ep_addr
+local addr = ip.tcp.resolver.new():resolve(host, '')[1].address
 
 print('Connecting to ' .. tostring(addr))
-sock:connect(addr, 443)
+sock:connect(addr, 80)
 sock = http.socket.new(sock)
 
 req.method = 'GET'
