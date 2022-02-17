@@ -9,7 +9,6 @@
 #include <boost/asio/ip/unicast.hpp>
 #include <boost/asio/ip/v6_only.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/write.hpp>
 
 #include <emilua/dispatch_table.hpp>
 #include <emilua/byte_span.hpp>

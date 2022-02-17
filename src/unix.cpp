@@ -4,7 +4,6 @@
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
 #include <boost/asio/local/connect_pair.hpp>
-#include <boost/asio/write.hpp>
 
 #include <emilua/dispatch_table.hpp>
 #include <emilua/byte_span.hpp>
