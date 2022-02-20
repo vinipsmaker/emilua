@@ -118,8 +118,6 @@ int main(int argc, char *argv[])
     char* YYCURSOR;
     char* YYMARKER;
     char** cur_arg = argv;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wgnu-case-range"
 opt:
     YYCURSOR = *++cur_arg;
     if (YYCURSOR == nullptr) goto end;
@@ -203,7 +201,6 @@ opt_main_context_concurrency_hint:
         goto opt;
     }
     %}
-#pragma GCC diagnostic pop
 end:
 
     if (filename.size() == 0) {

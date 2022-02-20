@@ -385,8 +385,6 @@ static int require(lua_State* L)
         int nparents = 0;
     loop_parse_dot:
         begin = YYCURSOR;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wgnu-case-range"
         %{
         * {
             push(L, errc::invalid_module_name, "module", tostringview(L, 1));
@@ -405,7 +403,6 @@ static int require(lua_State* L)
             goto end_parse_dot;
         }
         %}
-#pragma GCC diagnostic pop
     end_parse_dot:
 
         module_id = std::string_view(begin, YYCURSOR - begin);
@@ -501,8 +498,6 @@ static int require(lua_State* L)
         const char* begin;
     loop_parse_slash:
         begin = YYCURSOR;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wgnu-case-range"
         %{
         * {
             push(L, errc::invalid_module_name, "module", tostringview(L, 1));
@@ -519,7 +514,6 @@ static int require(lua_State* L)
             }
         }
         %}
-#pragma GCC diagnostic pop
     end_parse_slash:
 
         bool module_is_leaf;
@@ -572,8 +566,6 @@ static int require(lua_State* L)
         const char* YYCURSOR = module_id.data();
         const char* YYMARKER;
         boost::ignore_unused(YYMARKER);
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wgnu-case-range"
         %{
         * {
             push(L, errc::invalid_module_name, "module", module_id);
@@ -587,7 +579,6 @@ static int require(lua_State* L)
             goto end_parse_external;
         }
         %}
-#pragma GCC diagnostic pop
     end_parse_external:
 
         auto on_external_package = [&vm_ctx,&start_module_fiber](
