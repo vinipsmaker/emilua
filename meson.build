@@ -23,7 +23,6 @@ boost = dependency(
 )
 fmt = dependency('fmt', version : '>=6.2.1')
 libdl = meson.get_compiler('cpp').find_library('dl', required : false)
-ssl = dependency('openssl', version : '>=1.1.1')
 find_program('xxd')
 
 add_project_arguments(
@@ -44,6 +43,13 @@ if get_option('enable_io_uring')
     add_project_arguments('-DBOOST_ASIO_DISABLE_EPOLL', language : 'cpp')
 else
     liburing = dependency('', required : false)
+endif
+
+if get_option('use_wolfssl')
+    ssl = dependency('wolfssl')
+    add_project_arguments('-DBOOST_ASIO_USE_WOLFSSL', language : 'cpp')
+else
+    ssl = dependency('openssl', version : '>=1.1.1')
 endif
 
 bytecode_gen = generator(

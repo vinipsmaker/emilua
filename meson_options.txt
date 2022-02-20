@@ -43,3 +43,7 @@ option(
     description : 'Only available for proactor backends ' +
         '(e.g. Windows/IOCP, Linux/io_uring)'
 )
+option(
+    'use_wolfssl', type : 'boolean', value : false,
+    description : 'Use wolfSSL as the openssl provider'
+)
