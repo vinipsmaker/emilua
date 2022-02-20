@@ -238,7 +238,7 @@ static int require(lua_State* L)
         lua_pushcfunction(L, mark_module_as_loaded);
 
         std::string name{'@'};
-        name += module_path;
+        name += module_path.string();
         switch (int res = luaL_loadbuffer(
             L, module_source.data(), module_source.size(), name.data()
         ) ; res) {
@@ -1286,7 +1286,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     }
 
     std::string name{'@'};
-    name += entry_point;
+    name += entry_point.string();
     switch (int res = luaL_loadbuffer(
         L, module_source.data(), module_source.size(), name.data()
     ) ; res) {
