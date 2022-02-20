@@ -3,7 +3,6 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
-#include <experimental/memory>
 #include <iostream>
 #include <fstream>
 #include <new>
@@ -28,6 +27,10 @@
 
 #include <boost/predef/os/unix.h>
 #include <boost/scope_exit.hpp>
+
+#if __has_include(<experimental/memory>)
+#include <experimental/memory>
+#endif // __has_include(<experimental/memory>)
 
 #if BOOST_OS_UNIX
 #include <emilua/unix.hpp>
@@ -219,7 +222,11 @@ static int require(lua_State* L)
         const fs::path module_path,
         const std::string& module_source,
         bool module_is_leaf,
+#if __has_include(<experimental/memory>)
         std::experimental::observer_ptr<bool> commit_package_as_loaded
+#else
+        bool* commit_package_as_loaded
+#endif // __has_include(<experimental/memory>)
     ) {
         lua_State* module_fiber = lua_newthread(L);
 
@@ -561,7 +568,12 @@ static int require(lua_State* L)
             module_path,
             module_source->get(),
             module_is_leaf,
-            std::experimental::make_observer(&commit_package_as_loaded));
+#if __has_include(<experimental/memory>)
+            std::experimental::make_observer(&commit_package_as_loaded)
+#else
+            &commit_package_as_loaded
+#endif // __has_include(<experimental/memory>)
+        );
     } else {
         const char* YYCURSOR = module_id.data();
         const char* YYMARKER;
@@ -705,7 +717,11 @@ static int require(lua_State* L)
                     module_path,
                     module_source->get(),
                     module_is_leaf,
+#if __has_include(<experimental/memory>)
                     std::experimental::make_observer(&commit_package_as_loaded)
+#else
+                    &commit_package_as_loaded
+#endif // __has_include(<experimental/memory>)
                 );
             }
 
