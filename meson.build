@@ -33,6 +33,10 @@ add_project_arguments(
     language : 'cpp',
 )
 
+if meson.get_compiler('cpp').get_id() == 'msvc'
+    add_project_arguments('/bigobj', language : 'cpp')
+endif
+
 if get_option('thread_support_level') == 0
     add_project_arguments('-DBOOST_ASIO_DISABLE_THREADS', language : 'cpp')
 endif
