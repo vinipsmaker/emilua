@@ -17,8 +17,8 @@ extern unsigned char data_op_bytecode[];
 extern std::size_t data_op_bytecode_size;
 
 char file_key;
-static char file_stream_mt_key;
-static char file_random_access_mt_key;
+char file_stream_mt_key;
+char file_random_access_mt_key;
 
 static char stream_read_some_key;
 static char stream_write_some_key;
