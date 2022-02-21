@@ -103,6 +103,17 @@ errs.
 
 Returns the number of bytes written.
 
+=== `send_file(self, file: file.random_access, offset: number, size_in_bytes: number, n_number_of_bytes_per_send: number[, head: byte_span[, tail: byte_span]]) -> number`
+
+A wrapper for the
+https://docs.microsoft.com/en-us/windows/win32/api/mswsock/nf-mswsock-transmitfile[`TransmitFile()`
+function].
+
+NOTE: Only available on Windows.
+
+IMPORTANT: Lua conventions on index starting at `1` are ignored. Indexes here
+are OS-mandated and start at `0`.
+
 === `set_option(self, opt: string, val)`
 
 Set an option on the socket.

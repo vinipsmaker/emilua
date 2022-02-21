@@ -8,11 +8,17 @@
 #include <boost/asio/ip/address.hpp>
 #include <boost/asio/ip/unicast.hpp>
 #include <boost/asio/ip/v6_only.hpp>
+#include <boost/predef/os/windows.h>
 #include <boost/asio/ip/tcp.hpp>
 
 #include <emilua/dispatch_table.hpp>
 #include <emilua/byte_span.hpp>
 #include <emilua/ip.hpp>
+
+#if BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
+#include <boost/asio/windows/overlapped_ptr.hpp>
+#include <emilua/file.hpp>
+#endif // BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
 
 namespace emilua {
 
@@ -40,6 +46,10 @@ static char tcp_resolver_resolve_key;
 static char udp_socket_receive_key;
 static char udp_socket_send_key;
 static char udp_socket_send_to_key;
+
+#if BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
+static char tcp_socket_send_file_key;
+#endif // BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
 
 static int ip_host_name(lua_State* L)
 {
@@ -954,6 +964,151 @@ static int tcp_socket_write_some(lua_State* L)
     return lua_yield(L, 0);
 }
 
+#if BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
+// https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/example/cpp03/windows/transmit_file.cpp
+static int tcp_socket_send_file(lua_State* L)
+{
+    lua_settop(L, 7);
+    luaL_checktype(L, 3, LUA_TNUMBER);
+    luaL_checktype(L, 4, LUA_TNUMBER);
+    luaL_checktype(L, 5, LUA_TNUMBER);
+
+    auto vm_ctx = get_vm_context(L).shared_from_this();
+    auto current_fiber = vm_ctx->current_fiber();
+    EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
+
+    auto sock = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto file = reinterpret_cast<asio::random_access_file*>(
+        lua_touserdata(L, 2));
+    if (!file || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_random_access_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    TRANSMIT_FILE_BUFFERS transmitBuffers;
+    std::shared_ptr<unsigned char[]> buf1, buf2;
+
+    if (lua_type(L, 6) != LUA_TNIL) {
+        auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 6));
+        if (!bs || !lua_getmetatable(L, 6)) {
+            push(L, std::errc::invalid_argument, "arg", 6);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 6);
+            return lua_error(L);
+        }
+        buf1 = bs->data;
+        transmitBuffers.Head = bs->data.get();
+        transmitBuffers.HeadLength = bs->size;
+    } else {
+        transmitBuffers.Head = NULL;
+        transmitBuffers.HeadLength = 0;
+    }
+
+    if (lua_type(L, 7) != LUA_TNIL) {
+        auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 7));
+        if (!bs || !lua_getmetatable(L, 7)) {
+            push(L, std::errc::invalid_argument, "arg", 7);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 7);
+            return lua_error(L);
+        }
+        buf2 = bs->data;
+        transmitBuffers.Tail = bs->data.get();
+        transmitBuffers.TailLength = bs->size;
+    } else {
+        transmitBuffers.Tail = NULL;
+        transmitBuffers.TailLength = 0;
+    }
+
+    asio::windows::overlapped_ptr overlapped{
+        vm_ctx->strand_using_defer(),
+        [vm_ctx,current_fiber,buf1,buf2,sock](
+            const boost::system::error_code& ec,
+            std::size_t bytes_transferred
+        ) {
+            if (!vm_ctx->valid())
+                return;
+
+            --sock->nbusy;
+
+            vm_ctx->fiber_resume(
+                current_fiber,
+                hana::make_set(
+                    vm_context::options::auto_detect_interrupt,
+                    hana::make_pair(
+                        vm_context::options::arguments,
+                        hana::make_tuple(ec, bytes_transferred))));
+        }
+    };
+
+    DWORD64 offset = lua_tointeger(L, 3);
+    overlapped.get()->Offset = static_cast<DWORD>(offset);
+    overlapped.get()->OffsetHigh = static_cast<DWORD>(offset >> 32);
+
+    lua_pushvalue(L, 1);
+    lua_pushlightuserdata(L, overlapped.get());
+    lua_pushcclosure(
+        L,
+        [](lua_State* L) -> int {
+            auto sock = reinterpret_cast<tcp_socket*>(
+                lua_touserdata(L, lua_upvalueindex(1)));
+            CancelIoEx(
+                reinterpret_cast<HANDLE>(
+                    static_cast<SOCKET>(sock->socket.native_handle())),
+                reinterpret_cast<LPOVERLAPPED>(
+                    lua_touserdata(L, lua_upvalueindex(2))));
+            return 0;
+        },
+        2);
+    set_interrupter(L, *vm_ctx);
+
+    ++sock->nbusy;
+    BOOL ok = TransmitFile(sock->socket.native_handle(), file->native_handle(),
+                           /*nNumberOfBytesToWrite=*/lua_tointeger(L, 4),
+                           /*nNumberOfBytesPerSend=*/lua_tointeger(L, 5),
+                           overlapped.get(), &transmitBuffers,
+                           /*dwReserved=*/0);
+    DWORD last_error = GetLastError();
+
+    // Check if the operation completed immediately.
+    if (!ok && last_error != ERROR_IO_PENDING) {
+        // The operation completed immediately, so a completion notification
+        // needs to be posted. When complete() is called, ownership of the
+        // OVERLAPPED-derived object passes to the io_context.
+        boost::system::error_code ec(last_error,
+                                     asio::error::get_system_category());
+        overlapped.complete(ec, 0);
+    } else {
+        // The operation was successfully initiated, so ownership of the
+        // OVERLAPPED-derived object has passed to the io_context.
+        overlapped.release();
+    }
+
+    return lua_yield(L, 0);
+}
+#endif // BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
+
 static int tcp_socket_set_option(lua_State* L)
 {
     lua_settop(L, 4);
@@ -1438,6 +1593,15 @@ static int tcp_socket_mt_index(lua_State* L)
                     return 1;
                 }
             ),
+#if BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
+            hana::make_pair(
+                BOOST_HANA_STRING("send_file"),
+                [](lua_State* L) -> int {
+                    rawgetp(L, LUA_REGISTRYINDEX, &tcp_socket_send_file_key);
+                    return 1;
+                }
+            ),
+#endif // BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
             hana::make_pair(
                 BOOST_HANA_STRING("set_option"),
                 [](lua_State* L) -> int {
@@ -3615,6 +3779,17 @@ void init_ip(lua_State* L)
     lua_pushcfunction(L, tcp_socket_write_some);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
+
+#if BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
+    lua_pushlightuserdata(L, &tcp_socket_send_file_key);
+    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
+                          data_op_bytecode_size, nullptr);
+    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+    lua_pushcfunction(L, tcp_socket_send_file);
+    lua_call(L, 2, 1);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+#endif // BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
 
     lua_pushlightuserdata(L, &tcp_acceptor_accept_key);
     res = luaL_loadbuffer(L, reinterpret_cast<char*>(accept_bytecode),
