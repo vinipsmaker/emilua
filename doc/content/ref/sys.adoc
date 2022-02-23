@@ -16,6 +16,15 @@ The environment variables.
 
 == Functions
 
+=== `stdin.read_some(self, buffer: byte_span) -> number`
+
+Read data from stdin and blocks current fiber until it completes or errs.
+
+Returns the number of bytes read.
+
+NOTE: First argument is ignored and it's only there to make it have a
+stream-like interface.
+
 === `exit([code: number [, opts: table]])`
 
 Exit the VM. Other VMs in the process are not stopped.
