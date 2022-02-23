@@ -17,6 +17,7 @@
 
 #if BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
 #include <boost/asio/windows/overlapped_ptr.hpp>
+#include <boost/asio/random_access_file.hpp>
 #include <emilua/file.hpp>
 #endif // BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
 
