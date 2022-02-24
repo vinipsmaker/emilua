@@ -49,6 +49,8 @@ static char sys_signal_set_wait_key;
 #if !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
 static char sys_stdin_key;
 #endif // !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
+static char sys_stdout_key;
+static char sys_stderr_key;
 
 #if BOOST_OS_WINDOWS
 # if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
@@ -156,23 +158,96 @@ inline stdin_service::stdin_service(vm_context& vm_ctx)
     }}
 {}
 # endif // EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
+static int sys_stdout_write_some(lua_State* L)
+{
+    // we don't really need to check for suspend-allowed here given no
+    // fiber-switch happens and we block the whole thread, but it's better to do
+    // it anyway to guarantee the function will behave the same across different
+    // platforms
+    auto& vm_ctx = get_vm_context(L);
+    EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    if (!bs || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    DWORD numberOfBytesWritten;
+    BOOL ok = WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), bs->data.get(),
+                        bs->size, &numberOfBytesWritten, /*lpOverlapped=*/NULL);
+    if (!ok) {
+        boost::system::error_code ec(
+            GetLastError(), asio::error::get_system_category());
+        push(L, ec);
+        return lua_error(L);
+    }
+
+    lua_pushinteger(L, numberOfBytesWritten);
+    return 1;
+}
+
+static int sys_stderr_write_some(lua_State* L)
+{
+    // we don't really need to check for suspend-allowed here given no
+    // fiber-switch happens and we block the whole thread, but it's better to do
+    // it anyway to guarantee the function will behave the same across different
+    // platforms
+    auto& vm_ctx = get_vm_context(L);
+    EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    if (!bs || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    DWORD numberOfBytesWritten;
+    BOOL ok = WriteFile(GetStdHandle(STD_ERROR_HANDLE), bs->data.get(),
+                        bs->size, &numberOfBytesWritten, /*lpOverlapped=*/NULL);
+    if (!ok) {
+        boost::system::error_code ec(
+            GetLastError(), asio::error::get_system_category());
+        push(L, ec);
+        return lua_error(L);
+    }
+
+    lua_pushinteger(L, numberOfBytesWritten);
+    return 1;
+}
 #else // BOOST_OS_WINDOWS
 struct stdstream_service: public pending_operation
 {
     stdstream_service(asio::io_context& ioctx)
         : pending_operation{/*shared_ownership=*/false}
         , in{ioctx, STDIN_FILENO}
+        , out{ioctx, STDOUT_FILENO}
+        , err{ioctx, STDERR_FILENO}
     {}
 
     ~stdstream_service()
     {
         in.release();
+        out.release();
+        err.release();
     }
 
     void cancel() noexcept override
     {}
 
     asio::posix::stream_descriptor in;
+    asio::posix::stream_descriptor out;
+    asio::posix::stream_descriptor err;
 };
 #endif // BOOST_OS_WINDOWS
 
@@ -663,6 +738,146 @@ static int sys_stdin_read_some(lua_State* L)
 
     return lua_yield(L, 0);
 }
+
+static int sys_stdout_write_some(lua_State* L)
+{
+    auto vm_ctx = get_vm_context(L).shared_from_this();
+    auto current_fiber = vm_ctx->current_fiber();
+    EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    if (!bs || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    stdstream_service* service = nullptr;
+
+    for (auto& op: vm_ctx->pending_operations) {
+        service = dynamic_cast<stdstream_service*>(&op);
+        if (service)
+            break;
+    }
+
+    if (!service) {
+        service = new stdstream_service{vm_ctx->strand().context()};
+        vm_ctx->pending_operations.push_back(*service);
+    }
+
+    lua_pushlightuserdata(L, service);
+    lua_pushcclosure(
+        L,
+        [](lua_State* L) -> int {
+            auto service = reinterpret_cast<stdstream_service*>(
+                lua_touserdata(L, lua_upvalueindex(1)));
+            boost::system::error_code ignored_ec;
+            service->out.cancel(ignored_ec);
+            return 0;
+        },
+        1);
+    set_interrupter(L, *vm_ctx);
+
+    service->out.async_write_some(
+        asio::buffer(bs->data.get(), bs->size),
+        asio::bind_executor(
+            vm_ctx->strand_using_defer(),
+            [vm_ctx,current_fiber,buf=bs->data](
+                const boost::system::error_code& ec,
+                std::size_t bytes_transferred
+            ) {
+                std::error_code ec2 = ec;
+                if (ec2 == std::errc::interrupted)
+                    ec2 = errc::interrupted;
+                boost::ignore_unused(buf);
+                vm_ctx->fiber_resume(
+                    current_fiber,
+                    hana::make_set(
+                        vm_context::options::auto_detect_interrupt,
+                        hana::make_pair(
+                            vm_context::options::arguments,
+                            hana::make_tuple(ec2, bytes_transferred)))
+                );
+            }
+        )
+    );
+
+    return lua_yield(L, 0);
+}
+
+static int sys_stderr_write_some(lua_State* L)
+{
+    auto vm_ctx = get_vm_context(L).shared_from_this();
+    auto current_fiber = vm_ctx->current_fiber();
+    EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    if (!bs || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    stdstream_service* service = nullptr;
+
+    for (auto& op: vm_ctx->pending_operations) {
+        service = dynamic_cast<stdstream_service*>(&op);
+        if (service)
+            break;
+    }
+
+    if (!service) {
+        service = new stdstream_service{vm_ctx->strand().context()};
+        vm_ctx->pending_operations.push_back(*service);
+    }
+
+    lua_pushlightuserdata(L, service);
+    lua_pushcclosure(
+        L,
+        [](lua_State* L) -> int {
+            auto service = reinterpret_cast<stdstream_service*>(
+                lua_touserdata(L, lua_upvalueindex(1)));
+            boost::system::error_code ignored_ec;
+            service->err.cancel(ignored_ec);
+            return 0;
+        },
+        1);
+    set_interrupter(L, *vm_ctx);
+
+    service->err.async_write_some(
+        asio::buffer(bs->data.get(), bs->size),
+        asio::bind_executor(
+            vm_ctx->strand_using_defer(),
+            [vm_ctx,current_fiber,buf=bs->data](
+                const boost::system::error_code& ec,
+                std::size_t bytes_transferred
+            ) {
+                std::error_code ec2 = ec;
+                if (ec2 == std::errc::interrupted)
+                    ec2 = errc::interrupted;
+                boost::ignore_unused(buf);
+                vm_ctx->fiber_resume(
+                    current_fiber,
+                    hana::make_set(
+                        vm_context::options::auto_detect_interrupt,
+                        hana::make_pair(
+                            vm_context::options::arguments,
+                            hana::make_tuple(ec2, bytes_transferred)))
+                );
+            }
+        )
+    );
+
+    return lua_yield(L, 0);
+}
 #endif // BOOST_OS_WINDOWS
 
 inline int sys_args(lua_State* L)
@@ -696,6 +911,18 @@ inline int sys_stdin(lua_State* L)
     return 1;
 }
 #endif // !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
+
+inline int sys_stdout(lua_State* L)
+{
+    rawgetp(L, LUA_REGISTRYINDEX, &sys_stdout_key);
+    return 1;
+}
+
+inline int sys_stderr(lua_State* L)
+{
+    rawgetp(L, LUA_REGISTRYINDEX, &sys_stderr_key);
+    return 1;
+}
 
 inline int sys_signal(lua_State* L)
 {
@@ -765,6 +992,8 @@ static int sys_mt_index(lua_State* L)
 #if !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
             hana::make_pair(BOOST_HANA_STRING("stdin"), sys_stdin),
 #endif // !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
+            hana::make_pair(BOOST_HANA_STRING("stdout"), sys_stdout),
+            hana::make_pair(BOOST_HANA_STRING("stderr"), sys_stderr),
             hana::make_pair(
                 BOOST_HANA_STRING("exit"),
                 [](lua_State* L) -> int {
@@ -890,6 +1119,44 @@ void init_sys(lua_State* L)
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 #endif // !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
+
+    lua_pushlightuserdata(L, &sys_stdout_key);
+    {
+        lua_createtable(L, /*narr=*/0, /*nrec=*/1);
+
+        lua_pushliteral(L, "write_some");
+#if BOOST_OS_WINDOWS
+        lua_pushcfunction(L, sys_stdout_write_some);
+#else // BOOST_OS_WINDOWS
+        int res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
+                                  data_op_bytecode_size, nullptr);
+        assert(res == 0); boost::ignore_unused(res);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+        lua_pushcfunction(L, sys_stdout_write_some);
+        lua_call(L, 2, 1);
+#endif // BOOST_OS_WINDOWS
+        lua_rawset(L, -3);
+    }
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &sys_stderr_key);
+    {
+        lua_createtable(L, /*narr=*/0, /*nrec=*/1);
+
+        lua_pushliteral(L, "write_some");
+#if BOOST_OS_WINDOWS
+        lua_pushcfunction(L, sys_stderr_write_some);
+#else // BOOST_OS_WINDOWS
+        int res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
+                                  data_op_bytecode_size, nullptr);
+        assert(res == 0); boost::ignore_unused(res);
+        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+        lua_pushcfunction(L, sys_stderr_write_some);
+        lua_call(L, 2, 1);
+#endif // BOOST_OS_WINDOWS
+        lua_rawset(L, -3);
+    }
+    lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &sys_signal_set_mt_key);
     {
