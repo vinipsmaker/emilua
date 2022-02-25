@@ -30,6 +30,20 @@ object, the appropriate value will be inferred.
 
 Bind the socket to the given local endpoint.
 
+=== `shutdown(self, what: string)`
+
+Disable sends or receives on the socket.
+
+`what` can be one of the following:
+
+`"receive"`:: Shutdown the receive side of the socket.
+`"send"`:: Shutdown the send side of the socket.
+`"both"`:: Shutdown both send and receive on the socket.
+
+NOTE: Doing this only mutates the socket object, but nothing will be sent over
+the wire. It could be useful if you're planning to send the FD around to other
+processes.
+
 === `connect(self, addr: ip.address, port: number)`
 
 Set the default destination address so datagrams can be sent using `send()`

@@ -2686,6 +2686,56 @@ static int udp_socket_bind(lua_State* L)
     }
 }
 
+static int udp_socket_shutdown(lua_State* L)
+{
+    luaL_checktype(L, 2, LUA_TSTRING);
+
+    auto sock = reinterpret_cast<udp_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_udp_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    std::error_code ec;
+    asio::ip::udp::socket::shutdown_type what;
+    dispatch_table::dispatch(
+        hana::make_tuple(
+            hana::make_pair(
+                BOOST_HANA_STRING("receive"),
+                [&]() { what = asio::ip::udp::socket::shutdown_receive; }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("send"),
+                [&]() { what = asio::ip::udp::socket::shutdown_send; }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("both"),
+                [&]() { what = asio::ip::udp::socket::shutdown_both; }
+            )
+        ),
+        [&](std::string_view /*key*/) {
+            ec = make_error_code(std::errc::invalid_argument);
+        },
+        tostringview(L, 2)
+    );
+    if (ec) {
+        push(L, ec);
+        return lua_error(L);
+    }
+    boost::system::error_code ec2;
+    sock->socket.shutdown(what, ec2);
+    if (ec2) {
+        push(L, static_cast<std::error_code>(ec2));
+        return lua_error(L);
+    }
+    return 0;
+}
+
 static int udp_socket_connect(lua_State* L)
 {
     luaL_checktype(L, 3, LUA_TNUMBER);
@@ -3575,6 +3625,13 @@ static int udp_socket_mt_index(lua_State* L)
                 BOOST_HANA_STRING("bind"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, udp_socket_bind);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("shutdown"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, udp_socket_shutdown);
                     return 1;
                 }
             ),
