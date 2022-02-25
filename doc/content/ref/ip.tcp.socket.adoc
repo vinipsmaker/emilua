@@ -103,6 +103,26 @@ errs.
 
 Returns the number of bytes written.
 
+=== `receive(self, buffer: byte_span, flags: number) -> number`
+
+Read data from the stream socket and blocks current fiber until it completes or
+errs.
+
+Returns the number of bytes read.
+
+`flags` is `0` or an or-combination of values from
+link:../ip.message_flag/[`ip.message_flag`].
+
+=== `send(self, buffer: byte_span, flags: number) -> number`
+
+Write data to the stream socket and blocks current fiber until it completes or
+errs.
+
+Returns the number of bytes written.
+
+`flags` is `0` or an or-combination of values from
+link:../ip.message_flag/[`ip.message_flag`].
+
 === `send_file(self, file: file.random_access, offset: number, size_in_bytes: number, n_number_of_bytes_per_send: number[, head: byte_span[, tail: byte_span]]) -> number`
 
 A wrapper for the
