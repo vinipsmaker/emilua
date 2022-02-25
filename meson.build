@@ -362,7 +362,6 @@ if get_option('enable_tests')
             'module5',
             'module6',
             'module7',
-            'module8',
             'module9',
             'module10',
             'module11',
@@ -465,6 +464,15 @@ if get_option('enable_tests')
                 'http2',
                 'http3',
                 'http4',
+            ]
+        }
+    endif
+
+    if host_machine.system() == 'linux'
+        tests +=  {
+            'module_system2' : [
+                # EIO on /proc/self/mem is a Linux trick
+                'module8',
             ]
         }
     endif
