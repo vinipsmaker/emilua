@@ -4,6 +4,9 @@ BEGIN {
     if (length(printed_path) > 55) {
         printed_path = "..." substr(printed_path, length(printed_path) - 51)
     }
+    if (PROCINFO["platform"] == "mingw") {
+        gsub(/\\/, "/", printed_path)
+    }
 }
 {
     sanitize_record()
@@ -55,6 +58,17 @@ END {
 
 function sanitize_record(    i, pattern, captures, input, output)
 {
+    if (PROCINFO["platform"] == "mingw") {
+        sub(/invalid argument/, "Invalid argument")
+        sub(/operation not permitted/, "Operation not permitted")
+        sub(/not supported/, "Operation not supported")
+        sub(/device or resource busy/, "Device or resource busy")
+        sub(/resource deadlock would occur/, "Resource deadlock avoided")
+        sub(/'result out of range/, "'Numerical result out of range")
+
+        gsub(/\\/, "/")
+    }
+
     # Normalize runtime paths
     while (i = index($0, printed_path)) {
         $0 = substr($0, 1, i - 1) "input" substr($0, i + length(printed_path))

@@ -131,8 +131,15 @@ else
 endif
 
 if get_option('enable_tests')
-    # GNU Coreutils binaries are not specified explicitly, but expected too
-    shell = find_program('bash', 'ksh')
+    if host_machine.system() == 'windows'
+        shell = find_program(
+            'run_test',
+            dirs : meson.current_source_dir() / 'test',
+        )
+    else
+        # GNU Coreutils binaries are not specified explicitly, but expected too
+        shell = find_program('bash', 'ksh')
+    endif
     gawk = find_program('gawk')
 endif
 
@@ -466,9 +473,9 @@ if get_option('enable_tests')
         foreach t : t
             test(t, shell, suite : suite,
                  args : [
-                     meson.current_source_dir() + '/test/run_test.sh',
-                     meson.current_source_dir() + '/test/run_test.awk',
-                     meson.current_source_dir() + '/test/' + t,
+                     meson.current_source_dir() / 'test' / 'run_test.sh',
+                     meson.current_source_dir() / 'test' / 'run_test.awk',
+                     meson.current_source_dir() / 'test' / t,
                  ],
                  env : [
                      # Test must override this env so non-colored terminal
