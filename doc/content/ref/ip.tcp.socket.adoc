@@ -134,6 +134,27 @@ NOTE: Only available on Windows.
 IMPORTANT: Lua conventions on index starting at `1` are ignored. Indexes here
 are OS-mandated and start at `0`.
 
+=== `wait(self, wait_type: string)`
+
+Wait for the socket to become ready to read, ready to write, or to have pending
+error conditions.
+
+In short, the reactor model is exposed on top of the proactor model.
+
+IMPORTANT: You shouldn't be using reactor-style operations on Emilua. However
+there's this one obsolete and buggy TCP feature that presumes reactor-style
+operations: `SO_OOBINLINE` (`out_of_band_inline`) + `sockatmark()`
+(`at_mark`). If you're implementing
+http://www.tcpipguide.com/free/t_TelnetInterruptHandlingUsingOutOfBandSignalingTheT.htm[an
+ancient obscure protocol] that for some reason can avoid the TCP OOB bugs then
+you'll need to use this function.
+
+`wait_type` can be one of the following:
+
+`"read"`:: Wait for a socket to become ready to read.
+`"write"`:: Wait for a socket to become ready to write.
+`"error"`:: Wait for a socket to have error conditions pending.
+
 === `set_option(self, opt: string, val)`
 
 Set an option on the socket.
@@ -161,8 +182,12 @@ https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/
 Boost.Asio documentation].
 
 `"out_of_band_inline"`::
-https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/out_of_band_inline.html[Check
-Boost.Asio documentation].
+Socket option for putting received out-of-band data inline.
++
+IMPORTANT: Do bear in mind that
+http://www.serverframework.com/asynchronousevents/2011/10/out-of-band-data-and-overlapped-io.html[the
+BSD socket API for `SO_OOBINLINE` is incompatible with proactor-style
+operations.]
 
 `"linger"`::
 https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/linger.html[Check
@@ -255,3 +280,10 @@ The remote address endpoint of the socket.
 === `remote_port: number`
 
 The remote port endpoint of the socket.
+
+=== `at_mark: boolean`
+
+Whether the socket is at the out-of-band data mark.
+
+IMPORTANT: You must set the `out_of_band_inline` socket option and use
+reactor-style operations (`wait()`) to use this feature.

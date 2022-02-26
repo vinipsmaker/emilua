@@ -44,6 +44,7 @@ static char tcp_socket_read_some_key;
 static char tcp_socket_write_some_key;
 static char tcp_socket_receive_key;
 static char tcp_socket_send_key;
+static char tcp_socket_wait_key;
 static char tcp_acceptor_accept_key;
 static char tcp_resolver_resolve_key;
 static char udp_socket_receive_key;
@@ -1260,6 +1261,90 @@ static int tcp_socket_send_file(lua_State* L)
 }
 #endif // BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
 
+static int tcp_socket_wait(lua_State* L)
+{
+    luaL_checktype(L, 2, LUA_TSTRING);
+
+    auto vm_ctx = get_vm_context(L).shared_from_this();
+    auto current_fiber = vm_ctx->current_fiber();
+    EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
+
+    auto s = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    if (!s || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    std::error_code ec;
+    asio::ip::tcp::socket::wait_type wait_type;
+    dispatch_table::dispatch(
+        hana::make_tuple(
+            hana::make_pair(
+                BOOST_HANA_STRING("read"),
+                [&]() { wait_type = asio::ip::tcp::socket::wait_read; }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("write"),
+                [&]() { wait_type = asio::ip::tcp::socket::wait_write; }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("error"),
+                [&]() { wait_type = asio::ip::tcp::socket::wait_error; }
+            )
+        ),
+        [&](std::string_view /*key*/) {
+            ec = make_error_code(std::errc::invalid_argument);
+        },
+        tostringview(L, 2)
+    );
+    if (ec) {
+        push(L, ec);
+        return lua_error(L);
+    }
+
+    lua_pushvalue(L, 1);
+    lua_pushcclosure(
+        L,
+        [](lua_State* L) -> int {
+            auto s = reinterpret_cast<tcp_socket*>(
+                lua_touserdata(L, lua_upvalueindex(1)));
+            boost::system::error_code ignored_ec;
+            s->socket.cancel(ignored_ec);
+            return 0;
+        },
+        1);
+    set_interrupter(L, *vm_ctx);
+
+    ++s->nbusy;
+    s->socket.async_wait(
+        wait_type,
+        asio::bind_executor(
+            vm_ctx->strand_using_defer(),
+            [vm_ctx,current_fiber,s](const boost::system::error_code& ec) {
+                if (!vm_ctx->valid())
+                    return;
+
+                --s->nbusy;
+
+                auto opt_args = vm_context::options::arguments;
+                vm_ctx->fiber_resume(
+                    current_fiber,
+                    hana::make_set(
+                        vm_context::options::auto_detect_interrupt,
+                        hana::make_pair(
+                            opt_args, hana::make_tuple(ec))));
+            }
+        )
+    );
+
+    return lua_yield(L, 0);
+}
+
 static int tcp_socket_set_option(lua_State* L)
 {
     lua_settop(L, 4);
@@ -1677,6 +1762,19 @@ inline int tcp_socket_remote_port(lua_State* L)
     return 1;
 }
 
+inline int tcp_socket_at_mark(lua_State* L)
+{
+    auto socket = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    boost::system::error_code ec;
+    bool ret = socket->socket.at_mark(ec);
+    if (ec) {
+        push(L, ec);
+        return lua_error(L);
+    }
+    lua_pushboolean(L, ret);
+    return 1;
+}
+
 static int tcp_socket_mt_index(lua_State* L)
 {
     return dispatch_table::dispatch(
@@ -1768,6 +1866,13 @@ static int tcp_socket_mt_index(lua_State* L)
             ),
 #endif // BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
             hana::make_pair(
+                BOOST_HANA_STRING("wait"),
+                [](lua_State* L) -> int {
+                    rawgetp(L, LUA_REGISTRYINDEX, &tcp_socket_wait_key);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
                 BOOST_HANA_STRING("set_option"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, tcp_socket_set_option);
@@ -1789,7 +1894,8 @@ static int tcp_socket_mt_index(lua_State* L)
             hana::make_pair(
                 BOOST_HANA_STRING("remote_address"), tcp_socket_remote_address),
             hana::make_pair(
-                BOOST_HANA_STRING("remote_port"), tcp_socket_remote_port)
+                BOOST_HANA_STRING("remote_port"), tcp_socket_remote_port),
+            hana::make_pair(BOOST_HANA_STRING("at_mark"), tcp_socket_at_mark)
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
@@ -4030,6 +4136,15 @@ void init_ip(lua_State* L)
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 #endif // BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
+
+    lua_pushlightuserdata(L, &tcp_socket_wait_key);
+    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
+                          data_op_bytecode_size, nullptr);
+    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+    lua_pushcfunction(L, tcp_socket_wait);
+    lua_call(L, 2, 1);
+    lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &tcp_acceptor_accept_key);
     res = luaL_loadbuffer(L, reinterpret_cast<char*>(accept_bytecode),
