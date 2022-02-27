@@ -4,9 +4,8 @@ title = "http.socket"
 
 [source,lua]
 ----
-local r = ip.tcp.resolver.new()
 local s = ip.tcp.socket.new()
-s:connect(r:resolve('www.example.com', '')[1].address, 80)
+s:connect(ip.tcp.get_address_info('www.example.com', '')[1].address, 80)
 s = http.socket.new(s)
 
 local req = http.request.new()

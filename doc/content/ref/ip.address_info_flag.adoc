@@ -1,5 +1,5 @@
 +++
-title = "ip.resolver_flag"
+title = "ip.address_info_flag"
 +++
 
 This module contains flag constants useful to name resolvers.
@@ -8,19 +8,17 @@ The following example demonstrates how you can use these flags in other modules:
 
 [source,lua]
 ----
-local r = ip.tcp.resolver.new()
-
-r:resolve(
+ip.tcp.get_address_info(
     'www.example.com',
     '',
-    ip.resolver_flag.address_configured
+    ip.address_info_flag.address_configured
 )
-r:resolve(
+ip.tcp.get_address_info(
     'www.example.com',
     '',
     bit.bor(
-        ip.resolver_flag.all_matching,
-        ip.resolver_flag.v4_mapped
+        ip.address_info_flag.all_matching,
+        ip.address_info_flag.v4_mapped
     )
 )
 ----

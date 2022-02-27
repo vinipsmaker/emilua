@@ -36,7 +36,6 @@ char ip_key;
 char ip_address_mt_key;
 char ip_tcp_socket_mt_key;
 char ip_tcp_acceptor_mt_key;
-char ip_tcp_resolver_mt_key;
 char ip_udp_socket_mt_key;
 
 static char tcp_socket_connect_key;
@@ -46,7 +45,6 @@ static char tcp_socket_receive_key;
 static char tcp_socket_send_key;
 static char tcp_socket_wait_key;
 static char tcp_acceptor_accept_key;
-static char tcp_resolver_resolve_key;
 static char udp_socket_receive_key;
 static char udp_socket_send_key;
 static char udp_socket_send_to_key;
@@ -54,6 +52,19 @@ static char udp_socket_send_to_key;
 #if BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
 static char tcp_socket_send_file_key;
 #endif // BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
+
+struct resolver_service: public pending_operation
+{
+    resolver_service(asio::io_context& ioctx)
+        : pending_operation{/*shared_ownership=*/false}
+        , tcp_resolver{ioctx}
+    {}
+
+    void cancel() noexcept override
+    {}
+
+    asio::ip::tcp::resolver tcp_resolver;
+};
 
 static int ip_host_name(lua_State* L)
 {
@@ -2476,68 +2487,59 @@ static int tcp_acceptor_mt_index(lua_State* L)
     );
 }
 
-static int tcp_resolver_new(lua_State* L)
+static int tcp_get_address_info(lua_State* L)
 {
-    auto& vm_ctx = get_vm_context(L);
-    auto r = reinterpret_cast<asio::ip::tcp::resolver*>(
-        lua_newuserdata(L, sizeof(asio::ip::tcp::resolver))
-    );
-    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_resolver_mt_key);
-    setmetatable(L, -2);
-    new (r) asio::ip::tcp::resolver{vm_ctx.strand().context()};
-    return 1;
-}
-
-static int tcp_resolver_resolve(lua_State* L)
-{
-    lua_settop(L, 4);
+    lua_settop(L, 3);
+    luaL_checktype(L, 1, LUA_TSTRING);
     luaL_checktype(L, 2, LUA_TSTRING);
-    luaL_checktype(L, 3, LUA_TSTRING);
 
     auto vm_ctx = get_vm_context(L).shared_from_this();
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto resolver = reinterpret_cast<asio::ip::tcp::resolver*>(
-        lua_touserdata(L, 1));
-    if (!resolver || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument, "arg", 1);
-        return lua_error(L);
-    }
-    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_resolver_mt_key);
-    if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument, "arg", 1);
-        return lua_error(L);
-    }
-
     // Lua BitOp underlying type is int32
     std::int32_t flags;
-    switch (lua_type(L, 4)) {
+    switch (lua_type(L, 3)) {
     default:
-        push(L, std::errc::invalid_argument, "arg", 4);
+        push(L, std::errc::invalid_argument, "arg", 3);
         return lua_error(L);
     case LUA_TNIL:
         flags = 0;
         break;
     case LUA_TNUMBER:
-        flags = lua_tointeger(L, 4);
+        flags = lua_tointeger(L, 3);
     }
 
-    lua_pushvalue(L, 1);
+    resolver_service* service = nullptr;
+
+    for (auto& op: vm_ctx->pending_operations) {
+        service = dynamic_cast<resolver_service*>(&op);
+        if (service)
+            break;
+    }
+
+    if (!service) {
+        service = new resolver_service{vm_ctx->strand().context()};
+        vm_ctx->pending_operations.push_back(*service);
+    }
+
+    lua_pushlightuserdata(L, service);
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto r = reinterpret_cast<asio::ip::tcp::resolver*>(
+            auto service = reinterpret_cast<resolver_service*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
-            r->cancel();
+            try {
+                service->tcp_resolver.cancel();
+            } catch (const boost::system::system_error&) {}
             return 0;
         },
         1);
     set_interrupter(L, *vm_ctx);
 
-    resolver->async_resolve(
+    service->tcp_resolver.async_resolve(
+        tostringview(L, 1),
         tostringview(L, 2),
-        tostringview(L, 3),
         static_cast<asio::ip::tcp::resolver::flags>(flags),
         asio::bind_executor(
             vm_ctx->strand_using_defer(),
@@ -2600,52 +2602,6 @@ static int tcp_resolver_resolve(lua_State* L)
     );
 
     return lua_yield(L, 0);
-}
-
-static int tcp_resolver_cancel(lua_State* L)
-{
-    auto resolver = reinterpret_cast<asio::ip::tcp::resolver*>(
-        lua_touserdata(L, 1));
-    if (!resolver || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument, "arg", 1);
-        return lua_error(L);
-    }
-    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_resolver_mt_key);
-    if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument, "arg", 1);
-        return lua_error(L);
-    }
-
-    resolver->cancel();
-    return 0;
-}
-
-static int tcp_resolver_mt_index(lua_State* L)
-{
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("resolve"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &tcp_resolver_resolve_key);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("cancel"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, tcp_resolver_cancel);
-                    return 1;
-                }
-            )
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index, "index", 2);
-            return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
 }
 
 static int udp_socket_new(lua_State* L)
@@ -3885,7 +3841,7 @@ void init_ip(lua_State* L)
         }
         lua_rawset(L, -3);
 
-        lua_pushliteral(L, "resolver_flag");
+        lua_pushliteral(L, "address_info_flag");
         {
             lua_createtable(L, /*narr=*/0, /*nrec=*/7);
 
@@ -3943,13 +3899,15 @@ void init_ip(lua_State* L)
             }
             lua_rawset(L, -3);
 
-            lua_pushliteral(L, "resolver");
+            lua_pushliteral(L, "get_address_info");
             {
-                lua_createtable(L, /*narr=*/0, /*nrec=*/1);
-
-                lua_pushliteral(L, "new");
-                lua_pushcfunction(L, tcp_resolver_new);
-                lua_rawset(L, -3);
+                int res = luaL_loadbuffer(
+                    L, reinterpret_cast<char*>(resolve_bytecode),
+                    resolve_bytecode_size, nullptr);
+                assert(res == 0); boost::ignore_unused(res);
+                rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+                lua_pushcfunction(L, tcp_get_address_info);
+                lua_call(L, 2, 1);
             }
             lua_rawset(L, -3);
         }
@@ -4045,24 +4003,6 @@ void init_ip(lua_State* L)
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
-    lua_pushlightuserdata(L, &ip_tcp_resolver_mt_key);
-    {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/3);
-
-        lua_pushliteral(L, "__metatable");
-        lua_pushliteral(L, "ip.tcp.resolver");
-        lua_rawset(L, -3);
-
-        lua_pushliteral(L, "__index");
-        lua_pushcfunction(L, tcp_resolver_mt_index);
-        lua_rawset(L, -3);
-
-        lua_pushliteral(L, "__gc");
-        lua_pushcfunction(L, finalizer<asio::ip::tcp::resolver>);
-        lua_rawset(L, -3);
-    }
-    lua_rawset(L, LUA_REGISTRYINDEX);
-
     lua_pushlightuserdata(L, &ip_udp_socket_mt_key);
     {
         lua_createtable(L, /*narr=*/0, /*nrec=*/3);
@@ -4152,15 +4092,6 @@ void init_ip(lua_State* L)
     assert(res == 0); boost::ignore_unused(res);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, tcp_acceptor_accept);
-    lua_call(L, 2, 1);
-    lua_rawset(L, LUA_REGISTRYINDEX);
-
-    lua_pushlightuserdata(L, &tcp_resolver_resolve_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(resolve_bytecode),
-                          resolve_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
-    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
-    lua_pushcfunction(L, tcp_resolver_resolve);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
