@@ -2490,8 +2490,6 @@ static int tcp_acceptor_mt_index(lua_State* L)
 static int tcp_get_address_info(lua_State* L)
 {
     lua_settop(L, 3);
-    luaL_checktype(L, 1, LUA_TSTRING);
-    luaL_checktype(L, 2, LUA_TSTRING);
 
     auto vm_ctx = get_vm_context(L).shared_from_this();
     auto current_fiber = vm_ctx->current_fiber();
@@ -2508,6 +2506,40 @@ static int tcp_get_address_info(lua_State* L)
         break;
     case LUA_TNUMBER:
         flags = lua_tointeger(L, 3);
+    }
+
+    std::string host;
+    switch (lua_type(L, 1)) {
+    default:
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    case LUA_TSTRING:
+        host = tostringview(L, 1);
+        break;
+    case LUA_TUSERDATA: {
+        if (!lua_getmetatable(L, 1)) {
+            push(L, std::errc::invalid_argument, "arg", 1);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 1);
+            return lua_error(L);
+        }
+        auto& a = *reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+        host = a.to_string();
+        flags |= asio::ip::resolver_base::numeric_host;
+    }
+    }
+
+    switch (lua_type(L, 2)) {
+    default:
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    case LUA_TSTRING:
+        break;
+    case LUA_TNUMBER:
+        flags |= asio::ip::resolver_base::numeric_service;
     }
 
     resolver_service* service = nullptr;
@@ -2538,7 +2570,7 @@ static int tcp_get_address_info(lua_State* L)
     set_interrupter(L, *vm_ctx);
 
     service->tcp_resolver.async_resolve(
-        tostringview(L, 1),
+        host,
         tostringview(L, 2),
         static_cast<asio::ip::tcp::resolver::flags>(flags),
         asio::bind_executor(
@@ -3855,14 +3887,6 @@ void init_ip(lua_State* L)
 
             lua_pushliteral(L, "canonical_name");
             lua_pushinteger(L, asio::ip::resolver_base::canonical_name);
-            lua_rawset(L, -3);
-
-            lua_pushliteral(L, "numeric_host");
-            lua_pushinteger(L, asio::ip::resolver_base::numeric_host);
-            lua_rawset(L, -3);
-
-            lua_pushliteral(L, "numeric_service");
-            lua_pushinteger(L, asio::ip::resolver_base::numeric_service);
             lua_rawset(L, -3);
 
             lua_pushliteral(L, "passive");

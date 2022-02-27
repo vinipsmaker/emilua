@@ -10,12 +10,12 @@ The following example demonstrates how you can use these flags in other modules:
 ----
 ip.tcp.get_address_info(
     'www.example.com',
-    '',
+    'http',
     ip.address_info_flag.address_configured
 )
 ip.tcp.get_address_info(
     'www.example.com',
-    '',
+    80,
     bit.bor(
         ip.address_info_flag.all_matching,
         ip.address_info_flag.v4_mapped
@@ -53,28 +53,6 @@ flag with same name in Boost.Asio]:
 [quote]
 ____
 Determine the canonical name of the host specified in the query.
-____
-
-== `numeric_host`
-
-https://www.boost.org/doc/libs/1_70_0/doc/html/boost_asio/reference/ip__resolver_base/numeric_host.html[The
-flag with same name in Boost.Asio]:
-
-[quote]
-____
-Host name should be treated as a numeric string defining an IPv4 or IPv6 address
-and no name resolution should be attempted.
-____
-
-== `numeric_service`
-
-https://www.boost.org/doc/libs/1_70_0/doc/html/boost_asio/reference/ip__resolver_base/numeric_service.html[The
-flag with same name in Boost.Asio]:
-
-[quote]
-____
-Service name should be treated as a numeric string defining a port number and no
-name resolution should be attempted.
 ____
 
 == `passive`
