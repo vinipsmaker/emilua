@@ -19,6 +19,13 @@ Has the following types:
 
 ===== `get_address_info(host: string|ip.address, service: string|number[, flags: number]) -> table`
 
+[source,lua]
+----
+get_address_info()
+get_address_v4_info()
+get_address_v6_info()
+----
+
 Resolves host and service into a list of endpoint entries. Current fiber is
 suspended until operation finishes.
 
