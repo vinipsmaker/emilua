@@ -2502,7 +2502,8 @@ static int tcp_get_address_info(lua_State* L)
         push(L, std::errc::invalid_argument, "arg", 3);
         return lua_error(L);
     case LUA_TNIL:
-        flags = 0;
+        flags = asio::ip::resolver_base::address_configured |
+            asio::ip::resolver_base::v4_mapped;
         break;
     case LUA_TNUMBER:
         flags = lua_tointeger(L, 3);

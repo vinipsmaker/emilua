@@ -25,6 +25,10 @@ suspended until operation finishes.
 `flags` is `0` or an or-combination of values from
 link:../ip.address_info_flag/[`ip.address_info_flag`].
 
+NOTE: If no `flags` are passed to this function (i.e. `flags` is `nil`) then
+this function will follow the glibc defaults even on non-glibc systems:
+`bit.bor(address_configured,v4_mapped)`.
+
 Returns a list of entries. Each entry will be a table with the following
 members:
 
