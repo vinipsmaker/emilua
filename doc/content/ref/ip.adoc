@@ -26,8 +26,8 @@ get_address_v4_info()
 get_address_v6_info()
 ----
 
-Resolves host and service into a list of endpoint entries. Current fiber is
-suspended until operation finishes.
+Forward-resolves host and service into a list of endpoint entries. Current fiber
+is suspended until operation finishes.
 
 `flags` is `0` or an or-combination of values from
 link:../ip.address_info_flag/[`ip.address_info_flag`].
@@ -50,6 +50,22 @@ info on Boost.Asio documentation].
 If `host` is an `ip.address` then no host name resolution should be attempted.
 
 If `service` is a number then no service name resolution should be attempted.
+
+===== `get_name_info(a: ip.address, port: number) -> table`
+
+Reverse-resolves the endpoint into a list of endpoint entries. Current fiber is
+suspended until operation finishes.
+
+Returns a list of entries. Each entry will be a table with the following
+members:
+
+* `address: ip.address`.
+* `port: number`.
+* `host_name: string`.
+* `service_name: string`.
+
+https://www.boost.org/doc/libs/1_70_0/doc/html/boost_asio/reference/ip__basic_resolver/async_resolve/overload6.html[More
+info on Boost.Asio documentation].
 
 === Other modules
 
