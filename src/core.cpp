@@ -27,6 +27,7 @@ char raw_error_key;
 char raw_type_key;
 char raw_pairs_key;
 char raw_ipairs_key;
+char raw_next_key;
 
 asio::io_context::id properties_service::id;
 

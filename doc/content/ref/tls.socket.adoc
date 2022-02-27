@@ -6,10 +6,8 @@ title = "tls.socket"
 ----
 tls_ctx = tls.ctx.new('tlsv13')
 
-local addr = ip.tcp.get_address_info('www.example.com', '')[1].address
-
 local s = ip.tcp.socket.new()
-s:connect(addr, 443)
+stream.connect(s, ip.tcp.get_address_info('www.example.com', 'https'))
 s = tls.socket.new(s, tls_ctx)
 s:client_handshake()
 s = http.socket.new(s)

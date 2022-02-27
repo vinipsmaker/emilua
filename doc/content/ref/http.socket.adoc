@@ -5,7 +5,7 @@ title = "http.socket"
 [source,lua]
 ----
 local s = ip.tcp.socket.new()
-s:connect(ip.tcp.get_address_info('www.example.com', '')[1].address, 80)
+stream.connect(s, ip.tcp.get_address_info('www.example.com', 'http'))
 s = http.socket.new(s)
 
 local req = http.request.new()

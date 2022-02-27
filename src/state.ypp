@@ -1170,6 +1170,11 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     lua_rawget(L, LUA_GLOBALSINDEX);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
+    lua_pushlightuserdata(L, &raw_next_key);
+    lua_pushliteral(L, "next");
+    lua_rawget(L, LUA_GLOBALSINDEX);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
     {
         int res = luaL_loadbuffer(
             L, reinterpret_cast<char*>(require_bytecode),
