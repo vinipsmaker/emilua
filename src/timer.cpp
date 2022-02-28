@@ -28,7 +28,6 @@ struct sleep_for_operation: public pending_operation
     sleep_for_operation(asio::io_context& ctx)
         : pending_operation{/*shared_ownership=*/true}
         , timer{ctx}
-        , interrupted{false}
     {}
 
     void cancel() noexcept override
@@ -39,7 +38,6 @@ struct sleep_for_operation: public pending_operation
     }
 
     asio::steady_timer timer;
-    bool interrupted;
 };
 
 struct handle_type
@@ -69,7 +67,6 @@ static int sleep_for(lua_State* L)
         [](lua_State* L) -> int {
             auto handle = reinterpret_cast<sleep_for_operation*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
-            handle->interrupted = true;
             try {
                 handle->timer.cancel();
             } catch (const boost::system::system_error&) {}
@@ -85,14 +82,12 @@ static int sleep_for(lua_State* L)
         [vm_ctx,current_fiber,handle](const boost::system::error_code &ec) {
             vm_ctx->pending_operations.erase(
                 vm_ctx->pending_operations.s_iterator_to(*handle));
-            std::error_code std_ec = ec;
-            if (handle->interrupted && ec == asio::error::operation_aborted)
-                std_ec = errc::interrupted;
             auto opt_args = vm_context::options::arguments;
             vm_ctx->fiber_resume(
                 current_fiber,
                 hana::make_set(
-                    hana::make_pair(opt_args, hana::make_tuple(std_ec))));
+                    vm_context::options::fast_auto_detect_interrupt,
+                    hana::make_pair(opt_args, hana::make_tuple(ec))));
         }
     ));
 
