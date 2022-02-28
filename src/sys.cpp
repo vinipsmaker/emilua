@@ -699,22 +699,11 @@ static int sys_stdin_read_some(lua_State* L)
         vm_ctx->pending_operations.push_back(*service);
     }
 
-    lua_pushlightuserdata(L, service);
-    lua_pushcclosure(
-        L,
-        [](lua_State* L) -> int {
-            auto service = reinterpret_cast<stdstream_service*>(
-                lua_touserdata(L, lua_upvalueindex(1)));
-            boost::system::error_code ignored_ec;
-            service->in.cancel(ignored_ec);
-            return 0;
-        },
-        1);
-    set_interrupter(L, *vm_ctx);
+    auto cancel_slot = set_default_interrupter(L, *vm_ctx);
 
     service->in.async_read_some(
         asio::buffer(bs->data.get(), bs->size),
-        asio::bind_executor(
+        asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
             vm_ctx->strand_using_defer(),
             [vm_ctx,current_fiber,buf=bs->data](
                 const boost::system::error_code& ec,
@@ -733,7 +722,7 @@ static int sys_stdin_read_some(lua_State* L)
                             hana::make_tuple(ec2, bytes_transferred)))
                 );
             }
-        )
+        ))
     );
 
     return lua_yield(L, 0);
@@ -769,22 +758,11 @@ static int sys_stdout_write_some(lua_State* L)
         vm_ctx->pending_operations.push_back(*service);
     }
 
-    lua_pushlightuserdata(L, service);
-    lua_pushcclosure(
-        L,
-        [](lua_State* L) -> int {
-            auto service = reinterpret_cast<stdstream_service*>(
-                lua_touserdata(L, lua_upvalueindex(1)));
-            boost::system::error_code ignored_ec;
-            service->out.cancel(ignored_ec);
-            return 0;
-        },
-        1);
-    set_interrupter(L, *vm_ctx);
+    auto cancel_slot = set_default_interrupter(L, *vm_ctx);
 
     service->out.async_write_some(
         asio::buffer(bs->data.get(), bs->size),
-        asio::bind_executor(
+        asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
             vm_ctx->strand_using_defer(),
             [vm_ctx,current_fiber,buf=bs->data](
                 const boost::system::error_code& ec,
@@ -803,7 +781,7 @@ static int sys_stdout_write_some(lua_State* L)
                             hana::make_tuple(ec2, bytes_transferred)))
                 );
             }
-        )
+        ))
     );
 
     return lua_yield(L, 0);
@@ -839,22 +817,11 @@ static int sys_stderr_write_some(lua_State* L)
         vm_ctx->pending_operations.push_back(*service);
     }
 
-    lua_pushlightuserdata(L, service);
-    lua_pushcclosure(
-        L,
-        [](lua_State* L) -> int {
-            auto service = reinterpret_cast<stdstream_service*>(
-                lua_touserdata(L, lua_upvalueindex(1)));
-            boost::system::error_code ignored_ec;
-            service->err.cancel(ignored_ec);
-            return 0;
-        },
-        1);
-    set_interrupter(L, *vm_ctx);
+    auto cancel_slot = set_default_interrupter(L, *vm_ctx);
 
     service->err.async_write_some(
         asio::buffer(bs->data.get(), bs->size),
-        asio::bind_executor(
+        asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
             vm_ctx->strand_using_defer(),
             [vm_ctx,current_fiber,buf=bs->data](
                 const boost::system::error_code& ec,
@@ -873,7 +840,7 @@ static int sys_stderr_write_some(lua_State* L)
                             hana::make_tuple(ec2, bytes_transferred)))
                 );
             }
-        )
+        ))
     );
 
     return lua_yield(L, 0);

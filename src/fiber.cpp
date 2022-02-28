@@ -27,6 +27,7 @@ char yield_reason_is_native_key;
 static char spawn_start_fn_key;
 static char fiber_mt_key;
 static char fiber_join_key;
+static char asio_cancellation_signal_mt_key;
 
 static int fiber_join(lua_State* L)
 {
@@ -383,6 +384,30 @@ static int spawn(lua_State* L)
         lua_rawseti(new_fiber, -2, FiberDataIndex::INTERRUPTION_DISABLED);
     }
     {
+        auto cancel_signal = reinterpret_cast<asio::cancellation_signal*>(
+            lua_newuserdata(L, sizeof(asio::cancellation_signal)));
+        rawgetp(L, LUA_REGISTRYINDEX, &asio_cancellation_signal_mt_key);
+        setmetatable(L, -2);
+        new (cancel_signal) asio::cancellation_signal{};
+        lua_pushvalue(L, -1);
+
+        lua_pushcclosure(
+            L,
+            [](lua_State* L) -> int {
+                auto cancel_signal = reinterpret_cast<
+                    asio::cancellation_signal*
+                >(lua_touserdata(L, lua_upvalueindex(1)));
+                cancel_signal->emit(asio::cancellation_type::terminal);
+                return 0;
+            },
+            1);
+
+        lua_xmove(L, new_fiber, 2);
+        lua_rawseti(new_fiber, -3,
+                    FiberDataIndex::DEFAULT_EMIT_SIGNAL_INTERRUPTER);
+        lua_rawseti(new_fiber, -2, FiberDataIndex::ASIO_CANCELLATION_SIGNAL);
+    }
+    {
         rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
         lua_pushthread(vm_ctx->current_fiber());
         lua_xmove(vm_ctx->current_fiber(), L, 1);
@@ -624,7 +649,6 @@ void init_fiber_module(lua_State* L)
     lua_rawset(L, LUA_GLOBALSINDEX);
 
     lua_pushlightuserdata(L, &fiber_mt_key);
-
     {
         lua_createtable(L, /*narr=*/0, /*nrec=*/3);
 
@@ -640,7 +664,16 @@ void init_fiber_module(lua_State* L)
         lua_pushcfunction(L, fiber_mt_gc);
         lua_rawset(L, -3);
     }
+    lua_rawset(L, LUA_REGISTRYINDEX);
 
+    lua_pushlightuserdata(L, &asio_cancellation_signal_mt_key);
+    {
+        lua_createtable(L, /*narr=*/0, /*nrec=*/1);
+
+        lua_pushliteral(L, "__gc");
+        lua_pushcfunction(L, finalizer<asio::cancellation_signal>);
+        lua_rawset(L, -3);
+    }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     {

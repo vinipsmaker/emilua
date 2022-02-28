@@ -549,6 +549,42 @@ void set_interrupter(lua_State* L, vm_context& vm_ctx)
     lua_pop(L, 4);
 }
 
+asio::cancellation_slot
+set_default_interrupter(lua_State* L, vm_context& vm_ctx)
+{
+    auto current_fiber = vm_ctx.current_fiber();
+    bool interruption_disabled;
+
+    rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
+    lua_pushthread(current_fiber);
+    lua_xmove(current_fiber, L, 1);
+    lua_rawget(L, -2);
+    lua_rawgeti(L, -1, FiberDataIndex::INTERRUPTION_DISABLED);
+    switch (lua_type(L, -1)) {
+    case LUA_TBOOLEAN:
+        interruption_disabled = lua_toboolean(L, -1);
+        break;
+    case LUA_TNUMBER:
+        interruption_disabled = lua_tointeger(L, -1) > 0;
+        break;
+    default: assert(false);
+    }
+    if (interruption_disabled) {
+        lua_pop(L, 3);
+        return {};
+    }
+
+    lua_rawgeti(L, -2, FiberDataIndex::ASIO_CANCELLATION_SIGNAL);
+    auto cancel_signal = reinterpret_cast<asio::cancellation_signal*>(
+        lua_touserdata(L, -1));
+    assert(cancel_signal);
+    lua_rawgeti(L, -3, FiberDataIndex::DEFAULT_EMIT_SIGNAL_INTERRUPTER);
+    lua_rawseti(L, -4, FiberDataIndex::INTERRUPTER);
+    lua_pop(L, 4);
+
+    return cancel_signal->slot();
+}
+
 class lua_category_impl: public std::error_category
 {
 public:

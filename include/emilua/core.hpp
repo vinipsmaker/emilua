@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <boost/asio/bind_cancellation_slot.hpp>
+#include <boost/asio/cancellation_signal.hpp>
 #include <boost/asio/executor_work_guard.hpp>
 #include <boost/asio/io_context_strand.hpp>
 #include <boost/asio/bind_executor.hpp>
@@ -56,7 +58,7 @@ extern "C" {
 #include <boost/shared_ptr.hpp>
 #endif // EMILUA_CONFIG_ENABLE_PLUGINS
 
-#define EMILUA_IMPL_INITIAL_FIBER_DATA_CAPACITY 9
+#define EMILUA_IMPL_INITIAL_FIBER_DATA_CAPACITY 11
 #define EMILUA_IMPL_INITIAL_MODULE_FIBER_DATA_CAPACITY 8
 
 // EMILUA_IMPL_INITIAL_MODULE_FIBER_DATA_CAPACITY currently takes into
@@ -114,6 +116,8 @@ enum FiberDataIndex: lua_Integer
     INTERRUPTION_DISABLED,
     INTERRUPTED,
     INTERRUPTER,
+    ASIO_CANCELLATION_SIGNAL,
+    DEFAULT_EMIT_SIGNAL_INTERRUPTER,
     USER_HANDLE, //< "augmented joiner"
     // }}}
 
@@ -326,6 +330,8 @@ public:
 };
 
 void set_interrupter(lua_State* L, vm_context& vm_ctx);
+asio::cancellation_slot
+set_default_interrupter(lua_State* L, vm_context& vm_ctx);
 
 struct actor_address
 {
