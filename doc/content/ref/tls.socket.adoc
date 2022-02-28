@@ -4,7 +4,7 @@ title = "tls.socket"
 
 [source,lua]
 ----
-tls_ctx = tls.ctx.new('tlsv13')
+tls_ctx = tls.context.new('tlsv13')
 
 local s = ip.tcp.socket.new()
 stream.connect(s, ip.tcp.get_address_info('www.example.com', 'https'))
@@ -22,7 +22,7 @@ s:read_response(res)
 
 == Functions
 
-=== `new(sock: ip.tcp.socket, tls_ctx: tls.ctx) -> tls.socket`
+=== `new(sock: ip.tcp.socket, tls_ctx: tls.context) -> tls.socket`
 
 Constructor.
 

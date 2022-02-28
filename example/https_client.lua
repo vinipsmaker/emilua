@@ -3,7 +3,7 @@ local stream = require 'stream'
 local http = require 'http'
 local tls = require 'tls'
 
-tls_ctx = tls.ctx.new('tlsv13')
+tls_ctx = tls.context.new('tlsv13')
 
 local function print_headers(headers)
     for k, v in pairs(headers) do

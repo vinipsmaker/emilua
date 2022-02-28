@@ -4,5 +4,5 @@ title = "tls"
 
 == Modules
 
-* link:../tls.ctx/[`ctx`].
+* link:../tls.context/[`context`].
 * link:../tls.socket/[`socket`].

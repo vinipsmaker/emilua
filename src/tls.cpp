@@ -22,7 +22,7 @@ extern unsigned char data_op_bytecode[];
 extern std::size_t data_op_bytecode_size;
 
 char tls_key;
-char tls_ctx_mt_key;
+char tls_context_mt_key;
 char tls_socket_mt_key;
 
 static char socket_client_handshake_key;
@@ -30,7 +30,7 @@ static char socket_server_handshake_key;
 static char tls_socket_read_some_key;
 static char tls_socket_write_some_key;
 
-static int tls_ctx_new(lua_State* L)
+static int tls_context_new(lua_State* L)
 {
     luaL_checktype(L, 1, LUA_TSTRING);
     std::optional<asio::ssl::context::method> method;
@@ -82,7 +82,7 @@ static int tls_ctx_new(lua_State* L)
         auto c = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
             lua_newuserdata(L, sizeof(std::shared_ptr<asio::ssl::context>))
         );
-        rawgetp(L, LUA_REGISTRYINDEX, &tls_ctx_mt_key);
+        rawgetp(L, LUA_REGISTRYINDEX, &tls_context_mt_key);
         setmetatable(L, -2);
         new (c) std::shared_ptr<asio::ssl::context>{std::move(ctx)};
         return 1;
@@ -114,7 +114,7 @@ static int tls_socket_new(lua_State* L)
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     }
-    rawgetp(L, LUA_REGISTRYINDEX, &tls_ctx_mt_key);
+    rawgetp(L, LUA_REGISTRYINDEX, &tls_context_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -360,12 +360,12 @@ void init_tls(lua_State* L)
     {
         lua_createtable(L, /*narr=*/0, /*nrec=*/2);
 
-        lua_pushliteral(L, "ctx");
+        lua_pushliteral(L, "context");
         {
             lua_createtable(L, /*narr=*/0, /*nrec=*/1);
 
             lua_pushliteral(L, "new");
-            lua_pushcfunction(L, tls_ctx_new);
+            lua_pushcfunction(L, tls_context_new);
             lua_rawset(L, -3);
         }
         lua_rawset(L, -3);
@@ -382,12 +382,12 @@ void init_tls(lua_State* L)
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
-    lua_pushlightuserdata(L, &tls_ctx_mt_key);
+    lua_pushlightuserdata(L, &tls_context_mt_key);
     {
         lua_createtable(L, /*narr=*/0, /*nrec=*/2);
 
         lua_pushliteral(L, "__metatable");
-        lua_pushliteral(L, "tls.ctx");
+        lua_pushliteral(L, "tls.context");
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__gc");

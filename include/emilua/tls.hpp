@@ -16,7 +16,7 @@
 namespace emilua {
 
 extern char tls_key;
-extern char tls_ctx_mt_key;
+extern char tls_context_mt_key;
 extern char tls_socket_mt_key;
 
 class TlsSocket

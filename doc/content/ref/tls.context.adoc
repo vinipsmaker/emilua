@@ -1,10 +1,10 @@
 +++
-title = "tls.ctx"
+title = "tls.context"
 +++
 
 == Functions
 
-=== `new(method: string) -> tls.ctx`
+=== `new(method: string) -> tls.context`
 
 Constructor.
 
