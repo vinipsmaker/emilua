@@ -111,31 +111,21 @@ static int timer_wait(lua_State* L)
         return lua_error(L);
     }
 
-    lua_pushvalue(L, 1);
-    lua_pushcclosure(
-        L,
-        [](lua_State* L) -> int {
-            auto handle = reinterpret_cast<handle_type*>(
-                lua_touserdata(L, lua_upvalueindex(1)));
-            try {
-                handle->timer.cancel();
-            } catch (const boost::system::system_error&) {}
-            return 0;
-        },
-        1);
-    set_interrupter(L, *vm_ctx);
+    auto cancel_slot = set_default_interrupter(L, *vm_ctx);
 
-    handle->timer.async_wait(asio::bind_executor(
-        vm_ctx->strand_using_defer(),
-        [vm_ctx,current_fiber](const boost::system::error_code& ec) {
-            auto opt_args = vm_context::options::arguments;
-            vm_ctx->fiber_resume(
-                current_fiber,
-                hana::make_set(
-                    vm_context::options::auto_detect_interrupt,
-                    hana::make_pair(opt_args, hana::make_tuple(ec))));
-        }
-    ));
+    handle->timer.async_wait(
+        asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
+            vm_ctx->strand_using_defer(),
+            [vm_ctx,current_fiber](const boost::system::error_code& ec) {
+                auto opt_args = vm_context::options::arguments;
+                vm_ctx->fiber_resume(
+                    current_fiber,
+                    hana::make_set(
+                        vm_context::options::auto_detect_interrupt,
+                        hana::make_pair(opt_args, hana::make_tuple(ec))));
+            }
+        ))
+    );
 
     return lua_yield(L, 0);
 }

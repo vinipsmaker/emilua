@@ -187,22 +187,11 @@ static int stream_read_some(lua_State* L)
         return lua_error(L);
     }
 
-    lua_pushvalue(L, 1);
-    lua_pushcclosure(
-        L,
-        [](lua_State* L) -> int {
-            auto f = reinterpret_cast<asio::stream_file*>(
-                lua_touserdata(L, lua_upvalueindex(1)));
-            boost::system::error_code ignored_ec;
-            f->cancel(ignored_ec);
-            return 0;
-        },
-        1);
-    set_interrupter(L, *vm_ctx);
+    auto cancel_slot = set_default_interrupter(L, *vm_ctx);
 
     file->async_read_some(
         asio::buffer(bs->data.get(), bs->size),
-        asio::bind_executor(
+        asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
             vm_ctx->strand_using_defer(),
             [vm_ctx,current_fiber,buf=bs->data](
                 const boost::system::error_code& ec,
@@ -218,7 +207,7 @@ static int stream_read_some(lua_State* L)
                             hana::make_tuple(ec, bytes_transferred)))
                 );
             }
-        )
+        ))
     );
 
     return lua_yield(L, 0);
@@ -252,22 +241,11 @@ static int stream_write_some(lua_State* L)
         return lua_error(L);
     }
 
-    lua_pushvalue(L, 1);
-    lua_pushcclosure(
-        L,
-        [](lua_State* L) -> int {
-            auto f = reinterpret_cast<asio::stream_file*>(
-                lua_touserdata(L, lua_upvalueindex(1)));
-            boost::system::error_code ignored_ec;
-            f->cancel(ignored_ec);
-            return 0;
-        },
-        1);
-    set_interrupter(L, *vm_ctx);
+    auto cancel_slot = set_default_interrupter(L, *vm_ctx);
 
     file->async_write_some(
         asio::buffer(bs->data.get(), bs->size),
-        asio::bind_executor(
+        asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
             vm_ctx->strand_using_defer(),
             [vm_ctx,current_fiber,buf=bs->data](
                 const boost::system::error_code& ec,
@@ -283,7 +261,7 @@ static int stream_write_some(lua_State* L)
                             hana::make_tuple(ec, bytes_transferred)))
                 );
             }
-        )
+        ))
     );
 
     return lua_yield(L, 0);
@@ -516,23 +494,12 @@ static int random_access_read_some_at(lua_State* L)
         return lua_error(L);
     }
 
-    lua_pushvalue(L, 1);
-    lua_pushcclosure(
-        L,
-        [](lua_State* L) -> int {
-            auto f = reinterpret_cast<asio::random_access_file*>(
-                lua_touserdata(L, lua_upvalueindex(1)));
-            boost::system::error_code ignored_ec;
-            f->cancel(ignored_ec);
-            return 0;
-        },
-        1);
-    set_interrupter(L, *vm_ctx);
+    auto cancel_slot = set_default_interrupter(L, *vm_ctx);
 
     file->async_read_some_at(
         lua_tointeger(L, 2),
         asio::buffer(bs->data.get(), bs->size),
-        asio::bind_executor(
+        asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
             vm_ctx->strand_using_defer(),
             [vm_ctx,current_fiber,buf=bs->data](
                 const boost::system::error_code& ec,
@@ -548,7 +515,7 @@ static int random_access_read_some_at(lua_State* L)
                             hana::make_tuple(ec, bytes_transferred)))
                 );
             }
-        )
+        ))
     );
 
     return lua_yield(L, 0);
@@ -585,23 +552,12 @@ static int random_access_write_some_at(lua_State* L)
         return lua_error(L);
     }
 
-    lua_pushvalue(L, 1);
-    lua_pushcclosure(
-        L,
-        [](lua_State* L) -> int {
-            auto f = reinterpret_cast<asio::random_access_file*>(
-                lua_touserdata(L, lua_upvalueindex(1)));
-            boost::system::error_code ignored_ec;
-            f->cancel(ignored_ec);
-            return 0;
-        },
-        1);
-    set_interrupter(L, *vm_ctx);
+    auto cancel_slot = set_default_interrupter(L, *vm_ctx);
 
     file->async_write_some_at(
         lua_tointeger(L, 2),
         asio::buffer(bs->data.get(), bs->size),
-        asio::bind_executor(
+        asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
             vm_ctx->strand_using_defer(),
             [vm_ctx,current_fiber,buf=bs->data](
                 const boost::system::error_code& ec,
@@ -617,7 +573,7 @@ static int random_access_write_some_at(lua_State* L)
                             hana::make_tuple(ec, bytes_transferred)))
                 );
             }
-        )
+        ))
     );
 
     return lua_yield(L, 0);

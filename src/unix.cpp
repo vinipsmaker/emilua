@@ -322,18 +322,7 @@ static int unix_datagram_socket_receive(lua_State* L)
         flags = lua_tointeger(L, 3);
     }
 
-    lua_pushvalue(L, 1);
-    lua_pushcclosure(
-        L,
-        [](lua_State* L) -> int {
-            auto s = reinterpret_cast<unix_datagram_socket*>(
-                lua_touserdata(L, lua_upvalueindex(1)));
-            boost::system::error_code ignored_ec;
-            s->socket.cancel(ignored_ec);
-            return 0;
-        },
-        1);
-    set_interrupter(L, *vm_ctx);
+    auto cancel_slot = set_default_interrupter(L, *vm_ctx);
 
     auto remote_sender =
         std::make_shared<asio::local::datagram_protocol::endpoint>();
@@ -343,7 +332,7 @@ static int unix_datagram_socket_receive(lua_State* L)
         asio::buffer(bs->data.get(), bs->size),
         *remote_sender,
         flags,
-        asio::bind_executor(
+        asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
             vm_ctx->strand_using_defer(),
             [vm_ctx,current_fiber,remote_sender,buf=bs->data,sock](
                 const boost::system::error_code& ec,
@@ -365,7 +354,7 @@ static int unix_datagram_socket_receive(lua_State* L)
                                 ec, bytes_transferred, remote_sender->path())))
                 );
             }
-        )
+        ))
     );
 
     return lua_yield(L, 0);
@@ -414,24 +403,13 @@ static int unix_datagram_socket_send(lua_State* L)
         flags = lua_tointeger(L, 3);
     }
 
-    lua_pushvalue(L, 1);
-    lua_pushcclosure(
-        L,
-        [](lua_State* L) -> int {
-            auto s = reinterpret_cast<unix_datagram_socket*>(
-                lua_touserdata(L, lua_upvalueindex(1)));
-            boost::system::error_code ignored_ec;
-            s->socket.cancel(ignored_ec);
-            return 0;
-        },
-        1);
-    set_interrupter(L, *vm_ctx);
+    auto cancel_slot = set_default_interrupter(L, *vm_ctx);
 
     ++sock->nbusy;
     sock->socket.async_send(
         asio::buffer(bs->data.get(), bs->size),
         flags,
-        asio::bind_executor(
+        asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
             vm_ctx->strand_using_defer(),
             [vm_ctx,current_fiber,buf=bs->data,sock](
                 const boost::system::error_code& ec,
@@ -451,7 +429,7 @@ static int unix_datagram_socket_send(lua_State* L)
                             vm_context::options::arguments,
                             hana::make_tuple(ec, bytes_transferred))));
             }
-        )
+        ))
     );
 
     return lua_yield(L, 0);
@@ -501,25 +479,14 @@ static int unix_datagram_socket_send_to(lua_State* L)
         flags = lua_tointeger(L, 4);
     }
 
-    lua_pushvalue(L, 1);
-    lua_pushcclosure(
-        L,
-        [](lua_State* L) -> int {
-            auto s = reinterpret_cast<unix_datagram_socket*>(
-                lua_touserdata(L, lua_upvalueindex(1)));
-            boost::system::error_code ignored_ec;
-            s->socket.cancel(ignored_ec);
-            return 0;
-        },
-        1);
-    set_interrupter(L, *vm_ctx);
+    auto cancel_slot = set_default_interrupter(L, *vm_ctx);
 
     ++sock->nbusy;
     sock->socket.async_send_to(
         asio::buffer(bs->data.get(), bs->size),
         asio::local::datagram_protocol::endpoint{tostringview(L, 3)},
         flags,
-        asio::bind_executor(
+        asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
             vm_ctx->strand_using_defer(),
             [vm_ctx,current_fiber,buf=bs->data,sock](
                 const boost::system::error_code& ec,
@@ -539,7 +506,7 @@ static int unix_datagram_socket_send_to(lua_State* L)
                             vm_context::options::arguments,
                             hana::make_tuple(ec, bytes_transferred))));
             }
-        )
+        ))
     );
 
     return lua_yield(L, 0);
@@ -967,36 +934,28 @@ static int unix_stream_socket_connect(lua_State* L)
 
     asio::local::stream_protocol::endpoint ep{tostringview(L, 2)};
 
-    lua_pushvalue(L, 1);
-    lua_pushcclosure(
-        L,
-        [](lua_State* L) -> int {
-            auto s = reinterpret_cast<unix_stream_socket*>(
-                lua_touserdata(L, lua_upvalueindex(1)));
-            boost::system::error_code ignored_ec;
-            s->socket.cancel(ignored_ec);
-            return 0;
-        },
-        1);
-    set_interrupter(L, *vm_ctx);
+    auto cancel_slot = set_default_interrupter(L, *vm_ctx);
 
     ++s->nbusy;
-    s->socket.async_connect(ep, asio::bind_executor(
-        vm_ctx->strand_using_defer(),
-        [vm_ctx,current_fiber,s](const boost::system::error_code& ec) {
-            if (!vm_ctx->valid())
-                return;
+    s->socket.async_connect(
+        ep,
+        asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
+            vm_ctx->strand_using_defer(),
+            [vm_ctx,current_fiber,s](const boost::system::error_code& ec) {
+                if (!vm_ctx->valid())
+                    return;
 
-            --s->nbusy;
+                --s->nbusy;
 
-            auto opt_args = vm_context::options::arguments;
-            vm_ctx->fiber_resume(
-                current_fiber,
-                hana::make_set(
-                    vm_context::options::auto_detect_interrupt,
-                    hana::make_pair(opt_args, hana::make_tuple(ec))));
-        }
-    ));
+                auto opt_args = vm_context::options::arguments;
+                vm_ctx->fiber_resume(
+                    current_fiber,
+                    hana::make_set(
+                        vm_context::options::auto_detect_interrupt,
+                        hana::make_pair(opt_args, hana::make_tuple(ec))));
+            }
+        ))
+    );
 
     return lua_yield(L, 0);
 }
@@ -1031,23 +990,12 @@ static int unix_stream_socket_read_some(lua_State* L)
         return lua_error(L);
     }
 
-    lua_pushvalue(L, 1);
-    lua_pushcclosure(
-        L,
-        [](lua_State* L) -> int {
-            auto s = reinterpret_cast<unix_stream_socket*>(
-                lua_touserdata(L, lua_upvalueindex(1)));
-            boost::system::error_code ignored_ec;
-            s->socket.cancel(ignored_ec);
-            return 0;
-        },
-        1);
-    set_interrupter(L, *vm_ctx);
+    auto cancel_slot = set_default_interrupter(L, *vm_ctx);
 
     ++s->nbusy;
     s->socket.async_read_some(
         asio::buffer(bs->data.get(), bs->size),
-        asio::bind_executor(
+        asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
             vm_ctx->strand_using_defer(),
             [vm_ctx,current_fiber,buf=bs->data,s](
                 const boost::system::error_code& ec,
@@ -1068,7 +1016,7 @@ static int unix_stream_socket_read_some(lua_State* L)
                             opt_args,
                             hana::make_tuple(ec, bytes_transferred))));
             }
-        )
+        ))
     );
 
     return lua_yield(L, 0);
@@ -1104,23 +1052,12 @@ static int unix_stream_socket_write_some(lua_State* L)
         return lua_error(L);
     }
 
-    lua_pushvalue(L, 1);
-    lua_pushcclosure(
-        L,
-        [](lua_State* L) -> int {
-            auto s = reinterpret_cast<unix_stream_socket*>(
-                lua_touserdata(L, lua_upvalueindex(1)));
-            boost::system::error_code ignored_ec;
-            s->socket.cancel(ignored_ec);
-            return 0;
-        },
-        1);
-    set_interrupter(L, *vm_ctx);
+    auto cancel_slot = set_default_interrupter(L, *vm_ctx);
 
     ++s->nbusy;
     s->socket.async_write_some(
         asio::buffer(bs->data.get(), bs->size),
-        asio::bind_executor(
+        asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
             vm_ctx->strand_using_defer(),
             [vm_ctx,current_fiber,buf=bs->data,s](
                 const boost::system::error_code& ec,
@@ -1141,7 +1078,7 @@ static int unix_stream_socket_write_some(lua_State* L)
                             opt_args,
                             hana::make_tuple(ec, bytes_transferred))));
             }
-        )
+        ))
     );
 
     return lua_yield(L, 0);
@@ -1613,45 +1550,36 @@ static int unix_stream_acceptor_accept(lua_State* L)
         return lua_error(L);
     }
 
-    lua_pushvalue(L, 1);
-    lua_pushcclosure(
-        L,
-        [](lua_State* L) -> int {
-            auto a = reinterpret_cast<asio::local::stream_protocol::acceptor*>(
-                lua_touserdata(L, lua_upvalueindex(1)));
-            boost::system::error_code ignored_ec;
-            a->cancel(ignored_ec);
-            return 0;
-        },
-        1);
-    set_interrupter(L, *vm_ctx);
+    auto cancel_slot = set_default_interrupter(L, *vm_ctx);
 
-    acceptor->async_accept(asio::bind_executor(
-        vm_ctx->strand_using_defer(),
-        [vm_ctx,current_fiber](const boost::system::error_code& ec,
-                               asio::local::stream_protocol::socket peer) {
-            auto peer_pusher = [&ec,&peer](lua_State* fiber) {
-                if (ec) {
-                    lua_pushnil(fiber);
-                } else {
-                    auto s = reinterpret_cast<unix_stream_socket*>(
-                        lua_newuserdata(fiber, sizeof(unix_stream_socket)));
-                    rawgetp(fiber, LUA_REGISTRYINDEX,
-                            &unix_stream_socket_mt_key);
-                    setmetatable(fiber, -2);
-                    new (s) unix_stream_socket{std::move(peer)};
-                }
-            };
+    acceptor->async_accept(
+        asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
+            vm_ctx->strand_using_defer(),
+            [vm_ctx,current_fiber](const boost::system::error_code& ec,
+                                   asio::local::stream_protocol::socket peer) {
+                auto peer_pusher = [&ec,&peer](lua_State* fiber) {
+                    if (ec) {
+                        lua_pushnil(fiber);
+                    } else {
+                        auto s = reinterpret_cast<unix_stream_socket*>(
+                            lua_newuserdata(fiber, sizeof(unix_stream_socket)));
+                        rawgetp(fiber, LUA_REGISTRYINDEX,
+                                &unix_stream_socket_mt_key);
+                        setmetatable(fiber, -2);
+                        new (s) unix_stream_socket{std::move(peer)};
+                    }
+                };
 
-            vm_ctx->fiber_resume(
-                current_fiber,
-                hana::make_set(
-                    vm_context::options::auto_detect_interrupt,
-                    hana::make_pair(
-                        vm_context::options::arguments,
-                        hana::make_tuple(ec, peer_pusher))));
-        }
-    ));
+                vm_ctx->fiber_resume(
+                    current_fiber,
+                    hana::make_set(
+                        vm_context::options::auto_detect_interrupt,
+                        hana::make_pair(
+                            vm_context::options::arguments,
+                            hana::make_tuple(ec, peer_pusher))));
+            }
+        ))
+    );
 
     return lua_yield(L, 0);
 }
