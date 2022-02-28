@@ -455,6 +455,27 @@ public:
         // implementation for details.
         static constexpr
         struct auto_detect_interrupt_t {} auto_detect_interrupt{};
+
+        // Convert from `asio::error::operation_aborted` to `errc::interrupted`.
+        //
+        // If the implementation for your IO operation has the following
+        // workflow:
+        //
+        // 1. Set interrupter to cancel the underlying IO operation
+        //    (i.e. handler will be called with
+        //    `ec=asio::error::operation_aborted`).
+        // 2. Initiates the async operation.
+        //
+        // Then this option will take care of the usual boilerplate to awake the
+        // fiber with the proper reason (i.e. fiber interrupted). Check
+        // implementation for details.
+        //
+        // WARNING: You can only use this option when
+        // `asio::error::operation_aborted` undoubtedly signifies fiber
+        // interrupted (e.g. when the IO object outlives the Lua VM and there is
+        // no way for user-written Lua code to call io_object.cancel()).
+        static constexpr
+        struct fast_auto_detect_interrupt_t {} fast_auto_detect_interrupt{};
     };
 
     vm_context(app_context& appctx, strand_type strand);
@@ -748,6 +769,9 @@ void vm_context::fiber_resume(lua_State* new_current_fiber, HanaSet&& options)
     static constexpr auto is_auto_detect_interrupt = hana::compose(
         hana::equal.to(hana::type_c<options::auto_detect_interrupt_t>),
         hana::typeid_);
+    static constexpr auto is_fast_auto_detect_interrupt = hana::compose(
+        hana::equal.to(hana::type_c<options::fast_auto_detect_interrupt_t>),
+        hana::typeid_);
     static constexpr auto is_arguments = [](auto&& x) {
         return hana::if_(
             hana::is_a<hana::pair_tag>(x),
@@ -761,6 +785,9 @@ void vm_context::fiber_resume(lua_State* new_current_fiber, HanaSet&& options)
 
     static constexpr decltype(hana::any_of(options, is_auto_detect_interrupt))
         has_auto_detect_interrupt;
+    static constexpr decltype(
+        hana::any_of(options, is_fast_auto_detect_interrupt)
+    ) has_fast_auto_detect_interrupt;
 
     assert(strand_.running_in_this_thread());
     if (!valid_)
@@ -808,6 +835,12 @@ void vm_context::fiber_resume(lua_State* new_current_fiber, HanaSet&& options)
                             if (interrupted)
                                 std_ec = errc::interrupted;
                         }
+                    } else if (has_fast_auto_detect_interrupt) {
+                        // `fast_auto_detect_interrupt` means there is no other
+                        // way but fiber interruption to have
+                        // `ec=asio::error::operation_aborted`.
+                        if (ec == asio::error::operation_aborted)
+                            std_ec = errc::interrupted;
                     }
                     push(new_current_fiber, std_ec);
                 },

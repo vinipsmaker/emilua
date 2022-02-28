@@ -716,7 +716,7 @@ static int sys_stdin_read_some(lua_State* L)
                 vm_ctx->fiber_resume(
                     current_fiber,
                     hana::make_set(
-                        vm_context::options::auto_detect_interrupt,
+                        vm_context::options::fast_auto_detect_interrupt,
                         hana::make_pair(
                             vm_context::options::arguments,
                             hana::make_tuple(ec2, bytes_transferred)))
@@ -775,7 +775,7 @@ static int sys_stdout_write_some(lua_State* L)
                 vm_ctx->fiber_resume(
                     current_fiber,
                     hana::make_set(
-                        vm_context::options::auto_detect_interrupt,
+                        vm_context::options::fast_auto_detect_interrupt,
                         hana::make_pair(
                             vm_context::options::arguments,
                             hana::make_tuple(ec2, bytes_transferred)))
@@ -834,7 +834,7 @@ static int sys_stderr_write_some(lua_State* L)
                 vm_ctx->fiber_resume(
                     current_fiber,
                     hana::make_set(
-                        vm_context::options::auto_detect_interrupt,
+                        vm_context::options::fast_auto_detect_interrupt,
                         hana::make_pair(
                             vm_context::options::arguments,
                             hana::make_tuple(ec2, bytes_transferred)))
