@@ -623,9 +623,6 @@ static int sys_stdin_read_some(lua_State* L)
             auto vm_ctx = get_vm_context(L).shared_from_this();
 
             {
-                static constexpr auto opt_adi =
-                    vm_context::options::auto_detect_interrupt;
-
                 std::unique_lock<std::mutex> lk(service->queue_mtx);
                 auto it = service->queue.begin();
                 auto end = service->queue.end();
@@ -638,7 +635,6 @@ static int sys_stdin_read_some(lua_State* L)
                                 vm_ctx->fiber_resume(
                                     fiber,
                                     hana::make_set(
-                                        opt_adi,
                                         hana::make_pair(
                                             vm_context::options::arguments,
                                             hana::make_tuple(ec))));
