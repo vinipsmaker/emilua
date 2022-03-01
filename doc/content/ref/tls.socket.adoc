@@ -50,6 +50,10 @@ errs.
 
 Returns the number of bytes written.
 
+=== `set_sni_client_hostname(self, hostname: string)`
+
+Sets the server name indication.
+
 === `set_verify_callback(self, callback: string[, callback_options...])`
 
 Set the callback used to verify peer certificates.

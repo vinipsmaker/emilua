@@ -1154,6 +1154,34 @@ static int tls_socket_write_some(lua_State* L)
     return lua_yield(L, 0);
 }
 
+#ifndef BOOST_ASIO_USE_WOLFSSL
+static int tls_socket_set_sni_client_hostname(lua_State* L)
+{
+    luaL_checktype(L, 2, LUA_TSTRING);
+
+    auto s = reinterpret_cast<TlsSocket*>(lua_touserdata(L, 1));
+    if (!s || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &tls_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if(!SSL_set_tlsext_host_name(s->native_handle(), lua_tostring(L, 2))) {
+        boost::system::error_code ec{
+            static_cast<int>(ERR_get_error()), asio::error::get_ssl_category()
+        };
+        push(L, ec);
+        return lua_error(L);
+    }
+
+    return 0;
+}
+#endif // !defined(BOOST_ASIO_USE_WOLFSSL)
+
 static int tls_socket_set_verify_callback(lua_State* L)
 {
     lua_settop(L, 3);
@@ -1326,6 +1354,15 @@ static int tls_socket_mt_index(lua_State* L)
                     return 1;
                 }
             ),
+#ifndef BOOST_ASIO_USE_WOLFSSL
+            hana::make_pair(
+                BOOST_HANA_STRING("set_sni_client_hostname"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, tls_socket_set_sni_client_hostname);
+                    return 1;
+                }
+            ),
+#endif // !defined(BOOST_ASIO_USE_WOLFSSL)
             hana::make_pair(
                 BOOST_HANA_STRING("set_verify_callback"),
                 [](lua_State* L) -> int {
