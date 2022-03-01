@@ -4,6 +4,7 @@ local http = require 'http'
 local tls = require 'tls'
 
 tls_ctx = tls.context.new('tlsv13')
+tls_ctx:set_default_verify_paths()
 
 local function print_headers(headers)
     for k, v in pairs(headers) do
@@ -28,7 +29,10 @@ local endpoints = ip.tcp.get_address_info(host, 'https')
 
 print('Connecting...')
 stream.connect(sock, endpoints)
+sock:set_option('tcp_no_delay', true)
 sock = tls.socket.new(sock, tls_ctx)
+sock:set_verify_mode('peer');
+sock:set_verify_callback('host_name_verification', host);
 sock:client_handshake()
 sock = http.socket.new(sock)
 
