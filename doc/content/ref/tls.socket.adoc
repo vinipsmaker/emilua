@@ -49,3 +49,27 @@ Write data to the stream socket and blocks current fiber until it completes or
 errs.
 
 Returns the number of bytes written.
+
+=== `set_verify_callback(self, callback: string[, callback_options...])`
+
+Set the callback used to verify peer certificates.
+
+For now only one callback is supported:
+
+`"host_name_verification"`:: `callback_options` will be a single string
+containing the host name.
+
+=== `set_verify_depth(self, depth: number)`
+
+Set the peer verification depth.
+
+=== `set_verify_mode(self, mode: string)`
+
+Set the peer verification mode.
+
+`mode` might be one of the following:
+
+* `"none"`.
+* `"peer"`.
+* `"fail_if_no_peer_cert"`.
+* `"client_once"`.

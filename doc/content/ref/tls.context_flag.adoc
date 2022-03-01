@@ -1,0 +1,95 @@
++++
+title = "tls.context_flag"
++++
+
+This module contains SSL options flag constants.
+
+== `default_workarounds`
+
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ssl__context_base/default_workarounds.html[The
+flag with same name in Boost.Asio]:
+
+[quote]
+____
+Implement various bug workarounds.
+____
+
+== `no_compression`
+
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ssl__context_base/no_compression.html[The
+flag with same name in Boost.Asio]:
+
+[quote]
+____
+Disable compression. Compression is disabled by default.
+____
+
+== `no_sslv2`
+
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ssl__context_base/no_sslv2.html[The
+flag with same name in Boost.Asio]:
+
+[quote]
+____
+Disable SSL v2.
+____
+
+== `no_sslv3`
+
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ssl__context_base/no_sslv3.html[The
+flag with same name in Boost.Asio]:
+
+[quote]
+____
+Disable SSL v3.
+____
+
+== `no_tlsv1`
+
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ssl__context_base/no_tlsv1.html[The
+flag with same name in Boost.Asio]:
+
+[quote]
+____
+Disable TLS v1.
+____
+
+== `no_tlsv1_1`
+
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ssl__context_base/no_tlsv1_1.html[The
+flag with same name in Boost.Asio]:
+
+[quote]
+____
+Disable TLS v1.1.
+____
+
+== `no_tlsv1_2`
+
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ssl__context_base/no_tlsv1_2.html[The
+flag with same name in Boost.Asio]:
+
+[quote]
+____
+Disable TLS v1.2.
+____
+
+== `no_tlsv1_3`
+
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ssl__context_base/no_tlsv1_3.html[The
+flag with same name in Boost.Asio]:
+
+[quote]
+____
+Disable TLS v1.3.
+____
+
+== `single_dh_use`
+
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ssl__context_base/single_dh_use.html[The
+flag with same name in Boost.Asio]:
+
+[quote]
+____
+Always create a new key when using tmp_dh parameters.
+____
