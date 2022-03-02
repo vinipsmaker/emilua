@@ -918,6 +918,12 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     if (!entry_point.is_absolute())
         entry_point = std::filesystem::absolute(std::move(entry_point));
 
+    // Given we do `foo.parent_path() / (module_id + .lua)` to find the module
+    // file the path separator might change the target string and hinder our
+    // ECYCLE detection. Normalizing the path before it even enters the module
+    // stack fixes the issue.
+    entry_point.make_preferred();
+
 #if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 1 || \
     EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 0
     strand_type strand{ioctx.get_executor()};
