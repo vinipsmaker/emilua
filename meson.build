@@ -21,7 +21,7 @@ boost = dependency(
     version : '>=1.77',
     static : true
 )
-fmt = dependency('fmt', version : '>=6.2.1')
+fmt = dependency('fmt', version : '>=8.0')
 libdl = meson.get_compiler('cpp').find_library('dl', required : false)
 find_program('xxd')
 
