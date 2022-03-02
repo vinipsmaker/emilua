@@ -247,6 +247,17 @@ if get_option('thread_support_level') == 0
     pc_extra_cflags += '-DBOOST_ASIO_DISABLE_THREADS'
 endif
 
+if get_option('enable_io_uring')
+    pc_extra_cflags += [
+        '-DBOOST_ASIO_HAS_IO_URING',
+        '-DBOOST_ASIO_DISABLE_EPOLL',
+    ]
+endif
+
+if get_option('use_wolfssl')
+    pc_extra_cflags += '-DBOOST_ASIO_USE_WOLFSSL'
+endif
+
 import('pkgconfig').generate(
     filebase : 'emilua',
     name : 'Emilua Plugin API',
@@ -254,11 +265,16 @@ import('pkgconfig').generate(
     requires : [
         luajit.name(),
         fmt.name(),
-    ],
+        ssl.name(),
+    ] +
+    (get_option('enable_io_uring') ? [liburing.name()] : []),
     variables : [
         'pluginsdir=${libdir}' / 'emilua-' +
         meson.project_version().split('.')[0] + '.' +
         meson.project_version().split('.')[1],
+        'thread_support_level=' +
+        get_option('thread_support_level').to_string(),
+        'file_io_enabled=' + get_option('enable_file_io').to_string(),
     ],
     extra_cflags : pc_extra_cflags,
 )
