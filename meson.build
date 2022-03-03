@@ -34,6 +34,10 @@ add_project_arguments(
 )
 
 if meson.get_compiler('cpp').get_id() == 'msvc'
+    if host_machine.cpu_family() != 'x86_64'
+        error('Full LuaJIT C++ exception interoperability is required')
+    endif
+
     # LuaJIT requires this flag to have full C++ exception interoperability
     add_project_arguments('/EHa', language : 'cpp')
 
