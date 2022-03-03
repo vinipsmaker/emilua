@@ -34,6 +34,7 @@
 #include <fmt/format.h>
 
 #include <condition_variable>
+#include <unordered_map>
 #include <system_error>
 #include <string_view>
 #include <filesystem>

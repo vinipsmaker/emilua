@@ -1,9 +1,11 @@
 #include <condition_variable>
+#include <unordered_map>
 #include <system_error>
 #include <string_view>
 #include <filesystem>
 #include <iostream>
 #include <optional>
+#include <cstdlib>
 #include <fstream>
 #include <variant>
 #include <cstdio>

@@ -7,6 +7,7 @@
 #include <emilua/byte_span.hpp>
 
 #include <csignal>
+#include <cstdlib>
 
 #include <boost/preprocessor/control/iif.hpp>
 #include <boost/process/environment.hpp>
