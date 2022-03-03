@@ -34,6 +34,9 @@ add_project_arguments(
 )
 
 if meson.get_compiler('cpp').get_id() == 'msvc'
+    # LuaJIT requires this flag to have full C++ exception interoperability
+    add_project_arguments('/EHa', language : 'cpp')
+
     add_project_arguments('/bigobj', language : 'cpp')
 endif
 
