@@ -60,6 +60,7 @@ END {
 
 function sanitize_record(    i, pattern, captures, input, output)
 {
+    # Normalize errno strings
     if (PROCINFO["platform"] == "mingw") {
         sub(/invalid argument/, "Invalid argument")
         sub(/operation not permitted/, "Operation not permitted")
