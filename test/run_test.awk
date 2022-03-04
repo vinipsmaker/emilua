@@ -6,6 +6,8 @@ BEGIN {
     }
     if (PROCINFO["platform"] == "mingw") {
         gsub(/\\/, "/", printed_path)
+    } else if (PROCINFO["platform"] == "posix") {
+        "uname -s" | getline uname_output
     }
 }
 {
@@ -67,6 +69,9 @@ function sanitize_record(    i, pattern, captures, input, output)
         sub(/'result out of range/, "'Numerical result out of range")
 
         gsub(/\\/, "/")
+    } else if (uname_output == "Darwin") {
+        sub(/Resource busy/, "Device or resource busy")
+        sub(/Result too large/, "Numerical result out of range")
     }
 
     # Normalize runtime paths
