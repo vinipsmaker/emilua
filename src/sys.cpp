@@ -14,6 +14,7 @@
 #include <boost/predef/os/windows.h>
 #include <boost/asio/signal_set.hpp>
 #include <boost/vmd/is_number.hpp>
+#include <boost/predef/os/macos.h>
 #include <boost/vmd/empty.hpp>
 
 #include <emilua/dispatch_table.hpp>
@@ -915,7 +916,11 @@ static int sys_exit(lua_State* L)
                     push(L, std::errc::not_supported);
                     return lua_error(L);
                 case 2:
+#if BOOST_OS_MACOS
+                    std::_Exit(exit_code);
+#else // BOOST_OS_MACOS
                     std::quick_exit(exit_code);
+#endif // BOOST_OS_MACOS
                 default:
                     push(L, std::errc::invalid_argument, "arg", "force");
                     return lua_error(L);
