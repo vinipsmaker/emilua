@@ -415,7 +415,7 @@ static int serial_port_mt_newindex(lua_State* L)
                                 }
                             ),
                             hana::make_pair(
-                                BOOST_HANA_STRING("onepointfive"),
+                                BOOST_HANA_STRING("one_point_five"),
                                 [&]() -> int {
                                     asio::serial_port_base::stop_bits o{
                                         onepointfive};
@@ -593,7 +593,7 @@ static int serial_port_mt_index(lua_State* L)
                         lua_pushliteral(L, "one");
                         break;
                     case asio::serial_port_base::stop_bits::onepointfive:
-                        lua_pushliteral(L, "onepointfive");
+                        lua_pushliteral(L, "one_point_five");
                         break;
                     case asio::serial_port_base::stop_bits::two:
                         lua_pushliteral(L, "two");

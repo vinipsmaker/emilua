@@ -106,7 +106,7 @@ Read or write current stop bit width setting.
 It can be one of:
 
 * `"one"`.
-* `"onepointfive"`.
+* `"one_point_five"`.
 * `"two"`.
 
 === `character_size: number`
