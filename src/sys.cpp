@@ -4,6 +4,7 @@
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
 #include <emilua/sys.hpp>
+#include <emilua/async_base.hpp>
 #include <emilua/byte_span.hpp>
 
 #include <csignal>
@@ -32,15 +33,6 @@
 #endif // BOOST_OS_WINDOWS
 
 namespace emilua {
-
-#if !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
-// from bytecode/ip.lua
-extern unsigned char data_op_bytecode[];
-extern std::size_t data_op_bytecode_size;
-#endif // !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
-
-extern unsigned char signal_set_wait_bytecode[];
-extern std::size_t signal_set_wait_bytecode_size;
 
 char sys_key;
 
@@ -1078,9 +1070,8 @@ void init_sys(lua_State* L)
         lua_createtable(L, /*narr=*/0, /*nrec=*/1);
 
         lua_pushliteral(L, "read_some");
-        int res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                                  data_op_bytecode_size, nullptr);
-        assert(res == 0); boost::ignore_unused(res);
+        rawgetp(L, LUA_REGISTRYINDEX,
+                &var_args__retval1_to_error__fwd_retval2__key);
         rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
         lua_pushcfunction(L, sys_stdin_read_some);
         lua_call(L, 2, 1);
@@ -1097,9 +1088,8 @@ void init_sys(lua_State* L)
 #if BOOST_OS_WINDOWS
         lua_pushcfunction(L, sys_stdout_write_some);
 #else // BOOST_OS_WINDOWS
-        int res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                                  data_op_bytecode_size, nullptr);
-        assert(res == 0); boost::ignore_unused(res);
+        rawgetp(L, LUA_REGISTRYINDEX,
+                &var_args__retval1_to_error__fwd_retval2__key);
         rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
         lua_pushcfunction(L, sys_stdout_write_some);
         lua_call(L, 2, 1);
@@ -1116,9 +1106,8 @@ void init_sys(lua_State* L)
 #if BOOST_OS_WINDOWS
         lua_pushcfunction(L, sys_stderr_write_some);
 #else // BOOST_OS_WINDOWS
-        int res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                                  data_op_bytecode_size, nullptr);
-        assert(res == 0); boost::ignore_unused(res);
+        rawgetp(L, LUA_REGISTRYINDEX,
+                &var_args__retval1_to_error__fwd_retval2__key);
         rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
         lua_pushcfunction(L, sys_stderr_write_some);
         lua_call(L, 2, 1);
@@ -1146,10 +1135,8 @@ void init_sys(lua_State* L)
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &sys_signal_set_wait_key);
-    int res = luaL_loadbuffer(L,
-                              reinterpret_cast<char*>(signal_set_wait_bytecode),
-                              signal_set_wait_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, sys_signal_set_wait);
     lua_call(L, 2, 1);

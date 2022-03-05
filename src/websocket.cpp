@@ -6,6 +6,7 @@
 #include <boost/beast/websocket.hpp>
 
 #include <emilua/dispatch_table.hpp>
+#include <emilua/async_base.hpp>
 #include <emilua/byte_span.hpp>
 #include <emilua/websocket.hpp>
 #include <emilua/http.hpp>
@@ -13,9 +14,6 @@
 #include <emilua/ip.hpp>
 
 namespace emilua {
-
-extern unsigned char websocket_op_bytecode[];
-extern std::size_t websocket_op_bytecode_size;
 
 char websocket_key;
 
@@ -775,9 +773,8 @@ static void register_socket(lua_State* L)
 
 void init_websocket(lua_State* L)
 {
-    int res = luaL_loadbuffer(L, reinterpret_cast<char*>(websocket_op_bytecode),
-                              websocket_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval23__key);
 
     lua_pushlightuserdata(L, &websocket_key);
     {

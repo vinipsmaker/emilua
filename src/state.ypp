@@ -11,6 +11,7 @@
 #include <emilua/dispatch_table.hpp>
 #include <emilua/scope_cleanup.hpp>
 #include <emilua/serial_port.hpp>
+#include <emilua/async_base.hpp>
 #include <emilua/byte_span.hpp>
 #include <emilua/lua_shim.hpp>
 #include <emilua/stream.hpp>
@@ -1199,6 +1200,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     init_mutex_module(L);
     init_cond_module(L);
     init_actor_module(L);
+    init_async_base(L);
     // }}}
 
     // extra modules {{{

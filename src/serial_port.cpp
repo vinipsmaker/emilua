@@ -7,13 +7,10 @@
 
 #include <emilua/dispatch_table.hpp>
 #include <emilua/serial_port.hpp>
+#include <emilua/async_base.hpp>
 #include <emilua/byte_span.hpp>
 
 namespace emilua {
-
-// from bytecode/ip.lua
-extern unsigned char data_op_bytecode[];
-extern std::size_t data_op_bytecode_size;
 
 char serial_port_key;
 char serial_port_mt_key;
@@ -723,18 +720,16 @@ void init_serial_port(lua_State* L)
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &serial_port_read_some_key);
-    int res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                              data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, serial_port_read_some);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &serial_port_write_some_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                          data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, serial_port_write_some);
     lua_call(L, 2, 1);

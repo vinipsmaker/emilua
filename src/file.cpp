@@ -7,14 +7,11 @@
 #include <boost/asio/stream_file.hpp>
 
 #include <emilua/dispatch_table.hpp>
+#include <emilua/async_base.hpp>
 #include <emilua/byte_span.hpp>
 #include <emilua/unix.hpp>
 
 namespace emilua {
-
-// from bytecode/ip.lua
-extern unsigned char data_op_bytecode[];
-extern std::size_t data_op_bytecode_size;
 
 char file_key;
 char file_stream_mt_key;
@@ -774,36 +771,32 @@ void init_file(lua_State* L)
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &stream_read_some_key);
-    int res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                              data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, stream_read_some);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &stream_write_some_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                          data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, stream_write_some);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &random_access_read_some_at_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                          data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, random_access_read_some_at);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &random_access_write_some_at_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                          data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, random_access_write_some_at);
     lua_call(L, 2, 1);

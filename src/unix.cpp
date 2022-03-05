@@ -6,18 +6,11 @@
 #include <boost/asio/local/connect_pair.hpp>
 
 #include <emilua/dispatch_table.hpp>
+#include <emilua/async_base.hpp>
 #include <emilua/byte_span.hpp>
 #include <emilua/unix.hpp>
 
 namespace emilua {
-
-// from bytecode/ip.lua
-extern unsigned char connect_bytecode[];
-extern std::size_t connect_bytecode_size;
-extern unsigned char data_op_bytecode[];
-extern std::size_t data_op_bytecode_size;
-extern unsigned char accept_bytecode[];
-extern std::size_t accept_bytecode_size;
 
 char unix_key;
 char unix_datagram_socket_mt_key;
@@ -1957,63 +1950,55 @@ void init_unix(lua_State* L)
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &unix_datagram_socket_receive_key);
-    int res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                              data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval23__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, unix_datagram_socket_receive);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &unix_datagram_socket_send_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                          data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, unix_datagram_socket_send);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &unix_datagram_socket_send_to_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                          data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, unix_datagram_socket_send_to);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &unix_stream_socket_connect_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(connect_bytecode),
-                          connect_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX, &var_args__retval1_to_error__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, unix_stream_socket_connect);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &unix_stream_socket_read_some_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                          data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, unix_stream_socket_read_some);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &unix_stream_socket_write_some_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                          data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, unix_stream_socket_write_some);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &unix_stream_acceptor_accept_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(accept_bytecode),
-                          accept_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, unix_stream_acceptor_accept);
     lua_call(L, 2, 1);

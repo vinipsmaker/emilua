@@ -158,6 +158,7 @@ incdir = [
 src = [
     'src/scope_cleanup.cpp',
     'src/serial_port.cpp',
+    'src/async_base.cpp',
     'src/byte_span.cpp',
     'src/lua_shim.cpp',
     'src/stream.cpp',
@@ -173,18 +174,15 @@ src = [
 ]
 
 bytecode_src = [
+    'bytecode/async_base.lua',
     'bytecode/lua_shim.lua',
     'bytecode/stream.lua',
     'bytecode/actor.lua',
     'bytecode/fiber.lua',
     'bytecode/scope.lua',
     'bytecode/state.lua',
-    'bytecode/timer.lua',
     'bytecode/cond.lua',
     'bytecode/json.lua',
-    'bytecode/sys.lua',
-    'bytecode/tls.lua',
-    'bytecode/ip.lua',
 ]
 
 re2c_src = [
@@ -206,11 +204,10 @@ if get_option('enable_http')
             ' Please report any bugs you find.')
 
     incdir += '3rd/boost.http/include'
-    src += 'src/http.cpp'
-    bytecode_src += 'bytecode/http.lua'
-
-    src += 'src/websocket.cpp'
-    bytecode_src += 'bytecode/websocket.lua'
+    src += [
+        'src/websocket.cpp',
+        'src/http.cpp',
+    ]
 endif
 
 if get_option('enable_file_io')

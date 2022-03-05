@@ -12,6 +12,7 @@
 #include <boost/http/algorithm/query.hpp>
 
 #include <emilua/dispatch_table.hpp>
+#include <emilua/async_base.hpp>
 #include <emilua/http.hpp>
 #include <emilua/tls.hpp>
 #include <emilua/ip.hpp>
@@ -27,9 +28,6 @@ enum class headers_origin
     response_headers,
     response_trailers,
 };
-
-extern unsigned char http_op_bytecode[];
-extern std::size_t http_op_bytecode_size;
 
 char http_key;
 char http_request_mt_key;
@@ -2040,9 +2038,7 @@ void init_http(lua_State* L)
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
-    int res = luaL_loadbuffer(L, reinterpret_cast<char*>(http_op_bytecode),
-                              http_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX, &var_args__retval1_to_error__key);
 
     static constexpr auto register_socket = [](lua_State* L, auto type) {
         using T = typename decltype(type)::type;

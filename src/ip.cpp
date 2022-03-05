@@ -12,6 +12,7 @@
 #include <boost/asio/ip/tcp.hpp>
 
 #include <emilua/dispatch_table.hpp>
+#include <emilua/async_base.hpp>
 #include <emilua/byte_span.hpp>
 #include <emilua/ip.hpp>
 
@@ -22,15 +23,6 @@
 #endif // BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
 
 namespace emilua {
-
-extern unsigned char connect_bytecode[];
-extern std::size_t connect_bytecode_size;
-extern unsigned char data_op_bytecode[];
-extern std::size_t data_op_bytecode_size;
-extern unsigned char accept_bytecode[];
-extern std::size_t accept_bytecode_size;
-extern unsigned char resolve_bytecode[];
-extern std::size_t resolve_bytecode_size;
 
 char ip_key;
 char ip_address_mt_key;
@@ -4794,10 +4786,8 @@ void init_ip(lua_State* L)
 
             lua_pushliteral(L, "get_address_info");
             {
-                int res = luaL_loadbuffer(
-                    L, reinterpret_cast<char*>(resolve_bytecode),
-                    resolve_bytecode_size, nullptr);
-                assert(res == 0); boost::ignore_unused(res);
+                rawgetp(L, LUA_REGISTRYINDEX,
+                        &var_args__retval1_to_error__fwd_retval2__key);
                 rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
                 lua_pushcfunction(L, tcp_get_address_info);
                 lua_call(L, 2, 1);
@@ -4806,10 +4796,8 @@ void init_ip(lua_State* L)
 
             lua_pushliteral(L, "get_address_v4_info");
             {
-                int res = luaL_loadbuffer(
-                    L, reinterpret_cast<char*>(resolve_bytecode),
-                    resolve_bytecode_size, nullptr);
-                assert(res == 0); boost::ignore_unused(res);
+                rawgetp(L, LUA_REGISTRYINDEX,
+                        &var_args__retval1_to_error__fwd_retval2__key);
                 rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
                 lua_pushcfunction(L, tcp_get_address_v4_info);
                 lua_call(L, 2, 1);
@@ -4818,10 +4806,8 @@ void init_ip(lua_State* L)
 
             lua_pushliteral(L, "get_address_v6_info");
             {
-                int res = luaL_loadbuffer(
-                    L, reinterpret_cast<char*>(resolve_bytecode),
-                    resolve_bytecode_size, nullptr);
-                assert(res == 0); boost::ignore_unused(res);
+                rawgetp(L, LUA_REGISTRYINDEX,
+                        &var_args__retval1_to_error__fwd_retval2__key);
                 rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
                 lua_pushcfunction(L, tcp_get_address_v6_info);
                 lua_call(L, 2, 1);
@@ -4830,10 +4816,8 @@ void init_ip(lua_State* L)
 
             lua_pushliteral(L, "get_name_info");
             {
-                int res = luaL_loadbuffer(
-                    L, reinterpret_cast<char*>(resolve_bytecode),
-                    resolve_bytecode_size, nullptr);
-                assert(res == 0); boost::ignore_unused(res);
+                rawgetp(L, LUA_REGISTRYINDEX,
+                        &var_args__retval1_to_error__fwd_retval2__key);
                 rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
                 lua_pushcfunction(L, tcp_get_name_info);
                 lua_call(L, 2, 1);
@@ -4858,10 +4842,8 @@ void init_ip(lua_State* L)
 
             lua_pushliteral(L, "get_address_info");
             {
-                int res = luaL_loadbuffer(
-                    L, reinterpret_cast<char*>(resolve_bytecode),
-                    resolve_bytecode_size, nullptr);
-                assert(res == 0); boost::ignore_unused(res);
+                rawgetp(L, LUA_REGISTRYINDEX,
+                        &var_args__retval1_to_error__fwd_retval2__key);
                 rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
                 lua_pushcfunction(L, udp_get_address_info);
                 lua_call(L, 2, 1);
@@ -4870,10 +4852,8 @@ void init_ip(lua_State* L)
 
             lua_pushliteral(L, "get_address_v4_info");
             {
-                int res = luaL_loadbuffer(
-                    L, reinterpret_cast<char*>(resolve_bytecode),
-                    resolve_bytecode_size, nullptr);
-                assert(res == 0); boost::ignore_unused(res);
+                rawgetp(L, LUA_REGISTRYINDEX,
+                        &var_args__retval1_to_error__fwd_retval2__key);
                 rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
                 lua_pushcfunction(L, udp_get_address_v4_info);
                 lua_call(L, 2, 1);
@@ -4882,10 +4862,8 @@ void init_ip(lua_State* L)
 
             lua_pushliteral(L, "get_address_v6_info");
             {
-                int res = luaL_loadbuffer(
-                    L, reinterpret_cast<char*>(resolve_bytecode),
-                    resolve_bytecode_size, nullptr);
-                assert(res == 0); boost::ignore_unused(res);
+                rawgetp(L, LUA_REGISTRYINDEX,
+                        &var_args__retval1_to_error__fwd_retval2__key);
                 rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
                 lua_pushcfunction(L, udp_get_address_v6_info);
                 lua_call(L, 2, 1);
@@ -4894,10 +4872,8 @@ void init_ip(lua_State* L)
 
             lua_pushliteral(L, "get_name_info");
             {
-                int res = luaL_loadbuffer(
-                    L, reinterpret_cast<char*>(resolve_bytecode),
-                    resolve_bytecode_size, nullptr);
-                assert(res == 0); boost::ignore_unused(res);
+                rawgetp(L, LUA_REGISTRYINDEX,
+                        &var_args__retval1_to_error__fwd_retval2__key);
                 rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
                 lua_pushcfunction(L, udp_get_name_info);
                 lua_call(L, 2, 1);
@@ -4999,45 +4975,39 @@ void init_ip(lua_State* L)
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &tcp_socket_connect_key);
-    int res = luaL_loadbuffer(L, reinterpret_cast<char*>(connect_bytecode),
-                              connect_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX, &var_args__retval1_to_error__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, tcp_socket_connect);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &tcp_socket_read_some_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                          data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, tcp_socket_read_some);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &tcp_socket_write_some_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                          data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, tcp_socket_write_some);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &tcp_socket_receive_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                          data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, tcp_socket_receive);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &tcp_socket_send_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                          data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, tcp_socket_send);
     lua_call(L, 2, 1);
@@ -5045,9 +5015,8 @@ void init_ip(lua_State* L)
 
 #if BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
     lua_pushlightuserdata(L, &tcp_socket_send_file_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                          data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, tcp_socket_send_file);
     lua_call(L, 2, 1);
@@ -5055,45 +5024,39 @@ void init_ip(lua_State* L)
 #endif // BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
 
     lua_pushlightuserdata(L, &tcp_socket_wait_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                          data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX, &var_args__retval1_to_error__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, tcp_socket_wait);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &tcp_acceptor_accept_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(accept_bytecode),
-                          accept_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, tcp_acceptor_accept);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &udp_socket_receive_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                          data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval234__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, udp_socket_receive);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &udp_socket_send_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                          data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, udp_socket_send);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &udp_socket_send_to_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                          data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, udp_socket_send_to);
     lua_call(L, 2, 1);

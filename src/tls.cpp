@@ -8,18 +8,12 @@
 #include <boost/asio/ssl.hpp>
 
 #include <emilua/dispatch_table.hpp>
+#include <emilua/async_base.hpp>
 #include <emilua/byte_span.hpp>
 #include <emilua/tls.hpp>
 #include <emilua/ip.hpp>
 
 namespace emilua {
-
-extern unsigned char handshake_bytecode[];
-extern std::size_t handshake_bytecode_size;
-
-// from bytecode/ip.lua
-extern unsigned char data_op_bytecode[];
-extern std::size_t data_op_bytecode_size;
 
 char tls_key;
 char tls_context_mt_key;
@@ -1500,9 +1494,7 @@ void init_tls(lua_State* L)
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
-    int res = luaL_loadbuffer(L, reinterpret_cast<char*>(handshake_bytecode),
-                              handshake_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX, &var_args__retval1_to_error__key);
 
     lua_pushlightuserdata(L, &socket_client_handshake_key);
     lua_pushvalue(L, -2);
@@ -1519,18 +1511,16 @@ void init_tls(lua_State* L)
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &tls_socket_read_some_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                          data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, tls_socket_read_some);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &tls_socket_write_some_key);
-    res = luaL_loadbuffer(L, reinterpret_cast<char*>(data_op_bytecode),
-                          data_op_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, tls_socket_write_some);
     lua_call(L, 2, 1);

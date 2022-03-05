@@ -11,12 +11,10 @@
 #include <boost/asio/steady_timer.hpp>
 
 #include <emilua/dispatch_table.hpp>
+#include <emilua/async_base.hpp>
 #include <emilua/timer.hpp>
 
 namespace emilua {
-
-extern unsigned char sleep_for_bytecode[];
-extern std::size_t sleep_for_bytecode_size;
 
 char sleep_for_key;
 char timer_key;
@@ -228,9 +226,8 @@ static int timer_new(lua_State* L)
 void init_timer(lua_State* L)
 {
     lua_pushlightuserdata(L, &timer_wait_key);
-    int res = luaL_loadbuffer(L, reinterpret_cast<char*>(sleep_for_bytecode),
-                              sleep_for_bytecode_size, nullptr);
-    assert(res == 0); boost::ignore_unused(res);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
     lua_pushvalue(L, -1);
     lua_insert(L, -3);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
