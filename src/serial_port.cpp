@@ -242,22 +242,16 @@ static int serial_port_write_some(lua_State* L)
     return lua_yield(L, 0);
 }
 
-static int serial_port_set_option(lua_State* L)
+inline int serial_port_is_open(lua_State* L)
 {
-    lua_settop(L, 3);
-    luaL_checktype(L, 2, LUA_TSTRING);
-
     auto port = reinterpret_cast<asio::serial_port*>(lua_touserdata(L, 1));
-    if (!port || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument, "arg", 1);
-        return lua_error(L);
-    }
-    rawgetp(L, LUA_REGISTRYINDEX, &serial_port_mt_key);
-    if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument, "arg", 1);
-        return lua_error(L);
-    }
+    lua_pushboolean(L, port->is_open());
+    return 1;
+}
 
+static int serial_port_mt_newindex(lua_State* L)
+{
+    auto port = reinterpret_cast<asio::serial_port*>(lua_touserdata(L, 1));
     boost::system::error_code ec;
     return dispatch_table::dispatch(
         hana::make_tuple(
@@ -472,142 +466,17 @@ static int serial_port_set_option(lua_State* L)
             )
         ),
         [L](std::string_view /*key*/) -> int {
-            push(L, std::errc::not_supported);
+            push(L, errc::bad_index, "index", 2);
             return lua_error(L);
         },
         tostringview(L, 2)
     );
-    return 0;
-}
-
-static int serial_port_get_option(lua_State* L)
-{
-    luaL_checktype(L, 2, LUA_TSTRING);
-
-    auto port = reinterpret_cast<asio::serial_port*>(lua_touserdata(L, 1));
-    if (!port || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument, "arg", 1);
-        return lua_error(L);
-    }
-    rawgetp(L, LUA_REGISTRYINDEX, &serial_port_mt_key);
-    if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument, "arg", 1);
-        return lua_error(L);
-    }
-
-    boost::system::error_code ec;
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("baud_rate"),
-                [&]() -> int {
-                    asio::serial_port_base::baud_rate o;
-                    port->get_option(o, ec);
-                    if (ec) {
-                        push(L, static_cast<std::error_code>(ec));
-                        return lua_error(L);
-                    }
-                    lua_pushinteger(L, o.value());
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("flow_control"),
-                [&]() -> int {
-                    asio::serial_port_base::flow_control o;
-                    port->get_option(o, ec);
-                    if (ec) {
-                        push(L, static_cast<std::error_code>(ec));
-                        return lua_error(L);
-                    }
-                    switch (o.value()) {
-                    case asio::serial_port_base::flow_control::none:
-                        lua_pushliteral(L, "none");
-                        break;
-                    case asio::serial_port_base::flow_control::software:
-                        lua_pushliteral(L, "software");
-                        break;
-                    case asio::serial_port_base::flow_control::hardware:
-                        lua_pushliteral(L, "hardware");
-                    }
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("parity"),
-                [&]() -> int {
-                    asio::serial_port_base::parity o;
-                    port->get_option(o, ec);
-                    if (ec) {
-                        push(L, static_cast<std::error_code>(ec));
-                        return lua_error(L);
-                    }
-                    switch (o.value()) {
-                    case asio::serial_port_base::parity::none:
-                        lua_pushliteral(L, "none");
-                        break;
-                    case asio::serial_port_base::parity::odd:
-                        lua_pushliteral(L, "odd");
-                        break;
-                    case asio::serial_port_base::parity::even:
-                        lua_pushliteral(L, "even");
-                    }
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("stop_bits"),
-                [&]() -> int {
-                    asio::serial_port_base::stop_bits o;
-                    port->get_option(o, ec);
-                    if (ec) {
-                        push(L, static_cast<std::error_code>(ec));
-                        return lua_error(L);
-                    }
-                    switch (o.value()) {
-                    case asio::serial_port_base::stop_bits::one:
-                        lua_pushliteral(L, "one");
-                        break;
-                    case asio::serial_port_base::stop_bits::onepointfive:
-                        lua_pushliteral(L, "onepointfive");
-                        break;
-                    case asio::serial_port_base::stop_bits::two:
-                        lua_pushliteral(L, "two");
-                    }
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("character_size"),
-                [&]() -> int {
-                    asio::serial_port_base::character_size o;
-                    port->get_option(o, ec);
-                    if (ec) {
-                        push(L, static_cast<std::error_code>(ec));
-                        return lua_error(L);
-                    }
-                    lua_pushinteger(L, o.value());
-                    return 1;
-                }
-            )
-        ),
-        [L](std::string_view /*key*/) -> int {
-            push(L, std::errc::not_supported);
-            return lua_error(L);
-        },
-        tostringview(L, 2)
-    );
-}
-
-inline int serial_port_is_open(lua_State* L)
-{
-    auto port = reinterpret_cast<asio::serial_port*>(lua_touserdata(L, 1));
-    lua_pushboolean(L, port->is_open());
-    return 1;
 }
 
 static int serial_port_mt_index(lua_State* L)
 {
+    auto port = reinterpret_cast<asio::serial_port*>(lua_touserdata(L, 1));
+    boost::system::error_code ec;
     return dispatch_table::dispatch(
         hana::make_tuple(
             hana::make_pair(
@@ -652,21 +521,99 @@ static int serial_port_mt_index(lua_State* L)
                     return 1;
                 }
             ),
+            hana::make_pair(BOOST_HANA_STRING("is_open"), serial_port_is_open),
             hana::make_pair(
-                BOOST_HANA_STRING("set_option"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, serial_port_set_option);
+                BOOST_HANA_STRING("baud_rate"),
+                [&](lua_State* L) -> int {
+                    asio::serial_port_base::baud_rate o;
+                    port->get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushinteger(L, o.value());
                     return 1;
                 }
             ),
             hana::make_pair(
-                BOOST_HANA_STRING("get_option"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, serial_port_get_option);
+                BOOST_HANA_STRING("flow_control"),
+                [&](lua_State* L) -> int {
+                    asio::serial_port_base::flow_control o;
+                    port->get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    switch (o.value()) {
+                    case asio::serial_port_base::flow_control::none:
+                        lua_pushliteral(L, "none");
+                        break;
+                    case asio::serial_port_base::flow_control::software:
+                        lua_pushliteral(L, "software");
+                        break;
+                    case asio::serial_port_base::flow_control::hardware:
+                        lua_pushliteral(L, "hardware");
+                    }
                     return 1;
                 }
             ),
-            hana::make_pair(BOOST_HANA_STRING("is_open"), serial_port_is_open)
+            hana::make_pair(
+                BOOST_HANA_STRING("parity"),
+                [&](lua_State* L) -> int {
+                    asio::serial_port_base::parity o;
+                    port->get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    switch (o.value()) {
+                    case asio::serial_port_base::parity::none:
+                        lua_pushliteral(L, "none");
+                        break;
+                    case asio::serial_port_base::parity::odd:
+                        lua_pushliteral(L, "odd");
+                        break;
+                    case asio::serial_port_base::parity::even:
+                        lua_pushliteral(L, "even");
+                    }
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("stop_bits"),
+                [&](lua_State* L) -> int {
+                    asio::serial_port_base::stop_bits o;
+                    port->get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    switch (o.value()) {
+                    case asio::serial_port_base::stop_bits::one:
+                        lua_pushliteral(L, "one");
+                        break;
+                    case asio::serial_port_base::stop_bits::onepointfive:
+                        lua_pushliteral(L, "onepointfive");
+                        break;
+                    case asio::serial_port_base::stop_bits::two:
+                        lua_pushliteral(L, "two");
+                    }
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("character_size"),
+                [&](lua_State* L) -> int {
+                    asio::serial_port_base::character_size o;
+                    port->get_option(o, ec);
+                    if (ec) {
+                        push(L, static_cast<std::error_code>(ec));
+                        return lua_error(L);
+                    }
+                    lua_pushinteger(L, o.value());
+                    return 1;
+                }
+            )
         ),
         [](std::string_view /*key*/, lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
@@ -703,10 +650,14 @@ void init_serial_port(lua_State* L)
 
     lua_pushlightuserdata(L, &serial_port_mt_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/3);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/4);
 
         lua_pushliteral(L, "__metatable");
         lua_pushliteral(L, "serial_port");
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__newindex");
+        lua_pushcfunction(L, serial_port_mt_newindex);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__index");

@@ -69,60 +69,46 @@ Write data to the port and blocks current fiber until it completes or errs.
 
 Returns the number of bytes written.
 
-=== `set_option(self, opt: string, val)`
-
-Set an option on the port.
-
-Currently available options are:
-
-`"baud_rate"`::
-https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/serial_port_base__baud_rate.html[Check
-Boost.Asio documentation].
-
-`"flow_control"`::
-https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/serial_port_base__flow_control.html[Check
-Boost.Asio documentation].
-
-`"parity"`::
-https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/serial_port_base__parity.html[Check
-Boost.Asio documentation].
-
-`"stop_bits"`::
-https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/serial_port_base__stop_bits.html[Check
-Boost.Asio documentation].
-
-`"character_size"`::
-https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/serial_port_base__character_size.html[Check
-Boost.Asio documentation].
-
-=== `get_option(self, opt: string) -> value`
-
-Get an option from the port.
-
-Currently available options are:
-
-`"baud_rate"`::
-https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/serial_port_base__baud_rate.html[Check
-Boost.Asio documentation].
-
-`"flow_control"`::
-https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/serial_port_base__flow_control.html[Check
-Boost.Asio documentation].
-
-`"parity"`::
-https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/serial_port_base__parity.html[Check
-Boost.Asio documentation].
-
-`"stop_bits"`::
-https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/serial_port_base__stop_bits.html[Check
-Boost.Asio documentation].
-
-`"character_size"`::
-https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/serial_port_base__character_size.html[Check
-Boost.Asio documentation].
-
 == Properties
 
 === `is_open: boolean`
 
 Whether the port is open.
+
+=== `baud_rate: number`
+
+Read or write current baud rate setting.
+
+=== `flow_control: string`
+
+Read or write current flow control setting.
+
+It can be one of:
+
+* `"none"`.
+* `"software"`.
+* `"hardware"`.
+
+=== `parity: string`
+
+Read or write current parity setting.
+
+It can be one of:
+
+* `"none"`.
+* `"odd"`.
+* `"even"`.
+
+=== `stop_bits: string`
+
+Read or write current stop bit width setting.
+
+It can be one of:
+
+* `"one"`.
+* `"onepointfive"`.
+* `"two"`.
+
+=== `character_size: number`
+
+Read or write current character size setting.
