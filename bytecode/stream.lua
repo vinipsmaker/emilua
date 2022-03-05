@@ -79,6 +79,38 @@ f:write(read_bytecode)
 f:close()
 read_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
 
+function write_at_bootstrap(io_obj, offset, buffer)
+   local ret = #buffer
+   while #buffer > 0 do
+       local nwritten = io_obj:write_some_at(offset, buffer)
+       offset = offset + nwritten
+       buffer = buffer:slice(1 + nwritten)
+   end
+   return ret
+end
+
+write_at_bytecode = string.dump(write_at_bootstrap, true)
+f = io.open(OUTPUT, 'wb')
+f:write(write_at_bytecode)
+f:close()
+write_at_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
+
+function read_at_bootstrap(io_obj, offset, buffer)
+    local ret = #buffer
+    while #buffer > 0 do
+        local nread = io_obj:read_some_at(offset, buffer)
+        offset = offset + nread
+        buffer = buffer:slice(1 + nread)
+    end
+    return ret
+end
+
+read_at_bytecode = string.dump(read_at_bootstrap, true)
+f = io.open(OUTPUT, 'wb')
+f:write(read_at_bytecode)
+f:close()
+read_at_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
+
 f = io.open(OUTPUT, 'wb')
 
 f:write([[
@@ -110,5 +142,25 @@ f:write(read_cdef)
 
 f:write('};')
 f:write(string.format('std::size_t read_bytecode_size = %i;', #read_bytecode))
+
+f:write([[
+unsigned char write_at_bytecode[] = {
+]])
+
+f:write(write_at_cdef)
+
+f:write('};')
+f:write(string.format('std::size_t write_at_bytecode_size = %i;',
+                      #write_at_bytecode))
+
+f:write([[
+unsigned char read_at_bytecode[] = {
+]])
+
+f:write(read_at_cdef)
+
+f:write('};')
+f:write(string.format('std::size_t read_at_bytecode_size = %i;',
+                      #read_at_bytecode))
 
 f:write('} // namespace emilua')

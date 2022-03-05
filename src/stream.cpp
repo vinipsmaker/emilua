@@ -13,6 +13,10 @@ extern unsigned char write_bytecode[];
 extern std::size_t write_bytecode_size;
 extern unsigned char read_bytecode[];
 extern std::size_t read_bytecode_size;
+extern unsigned char write_at_bytecode[];
+extern std::size_t write_at_bytecode_size;
+extern unsigned char read_at_bytecode[];
+extern std::size_t read_at_bytecode_size;
 
 char stream_key;
 
@@ -22,7 +26,7 @@ void init_stream(lua_State* L)
 
     lua_pushlightuserdata(L, &stream_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/2);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/5);
 
         lua_pushliteral(L, "connect");
         res = luaL_loadbuffer(
@@ -47,6 +51,18 @@ void init_stream(lua_State* L)
         lua_pushliteral(L, "read");
         res = luaL_loadbuffer(L, reinterpret_cast<char*>(read_bytecode),
                               read_bytecode_size, nullptr);
+        assert(res == 0); boost::ignore_unused(res);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "write_at");
+        res = luaL_loadbuffer(L, reinterpret_cast<char*>(write_at_bytecode),
+                              write_at_bytecode_size, nullptr);
+        assert(res == 0); boost::ignore_unused(res);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "read_at");
+        res = luaL_loadbuffer(L, reinterpret_cast<char*>(read_at_bytecode),
+                              read_at_bytecode_size, nullptr);
         assert(res == 0); boost::ignore_unused(res);
         lua_rawset(L, -3);
     }
