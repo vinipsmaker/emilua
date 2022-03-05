@@ -52,12 +52,13 @@ int main(int argc, char *argv[])
         using namespace std::literals::string_view_literals;
         auto env = std::getenv("EMILUA_COLORS");
         if (env) {
-            if (env == "ON"sv || env == "1"sv || env == "YES"sv ||
-                env == "TRUE"sv) {
+            if (env == "1"sv) {
                 return true;
-            } else if (env == "OFF"sv || env == "0"sv || env == "NO"sv ||
-                       env == "FALSE"sv) {
+            } else if (env == "0"sv) {
                 return false;
+            } else if (*env != '\0') {
+                std::cerr <<
+                    "<4>Ignoring unrecognized value for EMILUA_COLORS\n";
             }
         }
 

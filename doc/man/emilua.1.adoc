@@ -45,11 +45,11 @@ The default is _HINT=safe_.
 
 == ENVIRONMENT
 
-EMILUA_COLORS=_ON|1|YES|TRUE_::
+EMILUA_COLORS=_1_::
 
   Disable colour support auto-detection and force colour output on log messages.
 
-EMILUA_COLORS=_OFF|0|NO|FALSE_::
+EMILUA_COLORS=_0_::
 
   Disable colour support on log messages altogether.
 
