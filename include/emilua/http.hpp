@@ -7,6 +7,8 @@
 
 #include <limits>
 
+#include <boost/predef/os/windows.h>
+
 #include <boost/http/socket.hpp>
 #include <boost/http/response.hpp>
 #include <boost/http/request.hpp>
@@ -24,6 +26,10 @@ extern char http_request_mt_key;
 extern char http_response_mt_key;
 extern char http_socket_mt_key;
 extern char https_socket_mt_key;
+
+#if !BOOST_OS_WINDOWS
+extern char http_unix_socket_mt_key;
+#endif // !BOOST_OS_WINDOWS
 
 using Headers = boost::container::flat_multimap<
     std::string, std::string, TransparentStringComp>;

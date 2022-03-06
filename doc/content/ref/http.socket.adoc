@@ -31,7 +31,7 @@ supporting rendezvous connections (e.g. custom uTP).
 
 == Functions
 
-=== `new(sock: ip.tcp.socket | tls.socket) -> http.socket`
+=== `new(sock: ip.tcp.socket | tls.socket | unix.stream_socket) -> http.socket`
 
 Constructor.
 

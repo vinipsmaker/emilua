@@ -1,4 +1,4 @@
-/* Copyright (c) 2020, 2021 Vinícius dos Santos Oliveira
+/* Copyright (c) 2020, 2021, 2022 Vinícius dos Santos Oliveira
 
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
@@ -17,6 +17,10 @@
 #include <emilua/tls.hpp>
 #include <emilua/ip.hpp>
 
+#if !BOOST_OS_WINDOWS
+#include <emilua/unix.hpp>
+#endif // !BOOST_OS_WINDOWS
+
 namespace emilua {
 
 using boost::beast::get_lowest_layer;
@@ -34,6 +38,10 @@ char http_request_mt_key;
 char http_response_mt_key;
 char http_socket_mt_key;
 char https_socket_mt_key;
+
+#if !BOOST_OS_WINDOWS
+char http_unix_socket_mt_key;
+#endif // !BOOST_OS_WINDOWS
 
 static char headers_mt_key;
 
@@ -87,6 +95,17 @@ struct get_http_mt_key<TlsSocket>
         return &https_socket_mt_key;
     }
 };
+
+#if !BOOST_OS_WINDOWS
+template<>
+struct get_http_mt_key<asio::local::stream_protocol::socket>
+{
+    static void* get()
+    {
+        return &http_unix_socket_mt_key;
+    }
+};
+#endif // !BOOST_OS_WINDOWS
 
 static int request_new(lua_State* L)
 {
@@ -153,6 +172,9 @@ static int socket_new(lua_State* L)
 
     asio::ip::tcp::socket* tcp_sock = nullptr;
     TlsSocket* tls_sock = nullptr;
+#if !BOOST_OS_WINDOWS
+    asio::local::stream_protocol::socket* unix_sock = nullptr;
+#endif // !BOOST_OS_WINDOWS
 
     rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_socket_mt_key);
     if (lua_rawequal(L, -1, -2)) {
@@ -164,13 +186,30 @@ static int socket_new(lua_State* L)
         }
     } else {
         rawgetp(L, LUA_REGISTRYINDEX, &tls_socket_mt_key);
-        if (!lua_rawequal(L, -1, -3)) {
+        if (lua_rawequal(L, -1, -3)) {
+            tls_sock = reinterpret_cast<decltype(tls_sock)>(
+                lua_touserdata(L, 1));
+        } else {
+#if BOOST_OS_WINDOWS
             push(L, std::errc::invalid_argument, "arg", 1);
             return lua_error(L);
+#else // BOOST_OS_WINDOWS
+            rawgetp(L, LUA_REGISTRYINDEX, &unix_stream_socket_mt_key);
+            if (!lua_rawequal(L, -1, -4)) {
+                push(L, std::errc::invalid_argument, "arg", 1);
+                return lua_error(L);
+            }
+            auto s = reinterpret_cast<unix_stream_socket*>(
+                lua_touserdata(L, 1));
+            unix_sock = &s->socket;
+#endif // BOOST_OS_WINDOWS
         }
-        tls_sock = reinterpret_cast<decltype(tls_sock)>(lua_touserdata(L, 1));
     }
+#if BOOST_OS_WINDOWS
     assert(tcp_sock || tls_sock);
+#else // BOOST_OS_WINDOWS
+    assert(tcp_sock || tls_sock || unix_sock);
+#endif // BOOST_OS_WINDOWS
 
     auto make = [&](auto& s1) {
         using T = std::decay_t<decltype(s1)>;
@@ -185,8 +224,14 @@ static int socket_new(lua_State* L)
         setmetatable(L, 1);
         s1.~T();
     };
+#if BOOST_OS_WINDOWS
     if (tcp_sock) make(*tcp_sock);
     else make(*tls_sock);
+#else // BOOST_OS_WINDOWS
+    if (tcp_sock) make(*tcp_sock);
+    else if (tls_sock) make(*tls_sock);
+    else make(*unix_sock);
+#endif // BOOST_OS_WINDOWS
 
     return 1;
 }
@@ -881,6 +926,34 @@ int socket_close<TlsSocket>(lua_State* L)
 
     return lua_yield(L, 0);
 }
+
+#if !BOOST_OS_WINDOWS
+template<>
+int socket_close<asio::local::stream_protocol::socket>(lua_State* L)
+{
+    auto s = reinterpret_cast<
+        HttpSocket<asio::local::stream_protocol::socket>*
+    >(lua_touserdata(L, 1));
+    if (!s || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &http_unix_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    boost::system::error_code ec;
+    s->socket.next_layer().close(ec);
+    if (ec) {
+        push(L, static_cast<std::error_code>(ec));
+        return lua_error(L);
+    }
+
+    return 0;
+}
+#endif // !BOOST_OS_WINDOWS
 
 template<class T>
 static int socket_lock_client_to_http10(lua_State* L)
@@ -2140,6 +2213,9 @@ void init_http(lua_State* L)
     };
     register_socket(L, hana::type_c<asio::ip::tcp::socket>);
     register_socket(L, hana::type_c<TlsSocket>);
+#if !BOOST_OS_WINDOWS
+    register_socket(L, hana::type_c<asio::local::stream_protocol::socket>);
+#endif // !BOOST_OS_WINDOWS
 
     lua_pushlightuserdata(L, &http_op_key<TlsSocket>::close);
     lua_pushvalue(L, -2);
@@ -2153,6 +2229,13 @@ void init_http(lua_State* L)
     lua_pushlightuserdata(L, &http_op_key<asio::ip::tcp::socket>::close);
     lua_pushcfunction(L, socket_close<asio::ip::tcp::socket>);
     lua_rawset(L, LUA_REGISTRYINDEX);
+
+#if !BOOST_OS_WINDOWS
+    lua_pushlightuserdata(
+        L, &http_op_key<asio::local::stream_protocol::socket>::close);
+    lua_pushcfunction(L, socket_close<asio::local::stream_protocol::socket>);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+#endif // !BOOST_OS_WINDOWS
 }
 
 } // namespace emilua

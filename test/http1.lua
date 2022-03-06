@@ -1,6 +1,11 @@
 local ip = require 'ip'
 local http = require 'http'
-local socket_pair = require('./util').socket_pair
+local ok, socket_pair = pcall(require, 'unix')
+if ok then
+    socket_pair = socket_pair.stream_socket.pair
+else
+    socket_pair = require('./util').socket_pair
+end
 
 local a, b = socket_pair()
 a, b = http.socket.new(a), http.socket.new(b)
