@@ -50,7 +50,7 @@ errs.
 
 Returns the number of bytes written.
 
-=== `set_sni_client_hostname(self, hostname: string)`
+=== `set_server_name(self, hostname: string)`
 
 Sets the server name indication.
 

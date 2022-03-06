@@ -33,7 +33,7 @@ sock:set_option('tcp_no_delay', true)
 sock = tls.socket.new(sock, tls_ctx)
 sock:set_verify_mode('peer');
 sock:set_verify_callback('host_name_verification', host);
-sock:set_sni_client_hostname(host)
+sock:set_server_name(host)
 sock:client_handshake()
 sock = http.socket.new(sock)
 

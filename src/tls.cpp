@@ -1149,7 +1149,7 @@ static int tls_socket_write_some(lua_State* L)
 }
 
 #ifndef BOOST_ASIO_USE_WOLFSSL
-static int tls_socket_set_sni_client_hostname(lua_State* L)
+static int tls_socket_set_server_name(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
 
@@ -1350,9 +1350,9 @@ static int tls_socket_mt_index(lua_State* L)
             ),
 #ifndef BOOST_ASIO_USE_WOLFSSL
             hana::make_pair(
-                BOOST_HANA_STRING("set_sni_client_hostname"),
+                BOOST_HANA_STRING("set_server_name"),
                 [](lua_State* L) -> int {
-                    lua_pushcfunction(L, tls_socket_set_sni_client_hostname);
+                    lua_pushcfunction(L, tls_socket_set_server_name);
                     return 1;
                 }
             ),
