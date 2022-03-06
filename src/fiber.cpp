@@ -397,6 +397,7 @@ static int spawn(lua_State* L)
                 auto cancel_signal = reinterpret_cast<
                     asio::cancellation_signal*
                 >(lua_touserdata(L, lua_upvalueindex(1)));
+                assert(cancel_signal);
                 cancel_signal->emit(asio::cancellation_type::terminal);
                 return 0;
             },

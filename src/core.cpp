@@ -577,10 +577,12 @@ set_default_interrupter(lua_State* L, vm_context& vm_ctx)
     lua_rawgeti(L, -2, FiberDataIndex::ASIO_CANCELLATION_SIGNAL);
     auto cancel_signal = reinterpret_cast<asio::cancellation_signal*>(
         lua_touserdata(L, -1));
-    assert(cancel_signal);
     lua_rawgeti(L, -3, FiberDataIndex::DEFAULT_EMIT_SIGNAL_INTERRUPTER);
     lua_rawseti(L, -4, FiberDataIndex::INTERRUPTER);
     lua_pop(L, 4);
+
+    if (!cancel_signal)
+        return {};
 
     return cancel_signal->slot();
 }
