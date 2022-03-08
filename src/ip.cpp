@@ -16,6 +16,12 @@
 #include <emilua/byte_span.hpp>
 #include <emilua/ip.hpp>
 
+#if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
+#include <boost/asio/windows/object_handle.hpp>
+#include <boost/nowide/convert.hpp>
+#include <boost/scope_exit.hpp>
+#endif // defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
+
 #if BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
 #include <boost/asio/windows/overlapped_ptr.hpp>
 #include <boost/asio/random_access_file.hpp>
@@ -44,6 +50,22 @@ static char udp_socket_send_to_key;
 #if BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
 static char tcp_socket_send_file_key;
 #endif // BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
+
+#if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
+struct get_address_info_context_t
+{
+    get_address_info_context_t(asio::io_context& ctx)
+        : hCompletion(ctx)
+    {
+        ZeroMemory(&overlapped, sizeof(OVERLAPPED));
+    }
+
+    asio::windows::object_handle hCompletion;
+    OVERLAPPED overlapped;
+    PADDRINFOEXW results = nullptr;
+    HANDLE hCancel = nullptr;
+};
+#endif // defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
 
 struct resolver_service: public pending_operation
 {
@@ -2464,6 +2486,167 @@ static int tcp_get_address_info(lua_State* L)
         flags |= asio::ip::resolver_base::numeric_service;
     }
 
+#if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
+    ADDRINFOEXW hints;
+    hints.ai_flags = flags;
+    hints.ai_family = PF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    hints.ai_addrlen = 0;
+    hints.ai_canonname = nullptr;
+    hints.ai_addr = nullptr;
+    hints.ai_blob = nullptr;
+    hints.ai_bloblen = 0;
+    hints.ai_provider = nullptr;
+    hints.ai_next = nullptr;
+
+    auto query_ctx = std::make_shared<get_address_info_context_t>(
+        vm_ctx->strand().context());
+
+    {
+        HANDLE hCompletion = CreateEventA(/*lpEventAttributes=*/NULL,
+                                          /*bManualReset=*/TRUE,
+                                          /*bInitialState=*/FALSE,
+                                          /*lpName=*/NULL);
+        if (hCompletion == NULL) {
+            boost::system::error_code ec(GetLastError(),
+                                         asio::error::get_system_category());
+            push(L, ec);
+            return lua_error(L);
+        }
+
+        boost::system::error_code ec;
+        query_ctx->hCompletion.assign(hCompletion, ec);
+        if (ec) {
+            push(L, ec);
+            return lua_error(L);
+        }
+
+        query_ctx->overlapped.hEvent = hCompletion;
+    }
+
+    std::wstring whost = boost::nowide::widen(host);
+    auto service = tostringview(L, 2);
+    std::wstring wservice = boost::nowide::widen(service);
+    INT error = GetAddrInfoExW(whost.c_str(), wservice.c_str(), NS_DNS,
+                               /*lpNspId=*/NULL, &hints, &query_ctx->results,
+                               /*timeout=*/NULL, &query_ctx->overlapped,
+                               /*lpCompletionRoutine=*/NULL,
+                               &query_ctx->hCancel);
+    if (error != WSA_IO_PENDING) {
+        // the operation completed immediately
+        boost::system::error_code ec(WSAGetLastError(),
+                                     asio::error::get_system_category());
+        push(L, ec);
+        return lua_error(L);
+    }
+
+    lua_pushlightuserdata(L, query_ctx.get());
+    lua_pushcclosure(
+        L,
+        [](lua_State* L) -> int {
+            auto query_ctx = reinterpret_cast<get_address_info_context_t*>(
+                lua_touserdata(L, lua_upvalueindex(1)));
+            GetAddrInfoExCancel(&query_ctx->hCancel);
+            return 0;
+        },
+        1);
+    set_interrupter(L, *vm_ctx);
+
+    query_ctx->hCompletion.async_wait(
+        asio::bind_executor(
+            vm_ctx->strand_using_defer(),
+            [
+                vm_ctx,current_fiber,query_ctx,
+                host=static_cast<std::string>(host),
+                service=static_cast<std::string>(service)
+            ](
+                boost::system::error_code ec
+            ) {
+                BOOST_SCOPE_EXIT_ALL(&) {
+                    if (query_ctx->results) FreeAddrInfoExW(query_ctx->results);
+                };
+
+                if (!ec) {
+                    INT error = GetAddrInfoExOverlappedResult(
+                        &query_ctx->overlapped);
+                    if (error == WSA_E_CANCELLED) {
+                        ec = asio::error::operation_aborted;
+                    } else {
+                        ec = boost::system::error_code(
+                            error, asio::error::get_system_category());
+                    }
+                }
+
+                auto push_results = [&ec,&query_ctx,&host,&service](
+                    lua_State* L
+                ) {
+                    if (ec) {
+                        lua_pushnil(L);
+                        return;
+                    }
+
+                    lua_newtable(L);
+                    lua_pushliteral(L, "address");
+                    lua_pushliteral(L, "port");
+                    lua_pushliteral(L, "host_name");
+                    lua_pushliteral(L, "service_name");
+
+                    if (
+                        query_ctx->results && query_ctx->results->ai_canonname
+                    ) {
+                        std::wstring_view w{query_ctx->results->ai_canonname};
+                        push(L, boost::nowide::narrow(w));
+                    } else {
+                        push(L, host);
+                    }
+                    push(L, service);
+
+                    int i = 1;
+                    for (
+                        auto it = query_ctx->results ; it ; it = it->ai_next
+                    ) {
+                        lua_createtable(L, /*narr=*/0, /*nrec=*/4);
+
+                        asio::ip::tcp::endpoint ep;
+                        ep.resize(it->ai_addrlen);
+                        std::memcpy(ep.data(), it->ai_addr, ep.size());
+
+                        lua_pushvalue(L, -1 -6);
+                        auto a = reinterpret_cast<asio::ip::address*>(
+                            lua_newuserdata(L, sizeof(asio::ip::address))
+                        );
+                        rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+                        setmetatable(L, -2);
+                        new (a) asio::ip::address{ep.address()};
+                        lua_rawset(L, -3);
+
+                        lua_pushvalue(L, -1 -5);
+                        lua_pushinteger(L, ep.port());
+                        lua_rawset(L, -3);
+
+                        lua_pushvalue(L, -1 -4);
+                        lua_pushvalue(L, -2 -2);
+                        lua_rawset(L, -3);
+
+                        lua_pushvalue(L, -1 -3);
+                        lua_pushvalue(L, -2 -1);
+                        lua_rawset(L, -3);
+
+                        lua_rawseti(L, -8, i++);
+                    }
+                    lua_pop(L, 6);
+                };
+
+                vm_ctx->fiber_resume(
+                    current_fiber,
+                    hana::make_set(
+                        vm_context::options::fast_auto_detect_interrupt,
+                        hana::make_pair(
+                            vm_context::options::arguments,
+                            hana::make_tuple(ec, push_results))));
+            }));
+#else // defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
     resolver_service* service = nullptr;
 
     for (auto& op: vm_ctx->pending_operations) {
@@ -2554,6 +2737,7 @@ static int tcp_get_address_info(lua_State* L)
             }
         )
     );
+#endif // defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
 
     return lua_yield(L, 0);
 }
@@ -2613,6 +2797,167 @@ static int tcp_get_address_v4_info(lua_State* L)
         flags |= asio::ip::resolver_base::numeric_service;
     }
 
+#if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
+    ADDRINFOEXW hints;
+    hints.ai_flags = flags;
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    hints.ai_addrlen = 0;
+    hints.ai_canonname = nullptr;
+    hints.ai_addr = nullptr;
+    hints.ai_blob = nullptr;
+    hints.ai_bloblen = 0;
+    hints.ai_provider = nullptr;
+    hints.ai_next = nullptr;
+
+    auto query_ctx = std::make_shared<get_address_info_context_t>(
+        vm_ctx->strand().context());
+
+    {
+        HANDLE hCompletion = CreateEventA(/*lpEventAttributes=*/NULL,
+                                          /*bManualReset=*/TRUE,
+                                          /*bInitialState=*/FALSE,
+                                          /*lpName=*/NULL);
+        if (hCompletion == NULL) {
+            boost::system::error_code ec(GetLastError(),
+                                         asio::error::get_system_category());
+            push(L, ec);
+            return lua_error(L);
+        }
+
+        boost::system::error_code ec;
+        query_ctx->hCompletion.assign(hCompletion, ec);
+        if (ec) {
+            push(L, ec);
+            return lua_error(L);
+        }
+
+        query_ctx->overlapped.hEvent = hCompletion;
+    }
+
+    std::wstring whost = boost::nowide::widen(host);
+    auto service = tostringview(L, 2);
+    std::wstring wservice = boost::nowide::widen(service);
+    INT error = GetAddrInfoExW(whost.c_str(), wservice.c_str(), NS_DNS,
+                               /*lpNspId=*/NULL, &hints, &query_ctx->results,
+                               /*timeout=*/NULL, &query_ctx->overlapped,
+                               /*lpCompletionRoutine=*/NULL,
+                               &query_ctx->hCancel);
+    if (error != WSA_IO_PENDING) {
+        // the operation completed immediately
+        boost::system::error_code ec(WSAGetLastError(),
+                                     asio::error::get_system_category());
+        push(L, ec);
+        return lua_error(L);
+    }
+
+    lua_pushlightuserdata(L, query_ctx.get());
+    lua_pushcclosure(
+        L,
+        [](lua_State* L) -> int {
+            auto query_ctx = reinterpret_cast<get_address_info_context_t*>(
+                lua_touserdata(L, lua_upvalueindex(1)));
+            GetAddrInfoExCancel(&query_ctx->hCancel);
+            return 0;
+        },
+        1);
+    set_interrupter(L, *vm_ctx);
+
+    query_ctx->hCompletion.async_wait(
+        asio::bind_executor(
+            vm_ctx->strand_using_defer(),
+            [
+                vm_ctx,current_fiber,query_ctx,
+                host=static_cast<std::string>(host),
+                service=static_cast<std::string>(service)
+            ](
+                boost::system::error_code ec
+            ) {
+                BOOST_SCOPE_EXIT_ALL(&) {
+                    if (query_ctx->results) FreeAddrInfoExW(query_ctx->results);
+                };
+
+                if (!ec) {
+                    INT error = GetAddrInfoExOverlappedResult(
+                        &query_ctx->overlapped);
+                    if (error == WSA_E_CANCELLED) {
+                        ec = asio::error::operation_aborted;
+                    } else {
+                        ec = boost::system::error_code(
+                            error, asio::error::get_system_category());
+                    }
+                }
+
+                auto push_results = [&ec,&query_ctx,&host,&service](
+                    lua_State* L
+                ) {
+                    if (ec) {
+                        lua_pushnil(L);
+                        return;
+                    }
+
+                    lua_newtable(L);
+                    lua_pushliteral(L, "address");
+                    lua_pushliteral(L, "port");
+                    lua_pushliteral(L, "host_name");
+                    lua_pushliteral(L, "service_name");
+
+                    if (
+                        query_ctx->results && query_ctx->results->ai_canonname
+                    ) {
+                        std::wstring_view w{query_ctx->results->ai_canonname};
+                        push(L, boost::nowide::narrow(w));
+                    } else {
+                        push(L, host);
+                    }
+                    push(L, service);
+
+                    int i = 1;
+                    for (
+                        auto it = query_ctx->results ; it ; it = it->ai_next
+                    ) {
+                        lua_createtable(L, /*narr=*/0, /*nrec=*/4);
+
+                        asio::ip::tcp::endpoint ep;
+                        ep.resize(it->ai_addrlen);
+                        std::memcpy(ep.data(), it->ai_addr, ep.size());
+
+                        lua_pushvalue(L, -1 -6);
+                        auto a = reinterpret_cast<asio::ip::address*>(
+                            lua_newuserdata(L, sizeof(asio::ip::address))
+                        );
+                        rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+                        setmetatable(L, -2);
+                        new (a) asio::ip::address{ep.address()};
+                        lua_rawset(L, -3);
+
+                        lua_pushvalue(L, -1 -5);
+                        lua_pushinteger(L, ep.port());
+                        lua_rawset(L, -3);
+
+                        lua_pushvalue(L, -1 -4);
+                        lua_pushvalue(L, -2 -2);
+                        lua_rawset(L, -3);
+
+                        lua_pushvalue(L, -1 -3);
+                        lua_pushvalue(L, -2 -1);
+                        lua_rawset(L, -3);
+
+                        lua_rawseti(L, -8, i++);
+                    }
+                    lua_pop(L, 6);
+                };
+
+                vm_ctx->fiber_resume(
+                    current_fiber,
+                    hana::make_set(
+                        vm_context::options::fast_auto_detect_interrupt,
+                        hana::make_pair(
+                            vm_context::options::arguments,
+                            hana::make_tuple(ec, push_results))));
+            }));
+#else // defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
     resolver_service* service = nullptr;
 
     for (auto& op: vm_ctx->pending_operations) {
@@ -2704,6 +3049,7 @@ static int tcp_get_address_v4_info(lua_State* L)
             }
         )
     );
+#endif // defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
 
     return lua_yield(L, 0);
 }
@@ -2763,6 +3109,168 @@ static int tcp_get_address_v6_info(lua_State* L)
         flags |= asio::ip::resolver_base::numeric_service;
     }
 
+
+#if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
+    ADDRINFOEXW hints;
+    hints.ai_flags = flags;
+    hints.ai_family = AF_INET6;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    hints.ai_addrlen = 0;
+    hints.ai_canonname = nullptr;
+    hints.ai_addr = nullptr;
+    hints.ai_blob = nullptr;
+    hints.ai_bloblen = 0;
+    hints.ai_provider = nullptr;
+    hints.ai_next = nullptr;
+
+    auto query_ctx = std::make_shared<get_address_info_context_t>(
+        vm_ctx->strand().context());
+
+    {
+        HANDLE hCompletion = CreateEventA(/*lpEventAttributes=*/NULL,
+                                          /*bManualReset=*/TRUE,
+                                          /*bInitialState=*/FALSE,
+                                          /*lpName=*/NULL);
+        if (hCompletion == NULL) {
+            boost::system::error_code ec(GetLastError(),
+                                         asio::error::get_system_category());
+            push(L, ec);
+            return lua_error(L);
+        }
+
+        boost::system::error_code ec;
+        query_ctx->hCompletion.assign(hCompletion, ec);
+        if (ec) {
+            push(L, ec);
+            return lua_error(L);
+        }
+
+        query_ctx->overlapped.hEvent = hCompletion;
+    }
+
+    std::wstring whost = boost::nowide::widen(host);
+    auto service = tostringview(L, 2);
+    std::wstring wservice = boost::nowide::widen(service);
+    INT error = GetAddrInfoExW(whost.c_str(), wservice.c_str(), NS_DNS,
+                               /*lpNspId=*/NULL, &hints, &query_ctx->results,
+                               /*timeout=*/NULL, &query_ctx->overlapped,
+                               /*lpCompletionRoutine=*/NULL,
+                               &query_ctx->hCancel);
+    if (error != WSA_IO_PENDING) {
+        // the operation completed immediately
+        boost::system::error_code ec(WSAGetLastError(),
+                                     asio::error::get_system_category());
+        push(L, ec);
+        return lua_error(L);
+    }
+
+    lua_pushlightuserdata(L, query_ctx.get());
+    lua_pushcclosure(
+        L,
+        [](lua_State* L) -> int {
+            auto query_ctx = reinterpret_cast<get_address_info_context_t*>(
+                lua_touserdata(L, lua_upvalueindex(1)));
+            GetAddrInfoExCancel(&query_ctx->hCancel);
+            return 0;
+        },
+        1);
+    set_interrupter(L, *vm_ctx);
+
+    query_ctx->hCompletion.async_wait(
+        asio::bind_executor(
+            vm_ctx->strand_using_defer(),
+            [
+                vm_ctx,current_fiber,query_ctx,
+                host=static_cast<std::string>(host),
+                service=static_cast<std::string>(service)
+            ](
+                boost::system::error_code ec
+            ) {
+                BOOST_SCOPE_EXIT_ALL(&) {
+                    if (query_ctx->results) FreeAddrInfoExW(query_ctx->results);
+                };
+
+                if (!ec) {
+                    INT error = GetAddrInfoExOverlappedResult(
+                        &query_ctx->overlapped);
+                    if (error == WSA_E_CANCELLED) {
+                        ec = asio::error::operation_aborted;
+                    } else {
+                        ec = boost::system::error_code(
+                            error, asio::error::get_system_category());
+                    }
+                }
+
+                auto push_results = [&ec,&query_ctx,&host,&service](
+                    lua_State* L
+                ) {
+                    if (ec) {
+                        lua_pushnil(L);
+                        return;
+                    }
+
+                    lua_newtable(L);
+                    lua_pushliteral(L, "address");
+                    lua_pushliteral(L, "port");
+                    lua_pushliteral(L, "host_name");
+                    lua_pushliteral(L, "service_name");
+
+                    if (
+                        query_ctx->results && query_ctx->results->ai_canonname
+                    ) {
+                        std::wstring_view w{query_ctx->results->ai_canonname};
+                        push(L, boost::nowide::narrow(w));
+                    } else {
+                        push(L, host);
+                    }
+                    push(L, service);
+
+                    int i = 1;
+                    for (
+                        auto it = query_ctx->results ; it ; it = it->ai_next
+                    ) {
+                        lua_createtable(L, /*narr=*/0, /*nrec=*/4);
+
+                        asio::ip::tcp::endpoint ep;
+                        ep.resize(it->ai_addrlen);
+                        std::memcpy(ep.data(), it->ai_addr, ep.size());
+
+                        lua_pushvalue(L, -1 -6);
+                        auto a = reinterpret_cast<asio::ip::address*>(
+                            lua_newuserdata(L, sizeof(asio::ip::address))
+                        );
+                        rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+                        setmetatable(L, -2);
+                        new (a) asio::ip::address{ep.address()};
+                        lua_rawset(L, -3);
+
+                        lua_pushvalue(L, -1 -5);
+                        lua_pushinteger(L, ep.port());
+                        lua_rawset(L, -3);
+
+                        lua_pushvalue(L, -1 -4);
+                        lua_pushvalue(L, -2 -2);
+                        lua_rawset(L, -3);
+
+                        lua_pushvalue(L, -1 -3);
+                        lua_pushvalue(L, -2 -1);
+                        lua_rawset(L, -3);
+
+                        lua_rawseti(L, -8, i++);
+                    }
+                    lua_pop(L, 6);
+                };
+
+                vm_ctx->fiber_resume(
+                    current_fiber,
+                    hana::make_set(
+                        vm_context::options::fast_auto_detect_interrupt,
+                        hana::make_pair(
+                            vm_context::options::arguments,
+                            hana::make_tuple(ec, push_results))));
+            }));
+#else // defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
     resolver_service* service = nullptr;
 
     for (auto& op: vm_ctx->pending_operations) {
@@ -2854,6 +3362,7 @@ static int tcp_get_address_v6_info(lua_State* L)
             }
         )
     );
+#endif // defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
 
     return lua_yield(L, 0);
 }
@@ -4167,6 +4676,167 @@ static int udp_get_address_info(lua_State* L)
         flags |= asio::ip::resolver_base::numeric_service;
     }
 
+#if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
+    ADDRINFOEXW hints;
+    hints.ai_flags = flags;
+    hints.ai_family = PF_UNSPEC;
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_protocol = IPPROTO_UDP;
+    hints.ai_addrlen = 0;
+    hints.ai_canonname = nullptr;
+    hints.ai_addr = nullptr;
+    hints.ai_blob = nullptr;
+    hints.ai_bloblen = 0;
+    hints.ai_provider = nullptr;
+    hints.ai_next = nullptr;
+
+    auto query_ctx = std::make_shared<get_address_info_context_t>(
+        vm_ctx->strand().context());
+
+    {
+        HANDLE hCompletion = CreateEventA(/*lpEventAttributes=*/NULL,
+                                          /*bManualReset=*/TRUE,
+                                          /*bInitialState=*/FALSE,
+                                          /*lpName=*/NULL);
+        if (hCompletion == NULL) {
+            boost::system::error_code ec(GetLastError(),
+                                         asio::error::get_system_category());
+            push(L, ec);
+            return lua_error(L);
+        }
+
+        boost::system::error_code ec;
+        query_ctx->hCompletion.assign(hCompletion, ec);
+        if (ec) {
+            push(L, ec);
+            return lua_error(L);
+        }
+
+        query_ctx->overlapped.hEvent = hCompletion;
+    }
+
+    std::wstring whost = boost::nowide::widen(host);
+    auto service = tostringview(L, 2);
+    std::wstring wservice = boost::nowide::widen(service);
+    INT error = GetAddrInfoExW(whost.c_str(), wservice.c_str(), NS_DNS,
+                               /*lpNspId=*/NULL, &hints, &query_ctx->results,
+                               /*timeout=*/NULL, &query_ctx->overlapped,
+                               /*lpCompletionRoutine=*/NULL,
+                               &query_ctx->hCancel);
+    if (error != WSA_IO_PENDING) {
+        // the operation completed immediately
+        boost::system::error_code ec(WSAGetLastError(),
+                                     asio::error::get_system_category());
+        push(L, ec);
+        return lua_error(L);
+    }
+
+    lua_pushlightuserdata(L, query_ctx.get());
+    lua_pushcclosure(
+        L,
+        [](lua_State* L) -> int {
+            auto query_ctx = reinterpret_cast<get_address_info_context_t*>(
+                lua_touserdata(L, lua_upvalueindex(1)));
+            GetAddrInfoExCancel(&query_ctx->hCancel);
+            return 0;
+        },
+        1);
+    set_interrupter(L, *vm_ctx);
+
+    query_ctx->hCompletion.async_wait(
+        asio::bind_executor(
+            vm_ctx->strand_using_defer(),
+            [
+                vm_ctx,current_fiber,query_ctx,
+                host=static_cast<std::string>(host),
+                service=static_cast<std::string>(service)
+            ](
+                boost::system::error_code ec
+            ) {
+                BOOST_SCOPE_EXIT_ALL(&) {
+                    if (query_ctx->results) FreeAddrInfoExW(query_ctx->results);
+                };
+
+                if (!ec) {
+                    INT error = GetAddrInfoExOverlappedResult(
+                        &query_ctx->overlapped);
+                    if (error == WSA_E_CANCELLED) {
+                        ec = asio::error::operation_aborted;
+                    } else {
+                        ec = boost::system::error_code(
+                            error, asio::error::get_system_category());
+                    }
+                }
+
+                auto push_results = [&ec,&query_ctx,&host,&service](
+                    lua_State* L
+                ) {
+                    if (ec) {
+                        lua_pushnil(L);
+                        return;
+                    }
+
+                    lua_newtable(L);
+                    lua_pushliteral(L, "address");
+                    lua_pushliteral(L, "port");
+                    lua_pushliteral(L, "host_name");
+                    lua_pushliteral(L, "service_name");
+
+                    if (
+                        query_ctx->results && query_ctx->results->ai_canonname
+                    ) {
+                        std::wstring_view w{query_ctx->results->ai_canonname};
+                        push(L, boost::nowide::narrow(w));
+                    } else {
+                        push(L, host);
+                    }
+                    push(L, service);
+
+                    int i = 1;
+                    for (
+                        auto it = query_ctx->results ; it ; it = it->ai_next
+                    ) {
+                        lua_createtable(L, /*narr=*/0, /*nrec=*/4);
+
+                        asio::ip::tcp::endpoint ep;
+                        ep.resize(it->ai_addrlen);
+                        std::memcpy(ep.data(), it->ai_addr, ep.size());
+
+                        lua_pushvalue(L, -1 -6);
+                        auto a = reinterpret_cast<asio::ip::address*>(
+                            lua_newuserdata(L, sizeof(asio::ip::address))
+                        );
+                        rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+                        setmetatable(L, -2);
+                        new (a) asio::ip::address{ep.address()};
+                        lua_rawset(L, -3);
+
+                        lua_pushvalue(L, -1 -5);
+                        lua_pushinteger(L, ep.port());
+                        lua_rawset(L, -3);
+
+                        lua_pushvalue(L, -1 -4);
+                        lua_pushvalue(L, -2 -2);
+                        lua_rawset(L, -3);
+
+                        lua_pushvalue(L, -1 -3);
+                        lua_pushvalue(L, -2 -1);
+                        lua_rawset(L, -3);
+
+                        lua_rawseti(L, -8, i++);
+                    }
+                    lua_pop(L, 6);
+                };
+
+                vm_ctx->fiber_resume(
+                    current_fiber,
+                    hana::make_set(
+                        vm_context::options::fast_auto_detect_interrupt,
+                        hana::make_pair(
+                            vm_context::options::arguments,
+                            hana::make_tuple(ec, push_results))));
+            }));
+#else // defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
     resolver_service* service = nullptr;
 
     for (auto& op: vm_ctx->pending_operations) {
@@ -4257,6 +4927,7 @@ static int udp_get_address_info(lua_State* L)
             }
         )
     );
+#endif // defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
 
     return lua_yield(L, 0);
 }
@@ -4316,6 +4987,167 @@ static int udp_get_address_v4_info(lua_State* L)
         flags |= asio::ip::resolver_base::numeric_service;
     }
 
+#if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
+    ADDRINFOEXW hints;
+    hints.ai_flags = flags;
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_protocol = IPPROTO_UDP;
+    hints.ai_addrlen = 0;
+    hints.ai_canonname = nullptr;
+    hints.ai_addr = nullptr;
+    hints.ai_blob = nullptr;
+    hints.ai_bloblen = 0;
+    hints.ai_provider = nullptr;
+    hints.ai_next = nullptr;
+
+    auto query_ctx = std::make_shared<get_address_info_context_t>(
+        vm_ctx->strand().context());
+
+    {
+        HANDLE hCompletion = CreateEventA(/*lpEventAttributes=*/NULL,
+                                          /*bManualReset=*/TRUE,
+                                          /*bInitialState=*/FALSE,
+                                          /*lpName=*/NULL);
+        if (hCompletion == NULL) {
+            boost::system::error_code ec(GetLastError(),
+                                         asio::error::get_system_category());
+            push(L, ec);
+            return lua_error(L);
+        }
+
+        boost::system::error_code ec;
+        query_ctx->hCompletion.assign(hCompletion, ec);
+        if (ec) {
+            push(L, ec);
+            return lua_error(L);
+        }
+
+        query_ctx->overlapped.hEvent = hCompletion;
+    }
+
+    std::wstring whost = boost::nowide::widen(host);
+    auto service = tostringview(L, 2);
+    std::wstring wservice = boost::nowide::widen(service);
+    INT error = GetAddrInfoExW(whost.c_str(), wservice.c_str(), NS_DNS,
+                               /*lpNspId=*/NULL, &hints, &query_ctx->results,
+                               /*timeout=*/NULL, &query_ctx->overlapped,
+                               /*lpCompletionRoutine=*/NULL,
+                               &query_ctx->hCancel);
+    if (error != WSA_IO_PENDING) {
+        // the operation completed immediately
+        boost::system::error_code ec(WSAGetLastError(),
+                                     asio::error::get_system_category());
+        push(L, ec);
+        return lua_error(L);
+    }
+
+    lua_pushlightuserdata(L, query_ctx.get());
+    lua_pushcclosure(
+        L,
+        [](lua_State* L) -> int {
+            auto query_ctx = reinterpret_cast<get_address_info_context_t*>(
+                lua_touserdata(L, lua_upvalueindex(1)));
+            GetAddrInfoExCancel(&query_ctx->hCancel);
+            return 0;
+        },
+        1);
+    set_interrupter(L, *vm_ctx);
+
+    query_ctx->hCompletion.async_wait(
+        asio::bind_executor(
+            vm_ctx->strand_using_defer(),
+            [
+                vm_ctx,current_fiber,query_ctx,
+                host=static_cast<std::string>(host),
+                service=static_cast<std::string>(service)
+            ](
+                boost::system::error_code ec
+            ) {
+                BOOST_SCOPE_EXIT_ALL(&) {
+                    if (query_ctx->results) FreeAddrInfoExW(query_ctx->results);
+                };
+
+                if (!ec) {
+                    INT error = GetAddrInfoExOverlappedResult(
+                        &query_ctx->overlapped);
+                    if (error == WSA_E_CANCELLED) {
+                        ec = asio::error::operation_aborted;
+                    } else {
+                        ec = boost::system::error_code(
+                            error, asio::error::get_system_category());
+                    }
+                }
+
+                auto push_results = [&ec,&query_ctx,&host,&service](
+                    lua_State* L
+                ) {
+                    if (ec) {
+                        lua_pushnil(L);
+                        return;
+                    }
+
+                    lua_newtable(L);
+                    lua_pushliteral(L, "address");
+                    lua_pushliteral(L, "port");
+                    lua_pushliteral(L, "host_name");
+                    lua_pushliteral(L, "service_name");
+
+                    if (
+                        query_ctx->results && query_ctx->results->ai_canonname
+                    ) {
+                        std::wstring_view w{query_ctx->results->ai_canonname};
+                        push(L, boost::nowide::narrow(w));
+                    } else {
+                        push(L, host);
+                    }
+                    push(L, service);
+
+                    int i = 1;
+                    for (
+                        auto it = query_ctx->results ; it ; it = it->ai_next
+                    ) {
+                        lua_createtable(L, /*narr=*/0, /*nrec=*/4);
+
+                        asio::ip::tcp::endpoint ep;
+                        ep.resize(it->ai_addrlen);
+                        std::memcpy(ep.data(), it->ai_addr, ep.size());
+
+                        lua_pushvalue(L, -1 -6);
+                        auto a = reinterpret_cast<asio::ip::address*>(
+                            lua_newuserdata(L, sizeof(asio::ip::address))
+                        );
+                        rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+                        setmetatable(L, -2);
+                        new (a) asio::ip::address{ep.address()};
+                        lua_rawset(L, -3);
+
+                        lua_pushvalue(L, -1 -5);
+                        lua_pushinteger(L, ep.port());
+                        lua_rawset(L, -3);
+
+                        lua_pushvalue(L, -1 -4);
+                        lua_pushvalue(L, -2 -2);
+                        lua_rawset(L, -3);
+
+                        lua_pushvalue(L, -1 -3);
+                        lua_pushvalue(L, -2 -1);
+                        lua_rawset(L, -3);
+
+                        lua_rawseti(L, -8, i++);
+                    }
+                    lua_pop(L, 6);
+                };
+
+                vm_ctx->fiber_resume(
+                    current_fiber,
+                    hana::make_set(
+                        vm_context::options::fast_auto_detect_interrupt,
+                        hana::make_pair(
+                            vm_context::options::arguments,
+                            hana::make_tuple(ec, push_results))));
+            }));
+#else // defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
     resolver_service* service = nullptr;
 
     for (auto& op: vm_ctx->pending_operations) {
@@ -4407,6 +5239,7 @@ static int udp_get_address_v4_info(lua_State* L)
             }
         )
     );
+#endif // defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
 
     return lua_yield(L, 0);
 }
@@ -4466,6 +5299,167 @@ static int udp_get_address_v6_info(lua_State* L)
         flags |= asio::ip::resolver_base::numeric_service;
     }
 
+#if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
+    ADDRINFOEXW hints;
+    hints.ai_flags = flags;
+    hints.ai_family = AF_INET6;
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_protocol = IPPROTO_UDP;
+    hints.ai_addrlen = 0;
+    hints.ai_canonname = nullptr;
+    hints.ai_addr = nullptr;
+    hints.ai_blob = nullptr;
+    hints.ai_bloblen = 0;
+    hints.ai_provider = nullptr;
+    hints.ai_next = nullptr;
+
+    auto query_ctx = std::make_shared<get_address_info_context_t>(
+        vm_ctx->strand().context());
+
+    {
+        HANDLE hCompletion = CreateEventA(/*lpEventAttributes=*/NULL,
+                                          /*bManualReset=*/TRUE,
+                                          /*bInitialState=*/FALSE,
+                                          /*lpName=*/NULL);
+        if (hCompletion == NULL) {
+            boost::system::error_code ec(GetLastError(),
+                                         asio::error::get_system_category());
+            push(L, ec);
+            return lua_error(L);
+        }
+
+        boost::system::error_code ec;
+        query_ctx->hCompletion.assign(hCompletion, ec);
+        if (ec) {
+            push(L, ec);
+            return lua_error(L);
+        }
+
+        query_ctx->overlapped.hEvent = hCompletion;
+    }
+
+    std::wstring whost = boost::nowide::widen(host);
+    auto service = tostringview(L, 2);
+    std::wstring wservice = boost::nowide::widen(service);
+    INT error = GetAddrInfoExW(whost.c_str(), wservice.c_str(), NS_DNS,
+                               /*lpNspId=*/NULL, &hints, &query_ctx->results,
+                               /*timeout=*/NULL, &query_ctx->overlapped,
+                               /*lpCompletionRoutine=*/NULL,
+                               &query_ctx->hCancel);
+    if (error != WSA_IO_PENDING) {
+        // the operation completed immediately
+        boost::system::error_code ec(WSAGetLastError(),
+                                     asio::error::get_system_category());
+        push(L, ec);
+        return lua_error(L);
+    }
+
+    lua_pushlightuserdata(L, query_ctx.get());
+    lua_pushcclosure(
+        L,
+        [](lua_State* L) -> int {
+            auto query_ctx = reinterpret_cast<get_address_info_context_t*>(
+                lua_touserdata(L, lua_upvalueindex(1)));
+            GetAddrInfoExCancel(&query_ctx->hCancel);
+            return 0;
+        },
+        1);
+    set_interrupter(L, *vm_ctx);
+
+    query_ctx->hCompletion.async_wait(
+        asio::bind_executor(
+            vm_ctx->strand_using_defer(),
+            [
+                vm_ctx,current_fiber,query_ctx,
+                host=static_cast<std::string>(host),
+                service=static_cast<std::string>(service)
+            ](
+                boost::system::error_code ec
+            ) {
+                BOOST_SCOPE_EXIT_ALL(&) {
+                    if (query_ctx->results) FreeAddrInfoExW(query_ctx->results);
+                };
+
+                if (!ec) {
+                    INT error = GetAddrInfoExOverlappedResult(
+                        &query_ctx->overlapped);
+                    if (error == WSA_E_CANCELLED) {
+                        ec = asio::error::operation_aborted;
+                    } else {
+                        ec = boost::system::error_code(
+                            error, asio::error::get_system_category());
+                    }
+                }
+
+                auto push_results = [&ec,&query_ctx,&host,&service](
+                    lua_State* L
+                ) {
+                    if (ec) {
+                        lua_pushnil(L);
+                        return;
+                    }
+
+                    lua_newtable(L);
+                    lua_pushliteral(L, "address");
+                    lua_pushliteral(L, "port");
+                    lua_pushliteral(L, "host_name");
+                    lua_pushliteral(L, "service_name");
+
+                    if (
+                        query_ctx->results && query_ctx->results->ai_canonname
+                    ) {
+                        std::wstring_view w{query_ctx->results->ai_canonname};
+                        push(L, boost::nowide::narrow(w));
+                    } else {
+                        push(L, host);
+                    }
+                    push(L, service);
+
+                    int i = 1;
+                    for (
+                        auto it = query_ctx->results ; it ; it = it->ai_next
+                    ) {
+                        lua_createtable(L, /*narr=*/0, /*nrec=*/4);
+
+                        asio::ip::tcp::endpoint ep;
+                        ep.resize(it->ai_addrlen);
+                        std::memcpy(ep.data(), it->ai_addr, ep.size());
+
+                        lua_pushvalue(L, -1 -6);
+                        auto a = reinterpret_cast<asio::ip::address*>(
+                            lua_newuserdata(L, sizeof(asio::ip::address))
+                        );
+                        rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+                        setmetatable(L, -2);
+                        new (a) asio::ip::address{ep.address()};
+                        lua_rawset(L, -3);
+
+                        lua_pushvalue(L, -1 -5);
+                        lua_pushinteger(L, ep.port());
+                        lua_rawset(L, -3);
+
+                        lua_pushvalue(L, -1 -4);
+                        lua_pushvalue(L, -2 -2);
+                        lua_rawset(L, -3);
+
+                        lua_pushvalue(L, -1 -3);
+                        lua_pushvalue(L, -2 -1);
+                        lua_rawset(L, -3);
+
+                        lua_rawseti(L, -8, i++);
+                    }
+                    lua_pop(L, 6);
+                };
+
+                vm_ctx->fiber_resume(
+                    current_fiber,
+                    hana::make_set(
+                        vm_context::options::fast_auto_detect_interrupt,
+                        hana::make_pair(
+                            vm_context::options::arguments,
+                            hana::make_tuple(ec, push_results))));
+            }));
+#else // defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
     resolver_service* service = nullptr;
 
     for (auto& op: vm_ctx->pending_operations) {
@@ -4557,6 +5551,7 @@ static int udp_get_address_v6_info(lua_State* L)
             }
         )
     );
+#endif // defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
 
     return lua_yield(L, 0);
 }
