@@ -60,6 +60,34 @@ struct get_address_info_context_t
         ZeroMemory(&overlapped, sizeof(OVERLAPPED));
     }
 
+    ~get_address_info_context_t()
+    {
+        // WARNING: If you call `asio::io_context::stop()` the handler will be
+        // destroyed before `hCompletion->native_handle()` has been set (and
+        // then we hit this very destructor). The underlying asynchronous
+        // operation will not stop along with it. The underlying asynchronous
+        // operation be writing to this freed memory and a random memory
+        // corruption will occur. If we're **lucky** this `assert()` will
+        // trigger.
+        //
+        // Are you reading this code because the `assert()` triggered? Remove
+        // the call to `asio::io_context::stop()` from your code to fix the
+        // problem.
+        //
+        // A different approach would be to use the `lpCompletionRoutine`
+        // parameter from `GetAddrInfoExW()` and take care of all Boost.Asio
+        // integration ourselves (i.e. skip `asio::windows::object_handle`
+        // altogether). However (1) this would be more work and (2) so far
+        // Emilua has not been designed to rely on `asio::io_context::stop()` to
+        // begin with. Therefore we can safely use the simpler approach
+        // (i.e. remove `asio::io_context::stop()` from your new buggy code).
+        //
+        // Maybe you'll think that yet another approach would to cancel the
+        // operation right here and sync with it. This approach would have other
+        // problems for which I won't write any prose.
+        assert(results == nullptr);
+    }
+
     asio::windows::object_handle hCompletion;
     OVERLAPPED overlapped;
     PADDRINFOEXW results = nullptr;
@@ -2564,7 +2592,12 @@ static int tcp_get_address_info(lua_State* L)
                 boost::system::error_code ec
             ) {
                 BOOST_SCOPE_EXIT_ALL(&) {
-                    if (query_ctx->results) FreeAddrInfoExW(query_ctx->results);
+                    if (query_ctx->results) {
+                        FreeAddrInfoExW(query_ctx->results);
+#ifndef NDEBUG
+                        query_ctx->results = nullptr;
+#endif // !defined(NDEBUG)
+                    }
                 };
 
                 if (!ec) {
@@ -2875,7 +2908,12 @@ static int tcp_get_address_v4_info(lua_State* L)
                 boost::system::error_code ec
             ) {
                 BOOST_SCOPE_EXIT_ALL(&) {
-                    if (query_ctx->results) FreeAddrInfoExW(query_ctx->results);
+                    if (query_ctx->results) {
+                        FreeAddrInfoExW(query_ctx->results);
+#ifndef NDEBUG
+                        query_ctx->results = nullptr;
+#endif // !defined(NDEBUG)
+                    }
                 };
 
                 if (!ec) {
@@ -3188,7 +3226,12 @@ static int tcp_get_address_v6_info(lua_State* L)
                 boost::system::error_code ec
             ) {
                 BOOST_SCOPE_EXIT_ALL(&) {
-                    if (query_ctx->results) FreeAddrInfoExW(query_ctx->results);
+                    if (query_ctx->results) {
+                        FreeAddrInfoExW(query_ctx->results);
+#ifndef NDEBUG
+                        query_ctx->results = nullptr;
+#endif // !defined(NDEBUG)
+                    }
                 };
 
                 if (!ec) {
@@ -4754,7 +4797,12 @@ static int udp_get_address_info(lua_State* L)
                 boost::system::error_code ec
             ) {
                 BOOST_SCOPE_EXIT_ALL(&) {
-                    if (query_ctx->results) FreeAddrInfoExW(query_ctx->results);
+                    if (query_ctx->results) {
+                        FreeAddrInfoExW(query_ctx->results);
+#ifndef NDEBUG
+                        query_ctx->results = nullptr;
+#endif // !defined(NDEBUG)
+                    }
                 };
 
                 if (!ec) {
@@ -5065,7 +5113,12 @@ static int udp_get_address_v4_info(lua_State* L)
                 boost::system::error_code ec
             ) {
                 BOOST_SCOPE_EXIT_ALL(&) {
-                    if (query_ctx->results) FreeAddrInfoExW(query_ctx->results);
+                    if (query_ctx->results) {
+                        FreeAddrInfoExW(query_ctx->results);
+#ifndef NDEBUG
+                        query_ctx->results = nullptr;
+#endif // !defined(NDEBUG)
+                    }
                 };
 
                 if (!ec) {
@@ -5377,7 +5430,12 @@ static int udp_get_address_v6_info(lua_State* L)
                 boost::system::error_code ec
             ) {
                 BOOST_SCOPE_EXIT_ALL(&) {
-                    if (query_ctx->results) FreeAddrInfoExW(query_ctx->results);
+                    if (query_ctx->results) {
+                        FreeAddrInfoExW(query_ctx->results);
+#ifndef NDEBUG
+                        query_ctx->results = nullptr;
+#endif // !defined(NDEBUG)
+                    }
                 };
 
                 if (!ec) {
