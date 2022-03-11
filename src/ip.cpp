@@ -2553,10 +2553,9 @@ static int tcp_get_address_info(lua_State* L)
         query_ctx->overlapped.hEvent = hCompletion;
     }
 
-    std::wstring whost = boost::nowide::widen(host);
     auto service = tostringview(L, 2);
-    std::wstring wservice = boost::nowide::widen(service);
-    INT error = GetAddrInfoExW(whost.c_str(), wservice.c_str(), NS_DNS,
+    INT error = GetAddrInfoExW(nowide::widen(host).c_str(),
+                               nowide::widen(service).c_str(), NS_DNS,
                                /*lpNspId=*/NULL, &hints, &query_ctx->results,
                                /*timeout=*/NULL, &query_ctx->overlapped,
                                /*lpCompletionRoutine=*/NULL,
@@ -2629,7 +2628,7 @@ static int tcp_get_address_info(lua_State* L)
                         query_ctx->results && query_ctx->results->ai_canonname
                     ) {
                         std::wstring_view w{query_ctx->results->ai_canonname};
-                        push(L, boost::nowide::narrow(w));
+                        push(L, nowide::narrow(w));
                     } else {
                         push(L, host);
                     }
@@ -2869,10 +2868,9 @@ static int tcp_get_address_v4_info(lua_State* L)
         query_ctx->overlapped.hEvent = hCompletion;
     }
 
-    std::wstring whost = boost::nowide::widen(host);
     auto service = tostringview(L, 2);
-    std::wstring wservice = boost::nowide::widen(service);
-    INT error = GetAddrInfoExW(whost.c_str(), wservice.c_str(), NS_DNS,
+    INT error = GetAddrInfoExW(nowide::widen(host).c_str(),
+                               nowide::widen(service).c_str(), NS_DNS,
                                /*lpNspId=*/NULL, &hints, &query_ctx->results,
                                /*timeout=*/NULL, &query_ctx->overlapped,
                                /*lpCompletionRoutine=*/NULL,
@@ -2945,7 +2943,7 @@ static int tcp_get_address_v4_info(lua_State* L)
                         query_ctx->results && query_ctx->results->ai_canonname
                     ) {
                         std::wstring_view w{query_ctx->results->ai_canonname};
-                        push(L, boost::nowide::narrow(w));
+                        push(L, nowide::narrow(w));
                     } else {
                         push(L, host);
                     }
@@ -3187,10 +3185,9 @@ static int tcp_get_address_v6_info(lua_State* L)
         query_ctx->overlapped.hEvent = hCompletion;
     }
 
-    std::wstring whost = boost::nowide::widen(host);
     auto service = tostringview(L, 2);
-    std::wstring wservice = boost::nowide::widen(service);
-    INT error = GetAddrInfoExW(whost.c_str(), wservice.c_str(), NS_DNS,
+    INT error = GetAddrInfoExW(nowide::widen(host).c_str(),
+                               nowide::widen(service).c_str(), NS_DNS,
                                /*lpNspId=*/NULL, &hints, &query_ctx->results,
                                /*timeout=*/NULL, &query_ctx->overlapped,
                                /*lpCompletionRoutine=*/NULL,
@@ -3263,7 +3260,7 @@ static int tcp_get_address_v6_info(lua_State* L)
                         query_ctx->results && query_ctx->results->ai_canonname
                     ) {
                         std::wstring_view w{query_ctx->results->ai_canonname};
-                        push(L, boost::nowide::narrow(w));
+                        push(L, nowide::narrow(w));
                     } else {
                         push(L, host);
                     }
@@ -4758,10 +4755,9 @@ static int udp_get_address_info(lua_State* L)
         query_ctx->overlapped.hEvent = hCompletion;
     }
 
-    std::wstring whost = boost::nowide::widen(host);
     auto service = tostringview(L, 2);
-    std::wstring wservice = boost::nowide::widen(service);
-    INT error = GetAddrInfoExW(whost.c_str(), wservice.c_str(), NS_DNS,
+    INT error = GetAddrInfoExW(nowide::widen(host).c_str(),
+                               nowide::widen(service).c_str(), NS_DNS,
                                /*lpNspId=*/NULL, &hints, &query_ctx->results,
                                /*timeout=*/NULL, &query_ctx->overlapped,
                                /*lpCompletionRoutine=*/NULL,
@@ -4834,7 +4830,7 @@ static int udp_get_address_info(lua_State* L)
                         query_ctx->results && query_ctx->results->ai_canonname
                     ) {
                         std::wstring_view w{query_ctx->results->ai_canonname};
-                        push(L, boost::nowide::narrow(w));
+                        push(L, nowide::narrow(w));
                     } else {
                         push(L, host);
                     }
@@ -5074,10 +5070,9 @@ static int udp_get_address_v4_info(lua_State* L)
         query_ctx->overlapped.hEvent = hCompletion;
     }
 
-    std::wstring whost = boost::nowide::widen(host);
     auto service = tostringview(L, 2);
-    std::wstring wservice = boost::nowide::widen(service);
-    INT error = GetAddrInfoExW(whost.c_str(), wservice.c_str(), NS_DNS,
+    INT error = GetAddrInfoExW(nowide::widen(host).c_str(),
+                               nowide::widen(service).c_str(), NS_DNS,
                                /*lpNspId=*/NULL, &hints, &query_ctx->results,
                                /*timeout=*/NULL, &query_ctx->overlapped,
                                /*lpCompletionRoutine=*/NULL,
@@ -5150,7 +5145,7 @@ static int udp_get_address_v4_info(lua_State* L)
                         query_ctx->results && query_ctx->results->ai_canonname
                     ) {
                         std::wstring_view w{query_ctx->results->ai_canonname};
-                        push(L, boost::nowide::narrow(w));
+                        push(L, nowide::narrow(w));
                     } else {
                         push(L, host);
                     }
@@ -5391,10 +5386,9 @@ static int udp_get_address_v6_info(lua_State* L)
         query_ctx->overlapped.hEvent = hCompletion;
     }
 
-    std::wstring whost = boost::nowide::widen(host);
     auto service = tostringview(L, 2);
-    std::wstring wservice = boost::nowide::widen(service);
-    INT error = GetAddrInfoExW(whost.c_str(), wservice.c_str(), NS_DNS,
+    INT error = GetAddrInfoExW(nowide::widen(host).c_str(),
+                               nowide::widen(service).c_str(), NS_DNS,
                                /*lpNspId=*/NULL, &hints, &query_ctx->results,
                                /*timeout=*/NULL, &query_ctx->overlapped,
                                /*lpCompletionRoutine=*/NULL,
@@ -5467,7 +5461,7 @@ static int udp_get_address_v6_info(lua_State* L)
                         query_ctx->results && query_ctx->results->ai_canonname
                     ) {
                         std::wstring_view w{query_ctx->results->ai_canonname};
-                        push(L, boost::nowide::narrow(w));
+                        push(L, nowide::narrow(w));
                     } else {
                         push(L, host);
                     }
