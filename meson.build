@@ -19,7 +19,9 @@ luajit = dependency('luajit', version : '>=2.0.5')
 boost = dependency(
     'boost',
     version : '>=1.77',
-    static : true
+    modules : [
+        'nowide',
+    ],
 )
 fmt = dependency('fmt', version : '>=8.0')
 libdl = meson.get_compiler('cpp').find_library('dl', required : false)
@@ -284,6 +286,13 @@ import('pkgconfig').generate(
 )
 
 if get_option('enable_tests')
+    normalize_path_bin = executable(
+        'normalize_path',
+        'tool/normalize_path.cpp',
+        dependencies : boost,
+        implicit_include_directories : false,
+    )
+
     tests = {
         'fiber' : [
             'detach1',
@@ -511,6 +520,7 @@ if get_option('enable_tests')
                      # test)
                      'EMILUA_COLORS=',
                      'EMILUA_BIN=' + emilua_bin.full_path(),
+                     'NORMALIZE_PATH_BIN=' + normalize_path_bin.full_path(),
                      'AWK_BIN=' + gawk.full_path(),
                  ])
         endforeach

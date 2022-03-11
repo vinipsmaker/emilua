@@ -4,11 +4,12 @@
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
 #include <charconv>
-#include <cstdio>
 #include <new>
 
+#include <fmt/ostream.h>
 #include <fmt/format.h>
 
+#include <boost/nowide/iostream.hpp>
 #include <boost/hana/maximum.hpp>
 #include <boost/hana/tuple.hpp>
 #include <boost/hana/plus.hpp>
@@ -42,11 +43,11 @@ char error_category_mt_key;
 
 void app_context::init_log_domain(std::string_view name, int& log_level)
 {
-    auto rawenv = std::getenv("EMILUA_LOG_LEVELS");
-    if (!rawenv)
+    auto it = app_env.find("EMILUA_LOG_LEVELS");
+    if (it == app_env.end())
         return;
 
-    std::string_view env = rawenv;
+    std::string_view env = it->second;
     auto pos = env.find(name);
     if (pos == std::string_view::npos)
         return;
@@ -97,7 +98,7 @@ void app_context::log(int priority, std::string_view domain,
         buf.resize(buf.size() + 1);
         buf.data()[buf.size() - 1] = '\n';
     }
-    std::fwrite(buf.data(), buf.size(), /*count=*/1, stderr);
+    nowide::cerr.write(buf.data(), buf.size());
 }
 
 properties_service::properties_service(asio::execution_context& ctx,
@@ -152,7 +153,7 @@ void vm_context::close()
 
             if (/*LOG_ERR=*/3 <= log_domain<default_log_domain>::log_level) {
                 fmt::print(
-                    stderr,
+                    nowide::cerr,
                     spec,
                     red,
                     static_cast<const void*>(L_),
@@ -183,7 +184,7 @@ void vm_context::close()
             }
             if (/*LOG_ERR=*/3 <= log_domain<default_log_domain>::log_level) {
                 fmt::print(
-                    stderr,
+                    nowide::cerr,
                     spec,
                     red, static_cast<void*>(L_), failed_cleanup_handler_coro,
                     reset_red);
@@ -211,7 +212,7 @@ void vm_context::close()
             }
             if (/*LOG_ERR=*/3 <= log_domain<default_log_domain>::log_level) {
                 fmt::print(
-                    stderr,
+                    nowide::cerr,
                     spec,
                     red, static_cast<void*>(L_), reset_red,
                     dim, errors, reset_dim);

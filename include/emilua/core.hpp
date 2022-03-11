@@ -84,6 +84,7 @@ extern "C" {
 
 namespace boost::hana {}
 namespace boost::http {}
+namespace boost::nowide {}
 
 namespace emilua {
 
@@ -92,6 +93,7 @@ namespace outcome = BOOST_OUTCOME_V2_NAMESPACE;
 namespace asio = boost::asio;
 namespace hana = boost::hana;
 namespace http = boost::http;
+namespace nowide = boost::nowide;
 
 extern bool stdout_has_color;
 extern char raw_unpack_key;
@@ -290,6 +292,7 @@ public:
     }
 
     std::vector<std::string_view> app_args;
+    std::unordered_map<std::string_view, std::string_view> app_env;
     int exit_code = 0;
 
     std::weak_ptr<vm_context> master_vm;
@@ -635,7 +638,7 @@ inline void push(lua_State* L, const std::string& str)
 
 inline void push(lua_State* L, const std::filesystem::path& path)
 {
-    auto p = path.string();
+    auto p = path.u8string();
     lua_pushlstring(L, p.data(), p.size());
 }
 

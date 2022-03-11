@@ -11,7 +11,6 @@
 #include <cstdlib>
 
 #include <boost/preprocessor/control/iif.hpp>
-#include <boost/process/environment.hpp>
 #include <boost/predef/os/windows.h>
 #include <boost/asio/signal_set.hpp>
 #include <boost/vmd/is_number.hpp>
@@ -851,11 +850,11 @@ inline int sys_args(lua_State* L)
 
 inline int sys_env(lua_State* L)
 {
-    auto env = boost::this_process::environment();
-    lua_createtable(L, /*narr=*/0, /*nrec=*/env.size());
-    for (const auto& e: env) {
-        push(L, e.get_name());
-        push(L, e.to_string());
+    auto& appctx = get_vm_context(L).appctx;
+    lua_createtable(L, /*narr=*/0, /*nrec=*/appctx.app_env.size());
+    for (auto& [key, value]: appctx.app_env) {
+        push(L, key);
+        push(L, value);
         lua_rawset(L, -3);
     }
     return 1;

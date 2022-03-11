@@ -5,15 +5,18 @@
 
 #include <string_view>
 #include <charconv>
-#include <iostream>
+#include <optional>
 
+#include <fmt/ostream.h>
 #include <fmt/format.h>
 
 #include <boost/preprocessor/stringize.hpp>
-#include <boost/predef/os/windows.h>
 #include <boost/asio/io_context.hpp>
+#include <boost/nowide/iostream.hpp>
+#include <boost/nowide/args.hpp>
 #include <boost/version.hpp>
 
+#include <emilua/windows.hpp>
 #include <emilua/state.hpp>
 
 #if EMILUA_CONFIG_ENABLE_COLOR
@@ -43,21 +46,38 @@ static constexpr auto help_text = FMT_STRING(
     "                              Concurrency hint for the main execution engine context\n"
     "  --version                   Output version information and exit\n");
 
-int main(int argc, char *argv[])
+int main(int argc, char *argv[], char *envp[])
 {
     LUAJIT_VERSION_SYM();
+    std::optional<boost::nowide::args> args = std::nullopt;
+    try {
+        args.emplace(argc, argv, envp);
+    } catch (const std::exception& e) {
+        fmt::print(
+            boost::nowide::cerr,
+            FMT_STRING("Failed to read args/envp: `{}`\n"),
+            e.what());
+        return 2;
+    }
+
+    std::unordered_map<std::string_view, std::string_view> tmp_env;
+    for (char** rawenv = envp ; *rawenv ; ++rawenv) {
+        std::string_view env{*rawenv};
+        auto i = env.find('=');
+        auto key = env.substr(0, i);
+        auto value = env.substr(i + 1);
+        tmp_env.emplace(key, value);
+    }
 
 #if EMILUA_CONFIG_ENABLE_COLOR
-    emilua::stdout_has_color = []() {
-        using namespace std::literals::string_view_literals;
-        auto env = std::getenv("EMILUA_COLORS");
-        if (env) {
-            if (env == "1"sv) {
+    emilua::stdout_has_color = [&tmp_env]() {
+        if (auto it = tmp_env.find("EMILUA_COLORS") ; it != tmp_env.end()) {
+            if (it->second == "1") {
                 return true;
-            } else if (env == "0"sv) {
+            } else if (it->second == "0") {
                 return false;
-            } else if (*env != '\0') {
-                std::cerr <<
+            } else if (it->second.size() > 0) {
+                boost::nowide::cerr <<
                     "<4>Ignoring unrecognized value for EMILUA_COLORS\n";
             }
         }
@@ -78,8 +98,8 @@ int main(int argc, char *argv[])
     emilua::stdout_has_color = false;
 #endif // EMILUA_CONFIG_ENABLE_COLOR
 
-    if (auto rawenv = std::getenv("EMILUA_LOG_LEVELS") ; rawenv) {
-        std::string_view env = rawenv;
+    if (auto it = tmp_env.find("EMILUA_LOG_LEVELS") ; it != tmp_env.end()) {
+        std::string_view env = it->second;
         int level;
         auto res = std::from_chars(
             env.data(), env.data() + env.size(), level);
@@ -90,20 +110,21 @@ int main(int argc, char *argv[])
     std::string_view filename;
     int main_ctx_concurrency_hint = BOOST_ASIO_CONCURRENCY_HINT_SAFE;
     emilua::app_context appctx;
+    appctx.app_env = std::move(tmp_env);
 
-#define NEXT_ARG(OPTION, LABEL) do {                                \
-        if (YYCURSOR = *++cur_arg ; YYCURSOR != nullptr) {          \
-            goto LABEL;                                             \
-        } else {                                                    \
-            std::cerr << "missing value for option `" OPTION "`\n"; \
-            return 2;                                               \
-        }                                                           \
+#define NEXT_ARG(OPTION, LABEL) do {                                          \
+        if (YYCURSOR = *++cur_arg ; YYCURSOR != nullptr) {                    \
+            goto LABEL;                                                       \
+        } else {                                                              \
+            boost::nowide::cerr << "missing value for option `" OPTION "`\n"; \
+            return 2;                                                         \
+        }                                                                     \
     } while(0)
 
 #define ERRARG(OPTION)                                                        \
     do {                                                                      \
         fmt::print(                                                           \
-            stderr,                                                           \
+            boost::nowide::cerr,                                              \
             FMT_STRING("value `{}` not supported for option `" OPTION "`\n"), \
             *cur_arg);                                                        \
         return 2;                                                             \
@@ -125,7 +146,8 @@ opt:
     if (YYCURSOR == nullptr) goto end;
     %{
     * {
-        fmt::print(stderr, FMT_STRING("bad option: `{}`\n"), *cur_arg);
+        fmt::print(boost::nowide::cerr, FMT_STRING("bad option: `{}`\n"),
+                   *cur_arg);
         return 2;
     }
     "--" {end} {
@@ -138,12 +160,13 @@ opt:
         goto end;
     }
     "-" {end} {
-        std::cerr << "stdin not supported as input file\n";
+        boost::nowide::cerr << "stdin not supported as input file\n";
         return 2;
     }
     {filename} {end} {
         if (filename.size() > 0) {
-            std::cerr << "emilua doesn't support more than one input file\n";
+            boost::nowide::cerr <<
+                "emilua doesn't support more than one input file\n";
             return 2;
         }
         filename = *cur_arg;
@@ -156,12 +179,13 @@ opt:
 opt_short:
     %{
     * {
-        fmt::print(stderr, FMT_STRING("bad short option: {}\n"), *cur_arg);
+        fmt::print(boost::nowide::cerr, FMT_STRING("bad short option: {}\n"),
+                   *cur_arg);
         return 2;
     }
     {end} { goto opt; }
     "h" {
-        fmt::print(stdout, help_text, *argv);
+        fmt::print(boost::nowide::cout, help_text, *argv);
         return 0;
     }
     %}
@@ -169,16 +193,17 @@ opt_short:
 opt_long:
     %{
     * {
-        fmt::print(stderr, FMT_STRING("bad long option: {}\n"), *cur_arg);
+        fmt::print(boost::nowide::cerr, FMT_STRING("bad long option: {}\n"),
+                   *cur_arg);
         return 2;
     }
     "help" {end} {
-        fmt::print(stdout, help_text, *argv);
+        fmt::print(boost::nowide::cout, help_text, *argv);
         return 0;
     }
     "version" {end} {
-        std::cout << "Emilua " EMILUA_CONFIG_VERSION_STRING << std::endl <<
-            LUAJIT_VERSION << std::endl <<
+        boost::nowide::cout << "Emilua " EMILUA_CONFIG_VERSION_STRING <<
+            std::endl << LUAJIT_VERSION << std::endl <<
             "Boost " << (BOOST_VERSION / 100000) << '.' <<
             (BOOST_VERSION / 100 % 1000) << '.' << (BOOST_VERSION % 100) <<
             std::endl;
@@ -209,7 +234,7 @@ opt_main_context_concurrency_hint:
 end:
 
     if (filename.size() == 0) {
-        std::cerr << "missing filename\n";
+        boost::nowide::cerr << "missing filename\n";
         return 2;
     }
 
@@ -233,34 +258,36 @@ end:
 # error Invalid thread support level
 #endif
 
-    {
-        const char* env = std::getenv("EMILUA_PATH");
-        if (env) {
-            for (std::string_view spec{env} ;;) {
-                std::string_view::size_type sepidx = spec.find(
+    if (
+        auto it = appctx.app_env.find("EMILUA_PATH") ; it != appctx.app_env.end()
+    ) {
+        for (std::string_view spec{it->second} ;;) {
+            std::string_view::size_type sepidx = spec.find(
 #if BOOST_OS_WINDOWS
-                    ';'
+                ';'
 #else
-                    ':'
+                ':'
 #endif
-                );
-                if (sepidx == std::string_view::npos) {
-                    appctx.emilua_path.emplace_back(
-                        spec, fs::path::native_format);
-                    break;
-                } else {
-                    appctx.emilua_path.emplace_back(
-                        spec.substr(0, sepidx), fs::path::native_format);
-                    spec.remove_prefix(sepidx + 1);
-                }
+            );
+            if (sepidx == std::string_view::npos) {
+                appctx.emilua_path.emplace_back(
+                    emilua::widen_on_windows(spec), fs::path::native_format);
+                appctx.emilua_path.back().make_preferred();
+                break;
+            } else {
+                appctx.emilua_path.emplace_back(
+                    emilua::widen_on_windows(spec.substr(0, sepidx)),
+                    fs::path::native_format);
+                appctx.emilua_path.back().make_preferred();
+                spec.remove_prefix(sepidx + 1);
             }
         }
     }
 
-    // NOTE: Using `auto_format` because who knows how will meson give me this
-    // path here?
     appctx.emilua_path.emplace_back(
-        EMILUA_CONFIG_LIBROOTDIR, fs::path::auto_format);
+        emilua::widen_on_windows(EMILUA_CONFIG_LIBROOTDIR),
+        fs::path::native_format);
+    appctx.emilua_path.back().make_preferred();
     // TODO: Remove VERSION_MINOR from path components once emilua reaches
     // version 1.0.0 (versions that differ only in minor and patch numbers do
     // not break API).
@@ -269,7 +296,8 @@ end:
         "." BOOST_PP_STRINGIZE(EMILUA_CONFIG_VERSION_MINOR);
 
     try {
-        auto vm_ctx = emilua::make_vm(ioctx, appctx, filename,
+        auto vm_ctx = emilua::make_vm(ioctx, appctx,
+                                      emilua::widen_on_windows(filename),
                                       emilua::ContextType::main);
         appctx.master_vm = vm_ctx;
         vm_ctx->strand().post([vm_ctx]() {
@@ -279,7 +307,8 @@ end:
                     emilua::vm_context::options::skip_clear_interrupter));
         }, std::allocator<void>{});
     } catch (std::exception& e) {
-        std::cerr << "Error starting the lua VM: " << e.what() << std::endl;
+        boost::nowide::cerr << "Error starting the lua VM: " << e.what() <<
+            std::endl;
         return 1;
     }
 

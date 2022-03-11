@@ -3,14 +3,14 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
-#include <cstdio>
-
 #include <emilua/fiber.hpp>
 #include <emilua/dispatch_table.hpp>
 #include <emilua/scope_cleanup.hpp>
 
+#include <fmt/ostream.h>
 #include <fmt/format.h>
 
+#include <boost/nowide/iostream.hpp>
 #include <boost/hana/maximum.hpp>
 #include <boost/hana/tuple.hpp>
 #include <boost/hana/plus.hpp>
@@ -754,7 +754,7 @@ void print_panic(const lua_State* fiber, bool is_main, std::string_view error,
         red = dim = underline = reset_red = reset_dim = reset_underline = {};
 
     fmt::print(
-        stderr,
+        nowide::cerr,
         spec,
         red,
         (is_main ? "Main fiber from VM"sv : "Fiber"sv),

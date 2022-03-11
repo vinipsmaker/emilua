@@ -6,6 +6,7 @@
 #include <optional>
 #include <thread>
 
+#include <emilua/windows.hpp>
 #include <emilua/actor.hpp>
 #include <emilua/state.hpp>
 #include <emilua/fiber.hpp>
@@ -832,7 +833,8 @@ static int spawn_vm(lua_State* L)
     lua_xmove(vm_ctx.current_fiber(), L, 1);
     lua_rawget(L, -2);
     lua_rawgeti(L, -1, FiberDataIndex::SOURCE_PATH);
-    fs::path source_path{tostringview(L, -1), fs::path::native_format};
+    fs::path source_path{widen_on_windows(tostringview(L)),
+                         fs::path::native_format};
     fs::path module_path;
     bool is_leaf = source_path.filename() != "init.lua";
 
