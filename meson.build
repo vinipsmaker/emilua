@@ -40,8 +40,10 @@ if meson.get_compiler('cpp').get_id() == 'msvc'
         error('Full LuaJIT C++ exception interoperability is required')
     endif
 
-    # LuaJIT requires this flag to have full C++ exception interoperability
-    add_project_arguments('/EHa', language : 'cpp')
+    if get_option('cpp_eh') != 'a'
+        error('LuaJIT requires `/EHa` to have full C++ exception ' +
+              'interoperability')
+    endif
 
     add_project_arguments('/bigobj', language : 'cpp')
 endif
