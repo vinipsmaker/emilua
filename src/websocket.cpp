@@ -246,8 +246,10 @@ inline int websocket_new_client(lua_State* L, int nargs)
                     }
                 };
 
-                vm_ctx->pending_operations.erase(
-                    vm_ctx->pending_operations.s_iterator_to(*pending_op));
+                if (vm_ctx->valid()) {
+                    vm_ctx->pending_operations.erase(
+                        vm_ctx->pending_operations.iterator_to(*pending_op));
+                }
 
                 std::error_code std_ec = ec;
                 if (pending_op->interrupted &&

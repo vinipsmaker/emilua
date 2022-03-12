@@ -78,8 +78,10 @@ static int sleep_for(lua_State* L)
     handle->timer.async_wait(asio::bind_executor(
         vm_ctx->strand_using_defer(),
         [vm_ctx,current_fiber,handle](const boost::system::error_code &ec) {
-            vm_ctx->pending_operations.erase(
-                vm_ctx->pending_operations.s_iterator_to(*handle));
+            if (vm_ctx->valid()) {
+                vm_ctx->pending_operations.erase(
+                    vm_ctx->pending_operations.iterator_to(*handle));
+            }
             auto opt_args = vm_context::options::arguments;
             vm_ctx->fiber_resume(
                 current_fiber,
