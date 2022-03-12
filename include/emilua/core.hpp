@@ -412,7 +412,13 @@ struct inbox_t
 // prematurely. It can be used to register cleanup code (the `cancel()` method).
 class pending_operation
     : public boost::intrusive::list_base_hook<
-        boost::intrusive::link_mode<boost::intrusive::auto_unlink>
+        boost::intrusive::link_mode<
+#ifdef NDEBUG
+            boost::intrusive::normal_link
+#else // defined(NDEBUG)
+            boost::intrusive::safe_link
+#endif // defined(NDEBUG)
+        >
     >
 {
 public:
