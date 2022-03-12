@@ -52,12 +52,18 @@ static char tcp_socket_send_file_key;
 #endif // BOOST_OS_WINDOWS && EMILUA_CONFIG_ENABLE_FILE_IO
 
 #if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0602)
-struct get_address_info_context_t
+struct get_address_info_context_t: public pending_operation
 {
     get_address_info_context_t(asio::io_context& ctx)
-        : hCompletion(ctx)
+        : pending_operation{/*shared_ownership=*/true}
+        , hCompletion(ctx)
     {
         ZeroMemory(&overlapped, sizeof(OVERLAPPED));
+    }
+
+    void cancel() noexcept override
+    {
+        GetAddrInfoExCancel(&hCancel);
     }
 
     ~get_address_info_context_t()
@@ -2580,6 +2586,7 @@ static int tcp_get_address_info(lua_State* L)
         1);
     set_interrupter(L, *vm_ctx);
 
+    vm_ctx->pending_operations.push_back(*query_ctx);
     query_ctx->hCompletion.async_wait(
         asio::bind_executor(
             vm_ctx->strand_using_defer(),
@@ -2598,6 +2605,11 @@ static int tcp_get_address_info(lua_State* L)
 #endif // !defined(NDEBUG)
                     }
                 };
+
+                if (vm_ctx->valid()) {
+                    vm_ctx->pending_operations.erase(
+                        vm_ctx->pending_operations.iterator_to(*query_ctx));
+                }
 
                 if (!ec) {
                     INT error = GetAddrInfoExOverlappedResult(
@@ -2895,6 +2907,7 @@ static int tcp_get_address_v4_info(lua_State* L)
         1);
     set_interrupter(L, *vm_ctx);
 
+    vm_ctx->pending_operations.push_back(*query_ctx);
     query_ctx->hCompletion.async_wait(
         asio::bind_executor(
             vm_ctx->strand_using_defer(),
@@ -2913,6 +2926,11 @@ static int tcp_get_address_v4_info(lua_State* L)
 #endif // !defined(NDEBUG)
                     }
                 };
+
+                if (vm_ctx->valid()) {
+                    vm_ctx->pending_operations.erase(
+                        vm_ctx->pending_operations.iterator_to(*query_ctx));
+                }
 
                 if (!ec) {
                     INT error = GetAddrInfoExOverlappedResult(
@@ -3212,6 +3230,7 @@ static int tcp_get_address_v6_info(lua_State* L)
         1);
     set_interrupter(L, *vm_ctx);
 
+    vm_ctx->pending_operations.push_back(*query_ctx);
     query_ctx->hCompletion.async_wait(
         asio::bind_executor(
             vm_ctx->strand_using_defer(),
@@ -3230,6 +3249,11 @@ static int tcp_get_address_v6_info(lua_State* L)
 #endif // !defined(NDEBUG)
                     }
                 };
+
+                if (vm_ctx->valid()) {
+                    vm_ctx->pending_operations.erase(
+                        vm_ctx->pending_operations.iterator_to(*query_ctx));
+                }
 
                 if (!ec) {
                     INT error = GetAddrInfoExOverlappedResult(
@@ -4782,6 +4806,7 @@ static int udp_get_address_info(lua_State* L)
         1);
     set_interrupter(L, *vm_ctx);
 
+    vm_ctx->pending_operations.push_back(*query_ctx);
     query_ctx->hCompletion.async_wait(
         asio::bind_executor(
             vm_ctx->strand_using_defer(),
@@ -4800,6 +4825,11 @@ static int udp_get_address_info(lua_State* L)
 #endif // !defined(NDEBUG)
                     }
                 };
+
+                if (vm_ctx->valid()) {
+                    vm_ctx->pending_operations.erase(
+                        vm_ctx->pending_operations.iterator_to(*query_ctx));
+                }
 
                 if (!ec) {
                     INT error = GetAddrInfoExOverlappedResult(
@@ -5097,6 +5127,7 @@ static int udp_get_address_v4_info(lua_State* L)
         1);
     set_interrupter(L, *vm_ctx);
 
+    vm_ctx->pending_operations.push_back(*query_ctx);
     query_ctx->hCompletion.async_wait(
         asio::bind_executor(
             vm_ctx->strand_using_defer(),
@@ -5115,6 +5146,11 @@ static int udp_get_address_v4_info(lua_State* L)
 #endif // !defined(NDEBUG)
                     }
                 };
+
+                if (vm_ctx->valid()) {
+                    vm_ctx->pending_operations.erase(
+                        vm_ctx->pending_operations.iterator_to(*query_ctx));
+                }
 
                 if (!ec) {
                     INT error = GetAddrInfoExOverlappedResult(
@@ -5413,6 +5449,7 @@ static int udp_get_address_v6_info(lua_State* L)
         1);
     set_interrupter(L, *vm_ctx);
 
+    vm_ctx->pending_operations.push_back(*query_ctx);
     query_ctx->hCompletion.async_wait(
         asio::bind_executor(
             vm_ctx->strand_using_defer(),
@@ -5431,6 +5468,11 @@ static int udp_get_address_v6_info(lua_State* L)
 #endif // !defined(NDEBUG)
                     }
                 };
+
+                if (vm_ctx->valid()) {
+                    vm_ctx->pending_operations.erase(
+                        vm_ctx->pending_operations.iterator_to(*query_ctx));
+                }
 
                 if (!ec) {
                     INT error = GetAddrInfoExOverlappedResult(
