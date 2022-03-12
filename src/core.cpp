@@ -138,85 +138,86 @@ vm_context::~vm_context()
 
 void vm_context::close()
 {
-    if (valid_) {
-        if (lua_errmem) {
-            constexpr auto spec{FMT_STRING(
-                "{}VM {:p} forcibly closed due to '{}LUA_ERRMEM{}'{}\n"
-            )};
+    if (!valid_)
+        return;
 
-            std::string_view red{"\033[31;1m"};
-            std::string_view underline{"\033[4m"};
-            std::string_view reset_red{"\033[22;39m"};
-            std::string_view reset_underline{"\033[24m"};
-            if (!stdout_has_color)
-                red = underline = reset_red = reset_underline = {};
+    if (lua_errmem) {
+        constexpr auto spec{FMT_STRING(
+            "{}VM {:p} forcibly closed due to '{}LUA_ERRMEM{}'{}\n"
+        )};
 
-            if (/*LOG_ERR=*/3 <= log_domain<default_log_domain>::log_level) {
-                fmt::print(
-                    nowide::cerr,
-                    spec,
-                    red,
-                    static_cast<const void*>(L_),
-                    underline, reset_underline,
-                    reset_red);
-            }
+        std::string_view red{"\033[31;1m"};
+        std::string_view underline{"\033[4m"};
+        std::string_view reset_red{"\033[22;39m"};
+        std::string_view reset_underline{"\033[24m"};
+        if (!stdout_has_color)
+            red = underline = reset_red = reset_underline = {};
 
-            suppress_tail_errors = true;
+        if (/*LOG_ERR=*/3 <= log_domain<default_log_domain>::log_level) {
+            fmt::print(
+                nowide::cerr,
+                spec,
+                red,
+                static_cast<const void*>(L_),
+                underline, reset_underline,
+                reset_red);
         }
 
-        lua_close(L_);
+        suppress_tail_errors = true;
+    }
 
-        if (!suppress_tail_errors && failed_cleanup_handler_coro) {
-            std::string_view red{"\033[31;1m"};
-            std::string_view reset_red{"\033[22;39m"};
-            if (!stdout_has_color)
-                red = reset_red = {};
+    lua_close(L_);
 
-            constexpr auto spec{FMT_STRING(
-                "{}VM {:p} forcibly closed due to error raised"
-                " on cleanup handler from coroutine {:p}{}\n"
-            )};
-            std::string errors;
-            for (auto& e: deadlock_errors) {
-                errors.push_back('\t');
-                errors += e;
-                errors.push_back('\n');
-            }
-            if (/*LOG_ERR=*/3 <= log_domain<default_log_domain>::log_level) {
-                fmt::print(
-                    nowide::cerr,
-                    spec,
-                    red, static_cast<void*>(L_), failed_cleanup_handler_coro,
-                    reset_red);
-            }
-            suppress_tail_errors = true;
+    if (!suppress_tail_errors && failed_cleanup_handler_coro) {
+        std::string_view red{"\033[31;1m"};
+        std::string_view reset_red{"\033[22;39m"};
+        if (!stdout_has_color)
+            red = reset_red = {};
+
+        constexpr auto spec{FMT_STRING(
+            "{}VM {:p} forcibly closed due to error raised"
+            " on cleanup handler from coroutine {:p}{}\n"
+        )};
+        std::string errors;
+        for (auto& e: deadlock_errors) {
+            errors.push_back('\t');
+            errors += e;
+            errors.push_back('\n');
         }
+        if (/*LOG_ERR=*/3 <= log_domain<default_log_domain>::log_level) {
+            fmt::print(
+                nowide::cerr,
+                spec,
+                red, static_cast<void*>(L_), failed_cleanup_handler_coro,
+                reset_red);
+        }
+        suppress_tail_errors = true;
+    }
 
-        if (!suppress_tail_errors && deadlock_errors.size() != 0) {
-            std::string_view red{"\033[31;1m"};
-            std::string_view dim{"\033[2m"};
-            std::string_view reset_red{"\033[22;39m"};
-            std::string_view reset_dim{"\033[22m"};
-            if (!stdout_has_color)
-                red = dim = reset_red = reset_dim = {};
+    if (!suppress_tail_errors && deadlock_errors.size() != 0) {
+        std::string_view red{"\033[31;1m"};
+        std::string_view dim{"\033[2m"};
+        std::string_view reset_red{"\033[22;39m"};
+        std::string_view reset_dim{"\033[22m"};
+        if (!stdout_has_color)
+            red = dim = reset_red = reset_dim = {};
 
-            constexpr auto spec{FMT_STRING(
-                "{}Possible deadlock(s) detected during VM {:p} shutdown{}:\n"
-                "{}{}{}"
-            )};
-            std::string errors;
-            for (auto& e: deadlock_errors) {
-                errors.push_back('\t');
-                errors += e;
-                errors.push_back('\n');
-            }
-            if (/*LOG_ERR=*/3 <= log_domain<default_log_domain>::log_level) {
-                fmt::print(
-                    nowide::cerr,
-                    spec,
-                    red, static_cast<void*>(L_), reset_red,
-                    dim, errors, reset_dim);
-            }
+        constexpr auto spec{FMT_STRING(
+            "{}Possible deadlock(s) detected during VM {:p} shutdown{}:\n"
+            "{}{}{}"
+        )};
+        std::string errors;
+        for (auto& e: deadlock_errors) {
+            errors.push_back('\t');
+            errors += e;
+            errors.push_back('\n');
+        }
+        if (/*LOG_ERR=*/3 <= log_domain<default_log_domain>::log_level) {
+            fmt::print(
+                nowide::cerr,
+                spec,
+                red, static_cast<void*>(L_), reset_red,
+                dim, errors, reset_dim);
         }
     }
 
