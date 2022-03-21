@@ -1,4 +1,3 @@
-local println = require('println')
 local inbox = require('inbox')
 
 if _CONTEXT == 'main' then
@@ -10,6 +9,6 @@ else assert(_CONTEXT == 'worker')
     local a = inbox:recv()
     local b = inbox:recv()
     local c = inbox:recv()
-    println(tostring(a == b))
-    println(tostring(b == c))
+    print(a == b)
+    print(b == c)
 end

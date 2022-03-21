@@ -1,10 +1,9 @@
-local println = require('println')
 local inbox = require('inbox')
 
 if _CONTEXT == 'main' then
     local ch = spawn_vm('.')
     ch:send(inbox)
-    println('A')
+    print('A')
     local m = inbox:recv()
 else
     assert(_CONTEXT == 'worker')
@@ -19,5 +18,5 @@ else
     -- awake the the fiber stalled in the `recv()` operation?
     this_fiber.yield()
     this_fiber.yield()
-    println('B')
+    print('B')
 end

@@ -1,13 +1,11 @@
-println = require('println')
-
 co = coroutine.create(function()
     coroutine.yield('foo')
     return 'bar'
 end)
 
 function helper(ret, val)
-    println(tostring(ret))
-    println(val)
+    print(ret)
+    print(val)
     return coroutine.status(co) == 'suspended'
 end
 

@@ -1,11 +1,9 @@
-local println = require('println')
-
 spawn(function()
-    println('second')
+    print('second')
     this_fiber.yield()
-    println('fourth')
+    print('fourth')
 end):detach()
 
-println('first')
+print('first')
 this_fiber.yield()
-println('third')
+print('third')

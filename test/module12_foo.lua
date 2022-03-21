@@ -1,7 +1,5 @@
-local println = require('println')
-
-println('baz')
+print('baz')
 
 function bar()
-    println('foobar')
+    print('foobar')
 end

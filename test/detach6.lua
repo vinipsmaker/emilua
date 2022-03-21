@@ -1,15 +1,13 @@
 -- This test ensures that detached fibers who error will have their stacktrace
 -- printed to stderr
 
-local println = require('println')
-
 local fib = spawn(function()
-    println('secondary fiber starts')
+    print('secondary fiber starts')
     this_fiber.yield()
     error('tag', 0)
 end)
 
-println('secondary fiber spawned')
+print('secondary fiber spawned')
 this_fiber.yield()
 fib:detach()
-println('end of main fiber')
+print('end of main fiber')

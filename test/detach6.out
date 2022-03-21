@@ -3,6 +3,6 @@ secondary fiber starts
 end of main fiber
 Fiber 0x1 panicked: 'tag'
 stack traceback:
-	input.lua:9: in function <input.lua:6>
+	input.lua:7: in function <input.lua:4>
 	[C]: in function ''
 	[string "?"]: in function <[string "?"]:0>

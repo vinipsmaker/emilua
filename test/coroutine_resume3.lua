@@ -1,8 +1,6 @@
-println = require('println')
-
 coroutine.wrap(function()
     this_fiber.yield()
-    println('foo')
+    print('foo')
 end)()
 
-println('bar')
+print('bar')

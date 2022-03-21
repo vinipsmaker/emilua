@@ -1,5 +1,4 @@
-local println = require('println')
 local json = require('json')
 
-println(tostring(json.decode('[]')))
+print(json.decode('[]'))
 json.decode('[] true')

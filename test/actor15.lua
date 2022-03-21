@@ -1,4 +1,3 @@
-local println = require('println')
 local sleep_for = require('sleep_for')
 
 if _CONTEXT == 'main' then
@@ -9,9 +8,9 @@ if _CONTEXT == 'main' then
     sleep_for(100)
     f:interrupt()
     f:join()
-    println('A')
-    println(tostring(f.interruption_caught))
+    print('A')
+    print(f.interruption_caught)
 else assert(_CONTEXT == 'worker')
     sleep_for(200)
-    println('B')
+    print('B')
 end

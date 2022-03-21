@@ -1,5 +1,5 @@
 Main fiber from VM 0x1 panicked: 'Module not found'
 stack traceback:
-	input.lua:4: in main chunk
+	input.lua:3: in main chunk
 	[C]: in function ''
 	[string "?"]: in function <[string "?"]:0>

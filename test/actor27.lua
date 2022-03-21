@@ -1,4 +1,3 @@
-local println = require('println')
 local inbox = require('inbox')
 
 local ch = spawn_vm('../actor27_foo')

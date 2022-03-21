@@ -1,10 +1,9 @@
 -- mutex.lock has dispatch semantics
 
-local println = require('println')
 local mutex = require('mutex')
 
-spawn(function() println('bar') end)
+spawn(function() print('bar') end)
 
 m = mutex.new()
 m:lock()
-println('foo')
+print('foo')

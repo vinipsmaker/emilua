@@ -1,14 +1,12 @@
-println = require('println')
-
 co = coroutine.create(function()
     coroutine.yield(1, 2, 3)
 end)
 
 x = {coroutine.resume(co)}
-println(tostring(#x))
-println(type(x[2]))
-println(tostring(x[2]))
-println(type(x[3]))
-println(tostring(x[3]))
-println(type(x[4]))
-println(tostring(x[4]))
+print(#x)
+print(type(x[2]))
+print(x[2])
+print(type(x[3]))
+print(x[3])
+print(type(x[4]))
+print(x[4])

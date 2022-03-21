@@ -2,7 +2,6 @@
 -- condition and the call to wait(), the notifier doesn't need to mutate the
 -- condition through a mutex.
 
-local println = require('println')
 local mutex = require('mutex')
 local cond = require('cond')
 
@@ -19,19 +18,19 @@ function assert_eq(x, y)
 end
 
 spawn(function()
-    println('201')
+    print('201')
     m:lock();this_fiber.forbid_suspend()
-    println('202')
+    print('202')
     assert_eq(state, 0)
     this_fiber.allow_suspend();c:wait(m)
     assert_eq(state, 1)
-    println('203')
+    print('203')
     m:unlock()
 end)
 
-println('101')
+print('101')
 this_fiber.yield()
-println('102')
+print('102')
 state = 1
 c:notify_one()
-println('103')
+print('103')

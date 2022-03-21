@@ -1,3 +1,1 @@
-local println = require('println')
-
-println('b')
+print('b')

@@ -13,7 +13,6 @@
 -- The property ensured by this test case also goes along the mindset described
 -- in the section "IO objects" from the "Interruption API" manual.
 
-local println = require('println')
 local mutex = require('mutex')
 local cond = require('cond')
 
@@ -22,27 +21,27 @@ local c = cond.new()
 
 f = spawn(function()
     m:lock()
-    println('foo')
+    print('foo')
     local ok, err = pcall(function() c:wait(m) end)
-    println(tostring(ok))
+    print(ok)
     m:unlock()
     if not ok then
         error(err, 0)
     end
-    println('baz')
+    print('baz')
 end)
 
 spawn(function()
     m:lock()
-    println('foo2')
+    print('foo2')
     local ok = pcall(function() c:wait(m) end)
-    println(tostring(ok))
+    print(ok)
     m:unlock()
-    println('baz2')
+    print('baz2')
 end)
 
 this_fiber.yield()
 this_fiber.yield()
-println('bar')
+print('bar')
 f:interrupt()
 c:notify_one()

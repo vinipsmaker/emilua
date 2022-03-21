@@ -1,14 +1,14 @@
 foo1
 bar1
 foo2
-Fiber 0x1 panicked: 'input.lua:11: foo3'
+Fiber 0x1 panicked: 'input.lua:9: foo3'
 stack traceback:
-	input.lua:11: in function <input.lua:5>
+	input.lua:9: in function <input.lua:3>
 	[C]: in function ''
 	[string "?"]: in function <[string "?"]:0>
 bar2
-Fiber 0x2 panicked: 'input.lua:20: bar3'
+Fiber 0x2 panicked: 'input.lua:18: bar3'
 stack traceback:
-	input.lua:20: in function <input.lua:14>
+	input.lua:18: in function <input.lua:12>
 	[C]: in function ''
 	[string "?"]: in function <[string "?"]:0>

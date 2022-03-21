@@ -1,4 +1,3 @@
-local println = require('println')
 local sleep_for = require('sleep_for')
 
 if _CONTEXT == 'main' then
@@ -9,7 +8,7 @@ if _CONTEXT == 'main' then
     sleep_for(100)
     f:interrupt()
     local ok, e = pcall(function() f:join() end)
-    println(tostring(f.interruption_caught))
+    print(f.interruption_caught)
     error(e)
 else assert(_CONTEXT == 'worker')
     require('inbox')

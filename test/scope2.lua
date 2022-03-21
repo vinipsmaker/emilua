@@ -4,11 +4,9 @@
 -- is implemented in terms of pcall(). Some silly change could make scope()
 -- inherit this undesired property. This test can prevent such break from going
 -- unnoticed.
-local println = require('println')
-
 f = spawn(function()
     scope(function() end)
-    println('foo')
+    print('foo')
 end)
 
 f:interrupt()

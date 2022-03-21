@@ -1,5 +1,3 @@
-local println = require('println')
-
 if _CONTEXT == 'main' then
     local ch = spawn_vm('.')
 
@@ -11,9 +9,9 @@ if _CONTEXT == 'main' then
     -- receiver is already gone?
     this_fiber.yield()
 
-    println('A')
+    print('A')
     ch:send('foobar')
 else
     assert(_CONTEXT == 'worker')
-    println('B')
+    print('B')
 end

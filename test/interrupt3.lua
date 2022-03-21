@@ -1,9 +1,7 @@
-local println = require('println')
-
 fib = spawn(function()
-    println('foo')
+    print('foo')
     coroutine.wrap(function() this_fiber.yield() end)()
-    println('bar')
+    print('bar')
 end)
 
 fib:interrupt()

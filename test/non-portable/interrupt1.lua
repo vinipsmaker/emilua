@@ -1,5 +1,3 @@
-local println = require('println')
-
 fib = spawn(function()
     -- A different approach would be possible where we don't even start the
     -- fiber by detecting it was already interrupted just before we're running
@@ -7,9 +5,9 @@ fib = spawn(function()
     -- these two approaches would be correct thou. Someone's else implementation
     -- could differ and still be correct. Do not make your code depend on the
     -- behaviour of this test.
-    println('foo')
+    print('foo')
     coroutine.wrap(function() this_fiber.yield() end)()
-    println('bar')
+    print('bar')
 end)
 
 fib:interrupt()

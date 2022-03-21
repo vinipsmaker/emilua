@@ -1,6 +1,5 @@
-local println = require('println')
 local foo = require('./module11_foo')
 
-println('foo')
+print('foo')
 foo.bar()
-println('bar')
+print('bar')

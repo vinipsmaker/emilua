@@ -1,7 +1,5 @@
-local println = require('println')
-
 coroutine.wrap(function()
-    println('a')
+    print('a')
     require('./module15_foo')
-    println('c')
+    print('c')
 end)()

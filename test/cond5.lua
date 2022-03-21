@@ -1,6 +1,5 @@
 -- Multiple waiters
 
-local println = require('println')
 local mutex = require('mutex')
 local cond = require('cond')
 
@@ -17,34 +16,34 @@ function assert_eq(x, y)
 end
 
 spawn(function()
-    println('201')
+    print('201')
     m:lock()
-    println('202')
+    print('202')
     assert_eq(state, 0)
     c:wait(m)
     assert_eq(state, 1)
-    println('203')
+    print('203')
     state = 2
     m:unlock()
 end)
 
 spawn(function()
-    println('301')
+    print('301')
     m:lock()
-    println('302')
+    print('302')
     assert_eq(state, 0)
     c:wait(m)
     assert_eq(state, 2)
-    println('303')
+    print('303')
     m:unlock()
 end)
 
 this_fiber.yield()
-println('101')
+print('101')
 m:lock()
-println('102')
+print('102')
 state = 1
 m:unlock()
-println('103')
+print('103')
 c:notify_all()
-println('104')
+print('104')

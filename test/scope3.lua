@@ -1,7 +1,5 @@
-local println = require('println')
-
 scope(function()
-    scope_cleanup_push(function() println('foo') end)
+    scope_cleanup_push(function() print('foo') end)
     error('bar', 0)
 end)
-println('baz')
+print('baz')

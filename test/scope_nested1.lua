@@ -1,15 +1,13 @@
-local println = require('println')
-
 scope(function()
-    scope_cleanup_push(function() println('foo1a') end)
-    scope_cleanup_push(function() println('foo1b') end)
+    scope_cleanup_push(function() print('foo1a') end)
+    scope_cleanup_push(function() print('foo1b') end)
 
     scope(function()
-        scope_cleanup_push(function() println('foo2a') end)
-        scope_cleanup_push(function() println('foo2b') end)
-        println('bar2')
+        scope_cleanup_push(function() print('foo2a') end)
+        scope_cleanup_push(function() print('foo2b') end)
+        print('bar2')
     end)
 
-    println('bar1')
+    print('bar1')
 end)
-println('baz1')
+print('baz1')

@@ -3,6 +3,6 @@ normal
 Main fiber from VM 0x1 panicked: 'Operation not permitted'
 stack traceback:
 	[string "?"]: in function 'resume'
-	input.lua:18: in main chunk
+	input.lua:16: in main chunk
 	[C]: in function ''
 	[string "?"]: in function <[string "?"]:0>

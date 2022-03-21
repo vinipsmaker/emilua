@@ -184,13 +184,6 @@ static boost::shared_ptr<plugin> load_native_module(
 }
 #endif // EMILUA_CONFIG_ENABLE_PLUGINS
 
-static int println(lua_State* L)
-{
-    auto msg = luaL_checkstring(L, 1);
-    std::cout << msg << std::endl;
-    return 0;
-}
-
 static int mark_module_as_loaded(lua_State* L)
 {
     rawgetp(L, LUA_REGISTRYINDEX, &loaded_modules_key);
@@ -792,14 +785,6 @@ static int require(lua_State* L)
                     [](lua_State* L) -> int {
                         lua_pushboolean(L, 1);
                         rawgetp(L, LUA_REGISTRYINDEX, &byte_span_key);
-                        return 2;
-                    }
-                ),
-                hana::make_pair(
-                    BOOST_HANA_STRING("println"),
-                    [](lua_State* L) -> int {
-                        lua_pushboolean(L, 1);
-                        lua_pushcfunction(L, println);
                         return 2;
                     }
                 ),

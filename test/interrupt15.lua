@@ -1,13 +1,11 @@
 -- Disable/restore interruption
 
-local println = require('println')
-
 fib = spawn(function()
     fib:interrupt()
-    println('foo')
+    print('foo')
     this_fiber.disable_interruption()
     this_fiber.yield()
-    println('bar')
+    print('bar')
     this_fiber.restore_interruption()
     -- Yes, 'baz' will still be printed. We DO have to wait until a new
     -- interruption is reached before we can raise `fiber_interrupted`. Consider
@@ -17,7 +15,7 @@ fib = spawn(function()
     -- behaviour is to deliver it to the user so it can do something with it. If
     -- `restore_interruption()` itself was an interruption point, this op
     -- function could not be implemented.
-    println('baz')
+    print('baz')
     this_fiber.yield()
-    println('qux')
+    print('qux')
 end)
