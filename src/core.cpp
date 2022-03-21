@@ -456,7 +456,7 @@ void push(lua_State* L, const std::error_code& ec)
     lua_pushinteger(L, ec.value());
     lua_rawset(L, -3);
 
-    lua_pushliteral(L, "cat");
+    lua_pushliteral(L, "category");
     {
         *reinterpret_cast<const std::error_category**>(
             lua_newuserdata(L, sizeof(void*))) = &ec.category();
@@ -487,7 +487,7 @@ std::variant<std::string_view, std::error_code> inspect_errobj(lua_State* L)
             break;
         }
         ev = lua_tointeger(L, -1);
-        lua_pushliteral(L, "cat");
+        lua_pushliteral(L, "category");
         lua_rawget(L, -3);
         if (lua_type(L, -1) != LUA_TUSERDATA || !lua_getmetatable(L, -1)) {
             lua_pop(L, 2);

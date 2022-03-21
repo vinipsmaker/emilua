@@ -967,7 +967,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
         lua_createtable(L, /*narr=*/0, /*nrec=*/4);
 
         lua_pushliteral(L, "__metatable");
-        lua_pushliteral(L, "ecat");
+        lua_pushliteral(L, "error_category");
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__eq");
@@ -1050,7 +1050,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
                     lua_pushboolean(L, 0);
                     return 1;
                 }
-                lua_pushliteral(L, "cat");
+                lua_pushliteral(L, "category");
                 lua_pushvalue(L, -1);
                 lua_rawget(L, 1);
                 lua_pushvalue(L, -2);
@@ -1073,7 +1073,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
                     return lua_error(L);
                 }
                 int val = lua_tonumber(L, -1);
-                lua_pushliteral(L, "cat");
+                lua_pushliteral(L, "category");
                 lua_rawget(L, 1);
                 if (!lua_getmetatable(L, -1)) {
                     push(L, std::errc::invalid_argument);
