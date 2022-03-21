@@ -144,11 +144,7 @@ static boost::shared_ptr<plugin> load_native_module(
             throw std::system_error{std::io_errc::stream};
     }
 
-#if BOOST_VERSION >= 107600
     auto native_module = dll::import_symbol<plugin>(
-#else
-    auto native_module = dll::import<plugin>(
-#endif
         pluginsdir / module_id, BOOST_PP_STRINGIZE(EMILUA_PLUGIN_SYMBOL),
         dll::load_mode::append_decorations);
     cache_registry.emplace(
