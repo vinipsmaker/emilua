@@ -35,6 +35,10 @@
 #include <experimental/memory>
 #endif // __has_include(<experimental/memory>)
 
+#if BOOST_OS_WINDOWS
+#include <boost/nowide/iostream.hpp>
+#endif // BOOST_OS_WINDOWS
+
 #if BOOST_OS_UNIX
 #include <emilua/unix.hpp>
 #endif // BOOST_OS_UNIX
@@ -74,6 +78,31 @@ static char default_modules_key;
 static char module_start_fn_key;
 static char loaded_modules_key;
 static char ffi_module_key;
+
+#if BOOST_OS_WINDOWS
+static int lua_print(lua_State* L)
+{
+    thread_local std::string buf;
+
+    int nargs = lua_gettop(L);
+    buf.clear();
+
+    lua_getglobal(L, "tostring");
+    for (int i = 1 ; i <= nargs ; ++i) {
+        lua_pushvalue(L, -1);
+        lua_pushvalue(L, i);
+        lua_call(L, 1, 1);
+        if (lua_type(L, -1) != LUA_TSTRING)
+            return luaL_error(L, "`tostring` must return a string to `print`");
+        if (i > 1) buf += '\t';
+        buf += tostringview(L);
+        lua_pop(L, 1);
+    }
+
+    nowide::cout << buf << std::endl;
+    return 0;
+}
+#endif // BOOST_OS_WINDOWS
 
 // Throws:
 //
@@ -1192,6 +1221,11 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
         lua_call(L, 2, 1);
     }
     lua_setglobal(L, "require");
+
+#if BOOST_OS_WINDOWS
+    lua_pushcfunction(L, emilua::lua_print);
+    lua_setglobal(L, "print");
+#endif
 
     // core modules (don't change order here) {{{
     init_scope_cleanup_module(L);
