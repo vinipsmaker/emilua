@@ -25,7 +25,7 @@ char inbox_key;
 static char inbox_mt_key;
 static char tx_chan_mt_key;
 static char closed_tx_chan_mt_key;
-static char chan_recv_key;
+static char chan_receive_key;
 static char chan_send_key;
 
 int deserializer_closure(lua_State* L)
@@ -642,7 +642,7 @@ static int tx_chan_close(lua_State* L)
     return 0;
 }
 
-static int chan_recv(lua_State* L)
+static int chan_receive(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
     if (!lua_getmetatable(L, 1)) {
@@ -1080,8 +1080,8 @@ static int closed_tx_chan_mt_index(lua_State* L)
 static int inbox_mt_index(lua_State* L)
 {
     auto key = tostringview(L, 2);
-    if (key == "recv") {
-        rawgetp(L, LUA_REGISTRYINDEX, &chan_recv_key);
+    if (key == "receive") {
+        rawgetp(L, LUA_REGISTRYINDEX, &chan_receive_key);
         return 1;
     } else if (key == "close") {
         lua_pushcfunction(L, inbox_close);
@@ -1205,13 +1205,13 @@ void init_actor_module(lua_State* L)
         lua_rawset(L, LUA_REGISTRYINDEX);
     }
     {
-        lua_pushlightuserdata(L, &chan_recv_key);
+        lua_pushlightuserdata(L, &chan_receive_key);
         int res = luaL_loadbuffer(
             L, reinterpret_cast<char*>(chan_op_bytecode), chan_op_bytecode_size,
             nullptr);
         assert(res == 0); boost::ignore_unused(res);
         rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
-        lua_pushcfunction(L, chan_recv);
+        lua_pushcfunction(L, chan_receive);
         rawgetp(L, LUA_REGISTRYINDEX, &raw_type_key);
         lua_call(L, 3, 1);
         lua_rawset(L, LUA_REGISTRYINDEX);

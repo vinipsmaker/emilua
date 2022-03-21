@@ -219,5 +219,5 @@ ____
 Functions:
 
 * `chan:send(msg)`
-* `chan:recv()`
+* `chan:receive()`
 * `chan:close()`

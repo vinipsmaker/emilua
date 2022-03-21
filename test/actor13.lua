@@ -7,5 +7,5 @@ if _CONTEXT == 'main' then
     ch:send('foobar')
 else assert(_CONTEXT == 'worker')
     local inbox = require('inbox')
-    inbox:recv()
+    inbox:receive()
 end

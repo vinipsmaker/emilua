@@ -47,10 +47,10 @@ print('actor started with _CONTEXT=' .. _CONTEXT)
 if _CONTEXT == 'main' then
     local ch = spawn_vm('.')
     ch:send{ from = inbox, body = 'Hello World' }
-    local m = inbox:recv()
+    local m = inbox:receive()
     print(m)
 else assert(_CONTEXT == 'worker')
-    local m = inbox:recv()
+    local m = inbox:receive()
     m.from:send(m.body)
 end
 ----

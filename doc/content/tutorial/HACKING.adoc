@@ -75,7 +75,7 @@ threads) so you don't have to worry about load-balancing.
 
 == Inside a single lua VM
 
-When you issue some IO operation (including `chan:recv()`), the calling fiber
+When you issue some IO operation (including `chan:receive()`), the calling fiber
 will suspend, but other fibers from the same lua VM are allowed to kick in
 (cooperative multitasking). Fibers can share state with each other safely (and
 free from contention problems) as-if the program was single-threaded.

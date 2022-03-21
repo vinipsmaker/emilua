@@ -7,7 +7,7 @@ if _CONTEXT == 'main' then
         ch:send(inbox)
     end):detach()
     local f = spawn(function()
-        inbox:recv()
+        inbox:receive()
     end)
     sleep_for(100)
     f:interrupt()

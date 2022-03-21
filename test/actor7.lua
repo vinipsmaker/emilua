@@ -9,7 +9,7 @@ else
     assert(_CONTEXT == 'worker')
     local inbox = require('inbox')
     spawn(function()
-        inbox:recv()
+        inbox:receive()
     end):detach()
-    print(inbox:recv())
+    print(inbox:receive())
 end

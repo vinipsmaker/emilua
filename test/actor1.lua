@@ -1,3 +1,3 @@
 local inbox = require('inbox')
 
-local m = inbox:recv()
+local m = inbox:receive()

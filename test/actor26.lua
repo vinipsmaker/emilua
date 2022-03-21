@@ -8,7 +8,7 @@ if _CONTEXT == 'main' then
     ch1:send{ to = ch2, body = { a, a } }
 else assert(_CONTEXT == 'worker')
     local inbox = require('inbox')
-    local m = inbox:recv()
+    local m = inbox:receive()
 
     if m.to then
         m.to:send{ body = m.body }

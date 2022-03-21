@@ -28,7 +28,7 @@ if _CONTEXT == 'main' then
 
     ch1:send{ from = ch2, body = body }
 else assert(_CONTEXT == 'worker')
-    local m = inbox:recv()
+    local m = inbox:receive()
 
     if m.from then
         m.from:send{ body = m.body }

@@ -6,7 +6,7 @@ if _CONTEXT == 'main' then
 
     ch1:send{ch2, 'Hello', 'World'}
 else assert(_CONTEXT == 'worker')
-    local m = inbox:recv()
+    local m = inbox:receive()
 
     if type(m) == 'table' then
         m[1]:send(m[2] .. ' ' .. m[3])

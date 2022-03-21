@@ -1,6 +1,6 @@
 Fiber 0x1 panicked: 'Device or resource busy'
 stack traceback:
-	[string "?"]: in function 'recv'
+	[string "?"]: in function 'receive'
 	input.lua:12: in function <input.lua:11>
 	[C]: in function ''
 	[string "?"]: in function <[string "?"]:0>

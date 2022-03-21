@@ -1,4 +1,4 @@
--- recv() called on empty incoming
+-- receive() called on empty incoming
 
 local sleep_for = require('sleep_for')
 
@@ -10,5 +10,5 @@ if _CONTEXT == 'main' then
 else
     assert(_CONTEXT == 'worker')
     local inbox = require('inbox')
-    print(inbox:recv())
+    print(inbox:receive())
 end

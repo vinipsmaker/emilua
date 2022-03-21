@@ -6,9 +6,9 @@ if _CONTEXT == 'main' then
     ch:send(inbox)
     ch:send(ch)
 else assert(_CONTEXT == 'worker')
-    local a = inbox:recv()
-    local b = inbox:recv()
-    local c = inbox:recv()
+    local a = inbox:receive()
+    local b = inbox:receive()
+    local c = inbox:receive()
     print(a == b)
     print(b == c)
 end

@@ -8,5 +8,5 @@ else assert(_CONTEXT == 'worker')
     spawn(function()
         inbox:close()
     end):detach()
-    inbox:recv()
+    inbox:receive()
 end
