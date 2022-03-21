@@ -848,7 +848,7 @@ inline int sys_args(lua_State* L)
     return 1;
 }
 
-inline int sys_env(lua_State* L)
+inline int sys_environment(lua_State* L)
 {
     auto& appctx = get_vm_context(L).appctx;
     lua_createtable(L, /*narr=*/0, /*nrec=*/appctx.app_env.size());
@@ -946,7 +946,7 @@ static int sys_mt_index(lua_State* L)
 {
     return dispatch_table::dispatch(
         hana::make_tuple(
-            hana::make_pair(BOOST_HANA_STRING("env"), sys_env),
+            hana::make_pair(BOOST_HANA_STRING("environment"), sys_environment),
             hana::make_pair(BOOST_HANA_STRING("signal"), sys_signal),
             hana::make_pair(BOOST_HANA_STRING("args"), sys_args),
 #if !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
