@@ -10,6 +10,7 @@
 namespace emilua {
 
 extern char serial_port_key;
+extern char serial_port_mt_key;
 
 void init_serial_port(lua_State* L);
 
