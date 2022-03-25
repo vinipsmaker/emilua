@@ -138,7 +138,6 @@ You also need to have GNU AWK installed to run the tests.
 == ROADMAP
 
 * More plugins.
-** Regex plug-in.
 ** D-Bus plug-in.
 ** Python plug-in.
 ** Redis plug-in.

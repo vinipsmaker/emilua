@@ -20,6 +20,7 @@
 #include <emilua/fiber.hpp>
 #include <emilua/actor.hpp>
 #include <emilua/mutex.hpp>
+#include <emilua/regex.hpp>
 #include <emilua/state.hpp>
 #include <emilua/timer.hpp>
 #include <emilua/cond.hpp>
@@ -884,6 +885,14 @@ static int require(lua_State* L)
                     }
                 ),
                 hana::make_pair(
+                    BOOST_HANA_STRING("regex"),
+                    [](lua_State* L) -> int {
+                        lua_pushboolean(L, 1);
+                        rawgetp(L, LUA_REGISTRYINDEX, &regex_key);
+                        return 2;
+                    }
+                ),
+                hana::make_pair(
                     BOOST_HANA_STRING("serial_port"),
                     [](lua_State* L) -> int {
                         lua_pushboolean(L, 1);
@@ -1231,6 +1240,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     init_byte_span(L);
     init_serial_port(L);
     init_stream(L);
+    init_regex(L);
 
 #if BOOST_OS_UNIX
     init_unix(L);

@@ -168,6 +168,7 @@ src = [
     'src/stream.cpp',
     'src/fiber.cpp',
     'src/mutex.cpp',
+    'src/regex.cpp',
     'src/timer.cpp',
     'src/cond.cpp',
     'src/core.cpp',
@@ -477,6 +478,15 @@ if get_option('enable_tests')
 
             # append()
             'byte_span16',
+        ],
+        'regex' : [
+            'regex1',
+            'regex2',
+            'regex3',
+            'regex4',
+            'regex5',
+            'regex6',
+            'regex7',
         ],
     }
 
