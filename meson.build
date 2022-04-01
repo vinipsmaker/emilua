@@ -296,7 +296,10 @@ if get_option('enable_tests')
     normalize_path_bin = executable(
         'normalize_path',
         'tool/normalize_path.cpp',
-        dependencies : boost,
+        dependencies : [
+            boost,
+            luajit,
+        ],
         implicit_include_directories : false,
     )
 

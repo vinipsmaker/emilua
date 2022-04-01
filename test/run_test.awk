@@ -3,19 +3,17 @@ BEGIN {
 
     printf "%s", TEST |& ENVIRON["NORMALIZE_PATH_BIN"]
     close(ENVIRON["NORMALIZE_PATH_BIN"], "to")
-    RS = "^$"
-    ENVIRON["NORMALIZE_PATH_BIN"] |& getline printed_path
+    RS = "\0"
+    ENVIRON["NORMALIZE_PATH_BIN"] |& getline printed_path[1]
+    ENVIRON["NORMALIZE_PATH_BIN"] |& getline printed_path[2]
     RS = "\n"
 
-    if (printed_path == "") {
+    if (printed_path[1] == "") {
         printf "`normalize_path` not working: %s\n", ERRNO >"/dev/stderr"
         err = 1
         exit
     }
 
-    if (length(printed_path) > 55) {
-        printed_path = "..." substr(printed_path, length(printed_path) - 51)
-    }
     if (PROCINFO["platform"] == "posix") {
         "uname -s" | getline uname_output
     }
@@ -84,8 +82,11 @@ function sanitize_record(    i, pattern, captures, input, output)
     }
 
     # Normalize runtime paths
-    while (i = index($0, printed_path)) {
-        $0 = substr($0, 1, i - 1) "input" substr($0, i + length(printed_path))
+    for (j in printed_path) {
+        while (i = index($0, printed_path[j])) {
+            $0 = substr($0, 1, i - 1) "input" \
+                substr($0, i + length(printed_path[j]))
+        }
     }
 
     # Normalize runtime addresses
