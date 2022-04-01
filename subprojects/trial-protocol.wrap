@@ -1,0 +1,4 @@
+[wrap-git]
+url = https://github.com/breese/trial.protocol.git
+revision = e09b7148e9f3b7062b5eba98277b58000a3f8c59
+patch_directory = trial.protocol

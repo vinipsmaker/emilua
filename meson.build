@@ -24,6 +24,7 @@ boost = dependency(
     ],
 )
 fmt = dependency('fmt', version : '>=8.0')
+trial_protocol = dependency('trial-protocol')
 libdl = meson.get_compiler('cpp').find_library('dl', required : false)
 find_program('xxd')
 
@@ -155,7 +156,6 @@ if get_option('enable_tests')
 endif
 
 incdir = [
-    '3rd/trial.protocol/include',
     'include'
 ]
 
@@ -208,11 +208,13 @@ if get_option('enable_http')
     warning('HTTP support is still experimental.' +
             ' Please report any bugs you find.')
 
-    incdir += '3rd/boost.http/include'
+    http_dep = dependency('emilua-http')
     src += [
         'src/websocket.cpp',
         'src/http.cpp',
     ]
+else
+    http_dep = dependency('', required : false)
 endif
 
 if get_option('enable_file_io')
@@ -230,6 +232,8 @@ emilua_bin = executable(
         boost,
         luajit,
         fmt,
+        trial_protocol,
+        http_dep,
         ssl,
         curses,
         libdl,

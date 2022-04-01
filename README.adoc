@@ -71,19 +71,6 @@ end
 * asciidoctor: manpages.
 * GNU AWK: tests.
 
-== "Bundled" dependencies
-
-Run:
-
-[source,bash]
-----
-git submodule update --init
-----
-
-This will download the extra dependencies:
-
-* Trial.Protocol.
-
 == Install
 
 * https://aur.archlinux.org/packages/emilua/[ArchLinux].

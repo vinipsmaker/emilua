@@ -1,9 +1,3 @@
 [submodule "doc/themes/beautifulhugo"]
 	path = doc/themes/beautifulhugo
 	url = https://github.com/halogenica/beautifulhugo.git
-[submodule "3rd/trial.protocol"]
-	path = 3rd/trial.protocol
-	url = https://github.com/breese/trial.protocol.git
-[submodule "3rd/boost.http"]
-	path = 3rd/boost.http
-	url = https://github.com/BoostGSoC14/boost.http.git
