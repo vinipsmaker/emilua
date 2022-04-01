@@ -622,7 +622,7 @@ static int sys_stdin_read_some(lua_State* L)
                 for (; it != end ; ++it) {
                     if (it->fiber == fiber) {
                         service->queue.erase(it);
-                        vm_ctx->strand().defer(
+                        vm_ctx->strand().post(
                             [vm_ctx,fiber]() {
                                 auto ec = make_error_code(errc::interrupted);
                                 vm_ctx->fiber_resume(
