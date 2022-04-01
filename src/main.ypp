@@ -44,6 +44,7 @@ static constexpr auto help_text = FMT_STRING(
     "  -h,--help                   Print this help message and exit\n"
     "  --main-context-concurrency-hint INT\n"
     "                              Concurrency hint for the main execution engine context\n"
+    "  --test Run tests\n"
     "  --version                   Output version information and exit\n");
 
 int main(int argc, char *argv[], char *envp[])
@@ -109,6 +110,7 @@ int main(int argc, char *argv[], char *envp[])
 
     std::string_view filename;
     int main_ctx_concurrency_hint = BOOST_ASIO_CONCURRENCY_HINT_SAFE;
+    emilua::ContextType main_context_type = emilua::ContextType::main;
     emilua::app_context appctx;
     appctx.app_env = std::move(tmp_env);
 
@@ -217,6 +219,10 @@ opt_long:
         NEXT_ARG("--main-context-concurrency-hint",
                  opt_main_context_concurrency_hint);
     }
+    "test" {end} {
+        main_context_type = emilua::ContextType::test;
+        goto opt;
+    }
     %}
 
 opt_main_context_concurrency_hint:
@@ -298,7 +304,7 @@ end:
     try {
         auto vm_ctx = emilua::make_vm(ioctx, appctx,
                                       emilua::widen_on_windows(filename),
-                                      emilua::ContextType::main);
+                                      main_context_type);
         appctx.master_vm = vm_ctx;
         vm_ctx->strand().post([vm_ctx]() {
             vm_ctx->fiber_resume(

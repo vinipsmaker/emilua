@@ -35,6 +35,14 @@ execution engine for Lua.
 +
 The default is _HINT=safe_.
 
+*--test*::
+
+  Run the application with *_CONTEXT="test"*.
++
+This *_CONTEXT* propagates to imported modules and is meant to trigger the
+execution of unit tests written in every module from the application. This
+*_CONTEXT* won't propagate to imported external modules.
+
 *-h, --help*::
 
   Show help and exit.
