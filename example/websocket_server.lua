@@ -1,7 +1,6 @@
 local ip = require 'ip'
 local http = require 'http'
 local websocket = require 'websocket'
-local byte_span = require 'byte_span'
 
 local function print_headers(headers)
     for k, v in pairs(headers) do

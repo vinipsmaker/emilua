@@ -1,4 +1,3 @@
-local byte_span = require 'byte_span'
 local regex = require 'regex'
 
 local re = regex.new{

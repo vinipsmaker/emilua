@@ -1,5 +1,4 @@
 local ip = require 'ip'
-local byte_span = require 'byte_span'
 
 local acceptor = ip.tcp.acceptor.new()
 acceptor:open('v4')

@@ -1,5 +1,3 @@
-local byte_span = require 'byte_span'
-
 local bs = byte_span.new(4, 5)
 bs:slice(1, 5)[5] = 33
 bs:copy('hello')

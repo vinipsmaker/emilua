@@ -1,6 +1,5 @@
 -- this is usually a very bad idea
 local ip = require 'ip'
-local byte_span = require 'byte_span'
 
 local sock = ip.udp.socket.new()
 sock:open('v4')

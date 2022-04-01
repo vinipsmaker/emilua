@@ -5,7 +5,6 @@
 --
 -- [1] https://www.gnu.org/software/gawk/manual/html_node/FS-versus-FPAT.html
 
-local byte_span = require 'byte_span'
 local regex = require 'regex'
 
 local re = regex.new{

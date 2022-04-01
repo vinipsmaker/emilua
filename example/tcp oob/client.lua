@@ -1,5 +1,4 @@
 local ip = require 'ip'
-local byte_span = require 'byte_span'
 local sleep_for = require 'sleep_for'
 
 local sock = ip.tcp.socket.new()

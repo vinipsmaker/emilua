@@ -782,14 +782,6 @@ static int require(lua_State* L)
                     }
                 ),
                 hana::make_pair(
-                    BOOST_HANA_STRING("byte_span"),
-                    [](lua_State* L) -> int {
-                        lua_pushboolean(L, 1);
-                        rawgetp(L, LUA_REGISTRYINDEX, &byte_span_key);
-                        return 2;
-                    }
-                ),
-                hana::make_pair(
                     BOOST_HANA_STRING("mutex"),
                     [](lua_State* L) -> int {
                         lua_pushboolean(L, 1);
@@ -1259,6 +1251,9 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     init_file(L);
 #endif // EMILUA_CONFIG_ENABLE_FILE_IO
     // }}}
+
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_key);
+    lua_setglobal(L, "byte_span");
 
     // default_modules_key {{{
     lua_pushliteral(L, "_G");
