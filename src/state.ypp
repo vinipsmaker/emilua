@@ -958,6 +958,10 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     assert(state->valid());
 
     lua_State* L = state->L();
+    lua_gc(L, LUA_GCSTOP, 0);
+    BOOST_SCOPE_EXIT_ALL(L) {
+        lua_gc(L, LUA_GCRESTART, 0);
+    };
 
     {
         lua_pushlightuserdata(L, &detail::context_key);
