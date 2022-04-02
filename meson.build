@@ -485,6 +485,11 @@ if get_option('enable_tests')
 
             # append()
             'byte_span16',
+
+            # string algorithms
+            'byte_span17',
+            'byte_span18',
+            'byte_span19',
         ],
         'regex' : [
             'regex1',
