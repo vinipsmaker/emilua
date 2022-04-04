@@ -1201,6 +1201,11 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     lua_rawget(L, LUA_GLOBALSINDEX);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
+    lua_pushlightuserdata(L, &raw_setmetatable_key);
+    lua_pushliteral(L, "setmetatable");
+    lua_rawget(L, LUA_GLOBALSINDEX);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
     {
         int res = luaL_loadbuffer(
             L, reinterpret_cast<char*>(require_bytecode),
@@ -1235,8 +1240,8 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     init_sys(L);
     init_byte_span(L);
     init_serial_port(L);
-    init_stream(L);
     init_regex(L);
+    init_stream(L); //< scanner depends on regex mt
 
 #if BOOST_OS_UNIX
     init_unix(L);

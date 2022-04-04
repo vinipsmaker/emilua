@@ -16,7 +16,7 @@ namespace emilua {
 char regex_key;
 char regex_mt_key;
 
-static int regex_new(lua_State* L)
+int regex_new(lua_State* L)
 {
     luaL_checktype(L, 1, LUA_TTABLE);
 
@@ -223,7 +223,7 @@ static int regex_match(lua_State* L)
     return results.size() - 1;
 }
 
-static int regex_search(lua_State* L)
+int regex_search(lua_State* L)
 {
     lua_settop(L, 3);
 
@@ -308,7 +308,7 @@ static int regex_search(lua_State* L)
     return 1;
 }
 
-static int regex_split(lua_State* L)
+int regex_split(lua_State* L)
 {
     lua_settop(L, 2);
     rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
@@ -392,7 +392,7 @@ static int regex_split(lua_State* L)
     return 1;
 }
 
-static int regex_patsplit(lua_State* L)
+int regex_patsplit(lua_State* L)
 {
     lua_settop(L, 2);
     rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);

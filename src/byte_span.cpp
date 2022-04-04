@@ -11,7 +11,7 @@ namespace emilua {
 char byte_span_key;
 char byte_span_mt_key;
 
-static int byte_span_new(lua_State* L)
+int byte_span_new(lua_State* L)
 {
     if (lua_type(L, 1) != LUA_TNUMBER) {
         push(L, std::errc::invalid_argument);
