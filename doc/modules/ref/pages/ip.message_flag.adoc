@@ -1,0 +1,43 @@
+= ip.message_flag
+
+This module contains flag constants useful to send/receive operations.
+
+== `do_not_route`
+
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/socket_base/message_do_not_route.html[The
+flag with same name in Boost.Asio]:
+
+[quote]
+____
+Specify that the data should not be subject to routing.
+____
+
+== `end_of_record`
+
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/socket_base/message_end_of_record.html[The
+flag with same name in Boost.Asio]:
+
+[quote]
+____
+Specifies that the data marks the end of a record.
+____
+
+== `out_of_band`
+
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/socket_base/message_out_of_band.html[The
+flag with same name in Boost.Asio]:
+
+[quote]
+____
+Process out-of-band data.
+____
+
+== `peek`
+
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/socket_base/message_peek.html[The
+flag with same name in Boost.Asio]:
+
+[quote]
+____
+Peek at incoming data without removing it from the input queue.
+____

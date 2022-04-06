@@ -1,0 +1,51 @@
+= mutex
+
+[source,lua]
+----
+local mutex = require('mutex')
+
+local function ping_sender()
+    sleep_for(30000)
+    scope(function()
+        scope_cleanup_push(function() ws_write_mtx:unlock() end)
+        ws_write_mtx:lock()
+        ws:ping()
+    end)
+end
+
+local function queue_consumer()
+    scope(function()
+        scope_cleanup_push(function() queue_mtx:unlock() end)
+        queue_mtx:lock()
+        while #queue == 0 do
+            queue_cond:wait(queue_mtx)
+        end
+        for _, e in ipairs(queue) do
+            consume_item(e)
+        end
+        queue = {}
+    end)
+end
+----
+
+A mutex.
+
+== Functions
+
+=== `new() -> mutex`
+
+Constructor.
+
+=== `lock(self)`
+
+Locks the mutex.
+
+NOTE: This suspending function does *not* act as an interruption point.
+
+NOTE: This mutex applies dispatch semantics. That means no context switch to
+other ready fibers will take place if it's possible to acquire the mutex
+immediately.
+
+=== `unlock(self)`
+
+Unlocks the mutex.

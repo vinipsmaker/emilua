@@ -1,0 +1,308 @@
+= http.socket
+
+[source,lua]
+----
+local s = ip.tcp.socket.new()
+stream.connect(s, ip.tcp.get_address_info('www.example.com', 'http'))
+s = http.socket.new(s)
+
+local req = http.request.new()
+local res = http.response.new()
+req.method = 'GET'
+req.target = '/'
+req.headers.host = 'www.example.com'
+
+s:write_request(req)
+s:read_response(res)
+----
+
+Emilua's HTTP socket is modelled with gateways in mind. That means it should be
+easy to replace the embedded server model with alternative backends and
+applications won't be forced to migrate to a different interface.
+
+The interface doesn't presume a reverse proxy. Alternative backends implementing
+the same interface can be developed with little penalty.
+
+The socket is also modelled as a symmetric socket. The client/server distinction
+only happens after the first action. A symmetric socket is useful to sockets
+supporting rendezvous connections (e.g. custom uTP).
+
+== Functions
+
+=== `new(sock: ip.tcp.socket | tls.socket | unix.stream_socket) -> http.socket`
+
+Constructor.
+
+=== `close(self)`
+
+Close the socket.
+
+NOTE: If the underlying socket is a protocol implemented in userspace (e.g. a
+TLS socket), then this operation might suspend the fiber.
+
+=== `read_some(self, message: http.request | http.response)`
+
+Initiate an operation to read a part of the message body (or the trailers
+section) and blocks current fiber until it completes or errs.
+
+Output is written to `message` as the rules laid out in
+<https://boostgsoc14.github.io/boost.http/#socket_concept>
+(`async_read_some`).
+
+=== `write(self, message: http.request | http.response)`
+
+Initiate an operation to write a chunk of the HTTP body data payload (chunked
+message) and blocks current fiber until it completes or errs.
+
+Behaviour follows the rules laid out in
+<https://boostgsoc14.github.io/boost.http/#socket_concept>
+(`async_write`).
+
+=== `write_trailers(self, message: http.request | http.response)`
+
+Initiate an operation to write the trailer part of the message (chunked message)
+and blocks current fiber until it completes or errs.
+
+Behaviour follows the rules laid out in
+<https://boostgsoc14.github.io/boost.http/#socket_concept>
+(`async_write_trailers`).
+
+=== `write_end_of_message(self)`
+
+Initiate an operation to signalize the sent message is complete (chunked
+message) and blocks current fiber until it completes or errs.
+
+Behaviour follows the rules laid out in
+<https://boostgsoc14.github.io/boost.http/#socket_concept>
+(`async_write_end_of_message`).
+
+=== `read_request(self, req: http.request)`
+
+Initiate an operation to read a HTTP request and blocks current fiber until it
+completes or errs.
+
+Output is written to `req` as the rules laid out in
+<https://boostgsoc14.github.io/boost.http/#server_socket_concept>
+(`async_read_request`).
+
+=== `write_response(self, res: http.response)`
+
+Initiate an operation to write the HTTP response `res` and blocks current fiber
+until it completes or errs.
+
+Behaviour follows the rules laid out in
+<https://boostgsoc14.github.io/boost.http/#server_socket_concept>
+(`async_write_response`).
+
+=== `write_response_continue(self)`
+
+Initiate an operation to write a response with the semantics from a “100
+(Continue) response” and blocks current fiber until it completes or errs.
+
+Behaviour follows the rules laid out in
+<https://boostgsoc14.github.io/boost.http/#server_socket_concept>
+(`async_write_response_continue`).
+
+=== `write_response_metadata(self, res: http.response)`
+
+Initiate an operation to write the response metadata (chunked message) and
+blocks current fiber until it completes or errs.
+
+Behaviour follows the rules laid out in
+<https://boostgsoc14.github.io/boost.http/#server_socket_concept>
+(`async_write_response_metadata`).
+
+=== `write_request(self, req: http.request)`
+
+Initiate an operation to write the HTTP request `req` and blocks current fiber
+until it completes or errs.
+
+Behaviour follows the rules laid out in
+<https://boostgsoc14.github.io/boost.http/#client_socket_concept>
+(`async_write_request`).
+
+=== `write_request_metadata(self, req: http.request)`
+
+Initiate an operation to write the HTTP request metadata found in `req` and
+blocks current fiber until it completes or errs.
+
+Behaviour follows the rules laid out in
+<https://boostgsoc14.github.io/boost.http/#client_socket_concept>
+(`async_write_request_metadata`).
+
+=== `read_response(self, res: http.response)`
+
+Initiate an operation to read a HTTP response and blocks current fiber until it
+completes or errs.
+
+Output is written to `res` as the rules laid out in
+<https://boostgsoc14.github.io/boost.http/#client_socket_concept>
+(`async_read_response`).
+
+=== `lock_client_to_http10(self)`
+
+Lock HTTP to HTTP/1.0 version if socket is used as a client socket.
+
+== Attributes
+
+=== `is_open: boolean`
+
+Whether the socket is open.
+
+=== `read_state: string`
+
+The current state in the HTTP incoming request or HTTP incoming response.
+
+Be prepared to face multiple state changes after a single action is scheduled
+(e.g. you issue read-message action and the state already changed to finished
+when the operation returns).
+
+==== Member constants (incoming request)
+
+.Incoming request
+image::/emilua/read_request_state.png[]
+
+`"empty"`::
+This is the initial state. It means that the request object wasn't read yet.
+
+`"message_ready"`::
+This state is reached from the `"empty"` state, once you ask for a new message.
++
+No more `read_request()` actions can be issued from this state.
++
+From this state, you can issue the `read_some()` action. The state will change
+to `"body_ready"` once all body was read. In streaming connections
+(e.g. HTTP/1.1 chunked entities), this condition (body fully received) might
+never happen.
++
+Once this state is reached, you can safely use the read start line and the
+headers.
+
+`"body_ready"`::
+This state is reached from the `"message_ready"`, once the http producer (e.g.
+embedded server) fully received the message body.
++
+From this state, you can only issue the `read_some()` action.
++
+Once this state is reached, you can safely assume that no more body parts will
+be received.
+
+`"finished"`::
+It means the message is complete and you can no longer issue another
+`read_request()` until something else is done (e.g. send another http
+response). This is a different/special value, because the “something else to do”
+might not be related to read actions.
++
+It can be reached from `"body_ready"` state, after all trailers have been
+received. It's safe to assume that all message data is available by the time
+this state is reached.
+
+==== Member constants (incoming response)
+
+.Incoming response
+image::/emilua/read_response_state.png[]
+
+`"empty"`::
+This is the initial state.
++
+There are two ways to interpret this state. It might mean that the response
+object wasn't read yet.
++
+Another interpretation is that it was reached from the `"body_ready"` state
+(directly — through a call to `read_some()` — or indirectly — through a call to
+`read_response()`), after all trailers have been received. It's safe to assume
+that all message data is available if this is the case.
++
+At this state, you can only issue a `read_response()` action.
+
+`"message_ready"`::
+This state is reached from the `"empty"` state, once you ask for a new message.
++
+No more `read_response()` actions can be issued from this state.
++
+From this state, you can issue the `read_some()` action. The state will change
+to `"body_ready"` once all body was read. In streaming connections
+(e.g. HTTP/1.1 chunked entities), this condition (body fully received) might
+never happen.
++
+Once this state is reached, you can safely use the read start line and the
+headers.
+
+`"body_ready"`::
+This state is reached from the `"message_ready"`, once the http producer
+(e.g. an http client) fully received the message body.
++
+From this state, you can only issue the `read_some()` action.
++
+Once this state is reached, you can safely assume that no more body parts will
+be received.
+
+=== `write_state: string`
+
+The current state in the HTTP outgoing response or HTTP outgoing request.
+
+==== Member constants (outgoing response)
+
+.Outgoing response
+image::/emilua/write_response_state.png[]
+
+`"empty"`::
+This is the initial state.
++
+It means that the response object hasn't been sent yet.
++
+At this state, you can only issue the metadata or issue a continue action (if
+continue is supported/used in this HTTP transaction). Even if continue was
+requested it's optional to issue a continue action and only required if you need
+the request's body.
+
+`"continue_issued"`::
+This state is reached from the `"empty"` state, once you issue a continue
+action.
++
+No more continue actions can be issued from this state.
+
+`"metadata_issued"`::
+This state can be reached either from `"empty"` or `"continue_issued"`.
++
+It happens when the metadata (start line + header section) is issued (through
+`write_response_metadata()`).
++
+From this state, you can only issue the body, the trailers or the end of the
+message.
+
+`"finished"`::
+The message is considered complete once this state is reached.
++
+You can no longer issue anything once this state is reached. The underlying
+channel will change the `write_state` to `"empty"` once some unspecified event
+occurs. This event is usually a new request.
+
+==== Member constants (outgoing request)
+
+.Outgoing request
+image::/emilua/write_request_state.png[]
+
+`"empty"`::
+This is the initial state.
++
+It means that the request object hasn't been sent yet.
++
+At this state, you can only issue the metadata.
+
+`"metadata_issued"`::
+This state can be reached from `"empty"`.
++
+It happens when the metadata (start line + header section) is issued (through
+`write_request_metadata()`).
++
+From this state, you can only issue the body, the trailers or the end of the
+message.
+
+=== `is_write_response_native_stream: boolean`
+
+Whether the current message exchange supports native stream (i.e. chunked
+encoding). It only makes sense to query this property in server-mode
+(i.e. before you write a response).
+
+NOTE: It raises an error if called when `read_state ~= "empty"`.

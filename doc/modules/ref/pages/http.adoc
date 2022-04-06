@@ -1,0 +1,8 @@
+= http
+
+Has the following types:
+
+* link:../http.socket[`socket`].
+* link:../http.request[`request`].
+* link:../http.response[`response`].
+* link:../http.headers[`headers`].

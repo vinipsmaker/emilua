@@ -1,0 +1,56 @@
+= json.writer
+
+:toc: macro
+
+The JSON incremental generator. It keeps track of the context and inserts the
+appropriate separators between values where needed.
+
+toc::[]
+
+== Functions
+
+=== `new() -> json.writer`
+
+The constructor.
+
+=== `value(self, v)`
+
+Write formatted leaf value `v` into the JSON output.
+
+`v` can be one of the following types:
+
+* `boolean`
+* `number`
+* `string`
+* `json.null`
+
+=== `begin_object(self)`
+
+Write the begin-object token to initiate an object into the JSON output.
+
+=== `end_object(self)`
+
+Write the end-object token to terminate an object into the JSON output.
+
+=== `begin_array(self)`
+
+Write the begin-array token to initiate an array into the JSON output.
+
+=== `end_array(self)`
+
+Write the end-array token to terminate an array into the JSON output.
+
+=== `literal(self, raw: string)`
+
+Write a literal value directly into the JSON output without formatting it.
+
+=== `generate(self) -> string`
+
+Returns the generated JSON and consumes `self`. After this call, `self` can no
+longer be used.
+
+== Attributes
+
+=== `level: number`
+
+The current level of nested containers.

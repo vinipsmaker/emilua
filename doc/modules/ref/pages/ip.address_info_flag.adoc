@@ -1,0 +1,76 @@
+= ip.address_info_flag
+
+This module contains flag constants useful to name resolvers.
+
+The following example demonstrates how you can use these flags in other modules:
+
+[source,lua]
+----
+ip.tcp.get_address_info(
+    'www.example.com',
+    'http',
+    ip.address_info_flag.address_configured
+)
+ip.tcp.get_address_info(
+    'www.example.com',
+    80,
+    bit.bor(
+        ip.address_info_flag.all_matching,
+        ip.address_info_flag.v4_mapped
+    )
+)
+----
+
+== `address_configured`
+
+https://www.boost.org/doc/libs/1_70_0/doc/html/boost_asio/reference/ip__resolver_base/address_configured.html[The
+flag with same name in Boost.Asio]:
+
+[quote]
+____
+Only return IPv4 addresses if a non-loopback IPv4 address is configured for the
+system. Only return IPv6 addresses if a non-loopback IPv6 address is configured
+for the system.
+____
+
+== `all_matching`
+
+https://www.boost.org/doc/libs/1_70_0/doc/html/boost_asio/reference/ip__resolver_base/all_matching.html[The
+flag with same name in Boost.Asio]:
+
+[quote]
+____
+If used with v4_mapped, return all matching IPv6 and IPv4 addresses.
+____
+
+== `canonical_name`
+
+https://www.boost.org/doc/libs/1_70_0/doc/html/boost_asio/reference/ip__resolver_base/canonical_name.html[The
+flag with same name in Boost.Asio]:
+
+[quote]
+____
+Determine the canonical name of the host specified in the query.
+____
+
+== `passive`
+
+https://www.boost.org/doc/libs/1_70_0/doc/html/boost_asio/reference/ip__resolver_base/passive.html[The
+flag with same name in Boost.Asio]:
+
+[quote]
+____
+Indicate that returned endpoint is intended for use as a locally bound socket
+endpoint.
+____
+
+== `v4_mapped`
+
+https://www.boost.org/doc/libs/1_70_0/doc/html/boost_asio/reference/ip__resolver_base/v4_mapped.html[The
+flag with same name in Boost.Asio]:
+
+[quote]
+____
+If the query protocol family is specified as IPv6, return IPv4-mapped IPv6
+addresses on finding no IPv6 addresses.
+____

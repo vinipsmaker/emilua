@@ -1,0 +1,13 @@
+= unix.message_flag
+
+This module contains flag constants useful to send/receive operations.
+
+== `peek`
+
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/socket_base/message_peek.html[The
+flag with same name in Boost.Asio]:
+
+[quote]
+____
+Peek at incoming data without removing it from the input queue.
+____

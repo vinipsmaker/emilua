@@ -1,0 +1,167 @@
+= unix.stream_socket
+
+[source,lua]
+----
+local a, b = unix.stream_socket.pair()
+
+spawn(function()
+    local buf = byte_span.new(1024)
+    local nread = b:read_some(buf)
+    print(buf:slice(1, nread))
+end):detach()
+
+local nwritten = stream.write(a, byte_span.append('Hello World'))
+print(nwritten)
+----
+
+== Functions
+
+=== `new() -> unix.stream_socket`
+
+Constructor.
+
+=== `pair() -> unix.stream_socket, unix.stream_socket`
+
+Create a pair of connected sockets.
+
+=== `open(self)`
+
+Open the socket.
+
+=== `bind(self, pathname: string)`
+
+Bind the socket to the given local endpoint.
+
+=== `close(self)`
+
+Close the socket.
+
+Forward the call to
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/basic_stream_socket/close/overload2.html[the
+function with same name in Boost.Asio]:
+
+[quote]
+____
+Any asynchronous send, receive or connect operations will be cancelled
+immediately, and will complete with the `boost::asio::error::operation_aborted`
+error.
+____
+
+=== `cancel(self)`
+
+Cancel all asynchronous operations associated with the acceptor.
+
+Forward the call to
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/basic_stream_socket/cancel/overload2.html[the
+function with same name in Boost.Asio]:
+
+[quote]
+____
+This function causes all outstanding asynchronous connect, send and receive
+operations to finish immediately, and the handlers for cancelled operations will
+be passed the `boost::asio::error::operation_aborted` error.
+____
+
+=== `io_control(self, command: string[, ...])`
+
+Perform an IO control command on the socket.
+
+Currently available commands are:
+
+`"bytes_readable"`:: Expects no arguments. Get the amount of data that can be
+read without blocking. Implements the `FIONREAD` IO control command.
+
+=== `shutdown(self, what: string)`
+
+Disable sends or receives on the socket.
+
+`what` can be one of the following:
+
+`"receive"`:: Shutdown the receive side of the socket.
+`"send"`:: Shutdown the send side of the socket.
+`"both"`:: Shutdown both send and receive on the socket.
+
+=== `connect(self, pathname: string)`
+
+Initiate a connect operation and blocks current fiber until it completes or
+errs.
+
+=== `read_some(self, buffer: byte_span) -> number`
+
+Read data from the stream socket and blocks current fiber until it completes or
+errs.
+
+Returns the number of bytes read.
+
+=== `write_some(self, buffer: byte_span) -> number`
+
+Write data to the stream socket and blocks current fiber until it completes or
+errs.
+
+Returns the number of bytes written.
+
+=== `set_option(self, opt: string, val)`
+
+Set an option on the socket.
+
+Currently available options are:
+
+`"send_low_watermark"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/send_low_watermark.html[Check
+Boost.Asio documentation].
+
+`"send_buffer_size"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/send_buffer_size.html[Check
+Boost.Asio documentation].
+
+`"receive_low_watermark"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/receive_low_watermark.html[Check
+Boost.Asio documentation].
+
+`"receive_buffer_size"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/receive_buffer_size.html[Check
+Boost.Asio documentation].
+
+`"debug"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/debug.html[Check
+Boost.Asio documentation].
+
+=== `get_option(self, opt: string) -> value`
+
+Get an option from the socket.
+
+Currently available options are:
+
+`"send_low_watermark"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/send_low_watermark.html[Check
+Boost.Asio documentation].
+
+`"send_buffer_size"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/send_buffer_size.html[Check
+Boost.Asio documentation].
+
+`"receive_low_watermark"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/receive_low_watermark.html[Check
+Boost.Asio documentation].
+
+`"receive_buffer_size"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/receive_buffer_size.html[Check
+Boost.Asio documentation].
+
+`"debug"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/debug.html[Check
+Boost.Asio documentation].
+
+== Properties
+
+=== `is_open: boolean`
+
+Whether the socket is open.
+
+=== `local_path: string`
+
+The local address of the socket.
+
+=== `remote_path: string`
+
+The remote address of the socket.

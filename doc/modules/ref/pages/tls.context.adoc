@@ -1,0 +1,155 @@
+= tls.context
+
+== Functions
+
+=== `new(method: string) -> tls.context`
+
+Constructor.
+
+`method` must be one of:
+
+* `"sslv2"`
+* `"sslv2_client"`
+* `"sslv2_server"`
+* `"sslv3"`
+* `"sslv3_client"`
+* `"sslv3_server"`
+* `"tlsv1"`
+* `"tlsv1_client"`
+* `"tlsv1_server"`
+* `"sslv23"`
+* `"sslv23_client"`
+* `"sslv23_server"`
+* `"tlsv11"`
+* `"tlsv11_client"`
+* `"tlsv11_server"`
+* `"tlsv12"`
+* `"tlsv12_client"`
+* `"tlsv12_server"`
+* `"tlsv13"`
+* `"tlsv13_client"`
+* `"tlsv13_server"`
+* `"tls"`
+* `"tls_client"`
+* `"tls_server"`
+
+=== `add_certificate_authority(self, data: byte_span)`
+
+Add certification authority for performing verification.
+
+=== `add_verify_path(self, path: string)`
+
+Add a directory containing certificate authority files to be used for performing
+verification.
+
+=== `clear_options(self, flags: number)`
+
+Clear options on the context.
+
+=== `load_verify_file(self, filename: string)`
+
+Load a certification authority file for performing verification.
+
+=== `set_default_verify_paths(self)`
+
+Configures the context to use the default directories for finding certification
+authority certificates.
+
+=== `set_options(self, flags: number)`
+
+Set options on the context.
+
+=== `set_verify_callback(self, callback: string[, callback_options...])`
+
+Set the callback used to verify peer certificates.
+
+For now only one callback is supported:
+
+`"host_name_verification"`:: `callback_options` will be a single string
+containing the host name.
+
+=== `set_verify_depth(self, depth: number)`
+
+Set the peer verification depth.
+
+=== `set_verify_mode(self, mode: string)`
+
+Set the peer verification mode.
+
+`mode` might be one of the following:
+
+* `"none"`.
+* `"peer"`.
+* `"fail_if_no_peer_cert"`.
+* `"client_once"`.
+
+=== `use_certificate(self, data: byte_span, fmt: string)`
+
+Use a certificate from a memory buffer.
+
+`fmt` might be one of the following:
+
+`"asn1"`:: ASN.1 file.
+`"pem"`:: PEM file.
+
+=== `use_certificate_chain(self, data: byte_span)`
+
+Use a certificate chain from a memory buffer.
+
+=== `use_certificate_chain_file(self, filename: string)`
+
+Use a certificate chain from a file.
+
+=== `use_certificate_file(self, filename: string, fmt: string)`
+
+Use a certificate from a file.
+
+`fmt` might be one of the following:
+
+`"asn1"`:: ASN.1 file.
+`"pem"`:: PEM file.
+
+=== `use_private_key(self, data: byte_span, fmt: string)`
+
+Use a private key from a memory buffer.
+
+`fmt` might be one of the following:
+
+`"asn1"`:: ASN.1 file.
+`"pem"`:: PEM file.
+
+=== `use_private_key_file(self, filename: string, fmt: string)`
+
+Use a private key from a file.
+
+`fmt` might be one of the following:
+
+`"asn1"`:: ASN.1 file.
+`"pem"`:: PEM file.
+
+=== `use_rsa_private_key(self, data: byte_span, fmt: string)`
+
+Use an RSA private key from a memory buffer.
+
+`fmt` might be one of the following:
+
+`"asn1"`:: ASN.1 file.
+`"pem"`:: PEM file.
+
+=== `use_rsa_private_key_file(self, filename: string, fmt: string)`
+
+Use an RSA private key from a file.
+
+`fmt` might be one of the following:
+
+`"asn1"`:: ASN.1 file.
+`"pem"`:: PEM file.
+
+=== `use_tmp_dh(self, data: byte_span)`
+
+Use the specified memory buffer to obtain the temporary Diffie-Hellman
+parameters.
+
+=== `use_tmp_dh_file(self, filename: string)`
+
+Use the specified file to obtain the temporary Diffie-Hellman parameters.

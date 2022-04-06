@@ -1,0 +1,10 @@
+= file
+
+== Types
+
+* link:../file.stream/[`file.stream`].
+* link:../file.random_access/[`file.random_access`].
+
+== Modules
+
+* link:../file.open_flag/[`file.open_flag`].

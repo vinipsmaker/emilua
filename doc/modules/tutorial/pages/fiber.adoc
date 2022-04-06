@@ -1,0 +1,107 @@
+= Fibers
+
+Fibers are the primitive of choice to represent concurrency. Every time you need
+to increase the concurrency level, just spawn a fiber. Fibers are
+https://en.wikipedia.org/wiki/Cooperative_multitasking[cooperative] and only
+transfer control to other fibers in well-defined points (sync primitives, IO
+functions and any suspending function such as `this_fiber.yield()`). These
+points are also used by the interruption API.
+
+No two fibers from the same Lua VM run in parallel (even when the underlying
+VM's thread pool has threads available).
+
+== Functions
+
+=== `spawn(f: function) -> fiber`
+
+Spawns a new fiber to run `f`. Post semantics are used, so the current fiber
+(the one calling `spawn()`) continues to run until it reaches a suspension
+point.
+
+=== `join(self: fiber)`
+
+Read `pthread_join()`.
+
+Returns the values returned by the fiber's start function. If that fiber exits
+with an error, that error is re-raised here (and fiber is considered joined).
+
+=== `detach(self: fiber)`
+
+Read `pthread_detach()`.
+
+If the GC collects the fiber handle, it'll be detached.
+
+=== `interrupt(self: fiber)`
+
+Read `pthread_cancel()`.
+
+=== `this_fiber.yield()`
+
+Reschedule current fiber to be executed in the next round so other ready fibers
+have a chance to run now. You usually don't need to call this function as any
+suspending function already do that.
+
+=== `this_fiber.{forbid,allow}_suspend()`
+
+[source,lua]
+----
+this_fiber.forbid_suspend()
+this_fiber.allow_suspend()
+----
+
+A call to `forbid_suspend()` will put the fiber in the state of
+_suspension-disallowed_ and any attempt to suspend the fiber while it is in this
+state will raise an error.
+
+`forbid_suspend()` may be called multiple times. A matching number of calls to
+`allow_suspend()` will put the fiber out of the _suspension-disallowed_
+state. You must not call `allow_suspend()` if there was no prior call to
+`forbid_suspend()`.
+
+These functions aren't generally useful and they would have no purpose in
+preemptive multitasking. However a cooperative multitasking environment offers
+opportunities to avoid some round-trips to sync primitives. These opportunities
+shouldn't really be used and the programmer should just rely on the classical
+sync primitives. However I can't tame every wild programmer out there so there
+is this mechanism to at least document the code in mechanisms similar to
+`assert()` statements from native languages.
+
+They're only useful if there are comprehensive test cases. Still, the use of
+these functions may make the code more readable. And some tools may be developed
+to understand these blocks and do some simple static analysis.
+
+=== `this_fiber.{disable,restore}_interruption()`
+
+[source,lua]
+----
+this_fiber.disable_interruption()
+this_fiber.restore_interruption()
+----
+
+Check the interruption tutorial to see what it does.
+
+== Attributes
+
+=== `interruption_caught: boolean`
+
+Read `PTHREAD_CANCELED`.
+
+=== `joinable: boolean`
+
+Whether joinable.
+
+=== `this_fiber.is_main: boolean`
+
+Whether this is the main fiber of the program.
+
+=== `this_fiber.local_: table`
+
+Fiber-local storage.
+
+=== `this_fiber.id: string`
+
+An id string for debugging purposes.
+
+WARNING: Use it *only* for debugging purposes. Do not exploit this value to
+create messy work-arounds. There is no need to use it beyond anything other than
+debugging purposes.

@@ -1,0 +1,114 @@
+= sys
+
+== Attributes
+
+=== `args: table`
+
+Arguments passed on the CLI (a.k.a. ARGV). First element in the table is emilua
+binary path. Second element is the script path. Rest of the elements are
+anything passed after `--` in the command line.
+
+=== `environment: table`
+
+The environment variables.
+
+== Functions
+
+=== `stdin.read_some(self, buffer: byte_span) -> number`
+
+Read data from stdin and blocks current fiber until it completes or errs.
+
+Returns the number of bytes read.
+
+NOTE: First argument is ignored and it's only there to make it have a
+stream-like interface.
+
+=== `stdout.write_some(self, buffer: byte_span) -> number`
+
+Write data to stdout and blocks current fiber until it completes or errs.
+
+Returns the number of bytes written.
+
+NOTE: First argument is ignored and it's only there to make it have a
+stream-like interface.
+
+=== `stderr.write_some(self, buffer: byte_span) -> number`
+
+Write data to stderr and blocks current fiber until it completes or errs.
+
+Returns the number of bytes written.
+
+NOTE: First argument is ignored and it's only there to make it have a
+stream-like interface.
+
+=== `exit([code: number [, opts: table]])`
+
+Exit the VM. Other VMs in the process are not stopped.
+
+If caller is the main VM, `code` is used as the application exit code (defaults
+to `0`).
+
+If caller is the main VM, then `opts` is a table that accepts the following
+options:
+
+`force=0`:: Nothing. That's the default behaviour.
+`force=1`:: Not implemented yet.
+`force=2`:: Exit the process forcefully (little to none cleanup steps are
+performed).
+`force="abort"`:: Exit the process even more forcefully (equivalent to the C
+function `abort()`).
+
+== Modules
+
+=== `signal`
+
+Has the following types:
+
+* link:../sys.signal.set/[`set`].
+
+Has the following functions:
+
+* `raise(signal: number)`: sends a signal to the calling process.
+
+Has the following constants:
+
+* `SIGABRT`.
+* `SIGFPE`.
+* `SIGILL`.
+* `SIGINT`.
+* `SIGSEGV`.
+* `SIGTERM`.
+
+Has the following (UNIX) constants (availability depending on the host system):
+
+* `SIGALRM`.
+* `SIGBUS`.
+* `SIGCHLD`.
+* `SIGCONT`.
+* `SIGHUP`.
+* `SIGIO`.
+* `SIGKILL`.
+* `SIGPIPE`.
+* `SIGPROF`.
+* `SIGQUIT`.
+* `SIGSTOP`.
+* `SIGSYS`.
+* `SIGTRAP`.
+* `SIGTSTP`.
+* `SIGTTIN`.
+* `SIGTTOU`.
+* `SIGURG`.
+* `SIGUSR1`.
+* `SIGUSR2`.
+* `SIGVTALRM`.
+* `SIGWINCH`.
+* `SIGXCPU`.
+* `SIGXFSZ`.
+
+Has the following (Windows) constants (availability depending on the host
+system):
+
+* `SIGBREAK`.
+
+NOTE: Signal handling also works on Windows, as the Microsoft Visual C++ runtime
+library maps console events like Ctrl+C to the equivalent signal.

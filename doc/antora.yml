@@ -1,0 +1,10 @@
+name: emilua-docs
+title: Emilua docs
+version: 0.4
+start_page: tutorial:fiber.adoc
+asciidoc:
+  attributes:
+    source-language: asciidoc@
+    table-caption: false
+nav:
+- nav.adoc

@@ -118,11 +118,12 @@ endif
 
 
 if get_option('enable_manpages')
+    asciidoctor = find_program('asciidoctor', native : true)
     custom_target(
         'manpages',
         build_by_default : true,
         command : [
-            find_program('asciidoctor', native : true),
+            asciidoctor,
             '--backend=manpage',
             '--attribute=VERSION=' + meson.project_version() +
             get_option('version_suffix'),
@@ -134,6 +135,8 @@ if get_option('enable_manpages')
         install : true,
         install_dir : get_option('mandir') / 'man1',
     )
+
+    subdir('doc')
 endif
 
 if get_option('disable_color')

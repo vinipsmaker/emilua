@@ -1,0 +1,93 @@
+= cond
+
+[source,lua]
+----
+local cond = require('cond')
+
+local function queue_consumer()
+    scope(function()
+        scope_cleanup_push(function() queue_mtx:unlock() end)
+        queue_mtx:lock()
+        while #queue == 0 do
+            queue_cond:wait(queue_mtx)
+        end
+        for _, e in ipairs(queue) do
+            consume_item(e)
+        end
+        queue = {}
+    end)
+end
+----
+
+A condition variable.
+
+== Functions
+
+=== `new() -> cond`
+
+Constructor.
+
+=== `wait(self, m: mutex)`
+
+Read `pthread_cond_wait()`
+
+`wait()` is an interruption point. Prior to the delivery of the interruption
+request, the underlying mutex is re-acquired under the hood.
+
+=== `notify_all(self)`
+
+Read `pthread_cond_broadcast()`.
+
+=== `notify_one(self)`
+
+Read `pthread_cond_signal()`.
+
+== Notifying without a lock
+
+If the condition variable, the notifier fiber and the waiting fiber all run in
+the same thread (and cooperative multitasking is used instead preemptive
+multitasking), then there is enough level of determinism to lift one restriction
+that exists in traditional condition variables.
+
+[quote,'<https://en.cppreference.com/w/cpp/thread/condition_variable>']
+____
+Even if the shared variable is atomic, it must be modified under the mutex in
+order to correctly publish the modification to the waiting thread.
+____
+
+The reason why this restriction on the notifier fiber/thread exists is to avoid
+a race. Consider the following waiter fiber and the notifier fiber:
+
+[source,lua]
+----
+local function consumer()
+    scope(function()
+        scope_cleanup_push(function() m:unlock() end)
+        m:lock()
+        while not ready do
+            c:wait(m)
+        end
+
+        -- ...
+    end)
+end
+
+local function producer()
+    ready = true
+    c:notify_one()
+end
+----
+
+Pay attention to the points when the waiter fiber checks if the event has been
+signalled by testing `ready` and the instant it blocks on `c.wait()`. If the
+notifier fiber mutates the shared variable and calls `c.notify_one()` between
+these two points, then the signalization is lost. `c.notify_one()` would be
+called by the time there would be no fiber blocked on `c.wait()`. That’s why the
+notifier fiber need to mutate the shared variable through a mutex.
+
+In Emilua, this restriction doesn't apply (as long as there are no suspension
+points between the time the waiting fiber tests the condition and calls
+`c.wait()`) and the notifier fiber can mutate the shared variable without
+holding a lock on the mutex. In this case, the condition variable essentially
+becomes a non-suspending way (post semantics) to unpark a parked fiber (yes,
+I've exploited this property in the past to avoid a few round-trips).
