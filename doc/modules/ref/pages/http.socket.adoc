@@ -170,7 +170,7 @@ when the operation returns).
 ==== Member constants (incoming request)
 
 .Incoming request
-image::/emilua/read_request_state.png[]
+image::read_request_state.png[]
 
 `"empty"`::
 This is the initial state. It means that the request object wasn't read yet.
@@ -210,7 +210,7 @@ this state is reached.
 ==== Member constants (incoming response)
 
 .Incoming response
-image::/emilua/read_response_state.png[]
+image::read_response_state.png[]
 
 `"empty"`::
 This is the initial state.
@@ -254,7 +254,7 @@ The current state in the HTTP outgoing response or HTTP outgoing request.
 ==== Member constants (outgoing response)
 
 .Outgoing response
-image::/emilua/write_response_state.png[]
+image::write_response_state.png[]
 
 `"empty"`::
 This is the initial state.
@@ -291,7 +291,7 @@ occurs. This event is usually a new request.
 ==== Member constants (outgoing request)
 
 .Outgoing request
-image::/emilua/write_request_state.png[]
+image::write_request_state.png[]
 
 `"empty"`::
 This is the initial state.

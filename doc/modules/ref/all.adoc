@@ -1,5 +1,6 @@
 == Reference
 
+:imagesdir: images/
 :leveloffset: +1
 
 include::pages/byte_span.adoc[]
