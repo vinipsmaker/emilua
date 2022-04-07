@@ -1,0 +1,21 @@
+= ip.host_name
+
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local ip = require "ip"
+ip.host_name() -> string
+----
+
+== Description
+
+Get the current host name.

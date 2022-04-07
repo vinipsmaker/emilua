@@ -18,9 +18,11 @@
 *** xref:ref:http.response.adoc[]
 *** xref:ref:http.socket.adoc[]
 ** ip
-*** xref:ref:ip.adoc[]
 *** xref:ref:ip.address.adoc[]
 *** xref:ref:ip.address_info_flag.adoc[]
+*** xref:ref:ip.get_address_info.adoc[]
+*** xref:ref:ip.get_name_info.adoc[]
+*** xref:ref:ip.host_name.adoc[]
 *** xref:ref:ip.message_flag.adoc[]
 *** xref:ref:ip.tcp.acceptor.adoc[]
 *** xref:ref:ip.tcp.socket.adoc[]

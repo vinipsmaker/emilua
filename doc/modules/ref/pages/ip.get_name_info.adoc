@@ -1,0 +1,37 @@
+= ip.get_name_info
+
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local ip = require "ip"
+
+ip.tcp.get_name_info()
+ip.udp.get_name_info()
+
+function(a: ip.address, port: number) -> table
+----
+
+== Description
+
+Reverse-resolves the endpoint into a list of endpoint entries. Current fiber is
+suspended until operation finishes.
+
+Returns a list of entries. Each entry will be a table with the following
+members:
+
+* `address: ip.address`.
+* `port: number`.
+* `host_name: string`.
+* `service_name: string`.
+
+https://www.boost.org/doc/libs/1_70_0/doc/html/boost_asio/reference/ip__basic_resolver/async_resolve/overload6.html[More
+info on Boost.Asio documentation].
