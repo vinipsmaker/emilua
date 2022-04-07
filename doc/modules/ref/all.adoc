@@ -7,15 +7,11 @@ include::pages/byte_span.adoc[]
 
 include::pages/cond.adoc[]
 
-include::pages/file.adoc[]
-
 include::pages/file.open_flag.adoc[]
 
 include::pages/file.random_access.adoc[]
 
 include::pages/file.stream.adoc[]
-
-include::pages/http.adoc[]
 
 include::pages/http.headers.adoc[]
 
@@ -57,15 +53,11 @@ include::pages/sys.adoc[]
 
 include::pages/sys.signal.set.adoc[]
 
-include::pages/tls.adoc[]
-
 include::pages/tls.context.adoc[]
 
 include::pages/tls.context_flag.adoc[]
 
 include::pages/tls.socket.adoc[]
-
-include::pages/unix.adoc[]
 
 include::pages/unix.datagram_socket.adoc[]
 
