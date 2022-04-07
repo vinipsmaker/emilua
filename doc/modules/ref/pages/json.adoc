@@ -2,6 +2,16 @@
 
 :toc: macro
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== SYNOPSIS
+
+endif::[]
+
 [source,lua]
 ----
 -- Encoding

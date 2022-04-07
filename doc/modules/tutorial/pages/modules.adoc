@@ -2,6 +2,16 @@
 
 :_:
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== DESCRIPTION
+
+endif::[]
+
 Emilua has its own module system. It may look familiar, and indeed it is the
 intention. Given the fact that other libraries on the wild will have
 incompatible execution models, compatibility with existing lua libraries is not

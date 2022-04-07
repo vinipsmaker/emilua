@@ -1,5 +1,13 @@
 = file
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+endif::[]
+
 == Types
 
 * link:../file.stream/[`file.stream`].

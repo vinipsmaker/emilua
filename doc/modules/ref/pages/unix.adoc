@@ -1,5 +1,13 @@
 = unix
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+endif::[]
+
 == Types
 
 * link:../unix.datagram_socket/[`unix.datagram_socket`].

@@ -1,5 +1,15 @@
 = Fibers
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== DESCRIPTION
+
+endif::[]
+
 Fibers are the primitive of choice to represent concurrency. Every time you need
 to increase the concurrency level, just spawn a fiber. Fibers are
 https://en.wikipedia.org/wiki/Cooperative_multitasking[cooperative] and only

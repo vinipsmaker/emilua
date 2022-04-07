@@ -2,6 +2,16 @@
 
 :toc: macro
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== DESCRIPTION
+
+endif::[]
+
 The JSON incremental generator. It keeps track of the context and inserts the
 appropriate separators between values where needed.
 

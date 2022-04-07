@@ -1,5 +1,13 @@
 = regex
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+endif::[]
+
 == Types
 
 === `regex`

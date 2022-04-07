@@ -1,5 +1,13 @@
 = tls
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+endif::[]
+
 == Modules
 
 * link:../tls.context/[`context`].

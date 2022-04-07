@@ -1,5 +1,13 @@
 = file.random_access
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+endif::[]
+
 == Functions
 
 === `new() -> file.random_access`

@@ -1,5 +1,15 @@
 = ip.udp.socket
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== SYNOPSIS
+
+endif::[]
+
 [source,lua]
 ----
 local sock = ip.udp.socket.new()

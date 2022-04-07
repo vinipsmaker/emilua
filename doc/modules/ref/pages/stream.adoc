@@ -1,5 +1,13 @@
 = stream
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+endif::[]
+
 == Functions
 
 === `connect(sock, resolve_results: table[, condition: function]) -> ip.address, number`

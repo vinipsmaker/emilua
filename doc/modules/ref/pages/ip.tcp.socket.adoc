@@ -1,5 +1,15 @@
 = ip.tcp.socket
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== SYNOPSIS
+
+endif::[]
+
 [source,lua]
 ----
 -- `socket_pair()` implementation is

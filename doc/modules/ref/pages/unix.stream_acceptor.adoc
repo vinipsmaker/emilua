@@ -1,5 +1,15 @@
 = unix.stream_acceptor
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== SYNOPSIS
+
+endif::[]
+
 [source,lua]
 ----
 local a = unix.stream_acceptor.new()

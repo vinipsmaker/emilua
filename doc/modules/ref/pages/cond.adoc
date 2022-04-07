@@ -1,5 +1,15 @@
 = cond
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== SYNOPSIS
+
+endif::[]
+
 [source,lua]
 ----
 local cond = require('cond')

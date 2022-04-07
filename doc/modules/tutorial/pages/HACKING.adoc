@@ -4,6 +4,16 @@
 :_:
 :cpp: C++
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== DESCRIPTION
+
+endif::[]
+
 WARNING: The target public for this document are {cpp} programmers who want to
 delve into the project's code, not lua users. Native plug-in authors should also
 read this page.

@@ -1,5 +1,15 @@
 = ip.address
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== DESCRIPTION
+
+endif::[]
+
 A variant type to represent IPv4 and IPv6 addresses. Some features are only
 available for one version of the protocol and will raise an error when you try
 to use it against an IP address of a different version.

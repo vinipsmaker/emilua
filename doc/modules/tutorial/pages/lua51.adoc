@@ -1,5 +1,15 @@
 = Lua 5.1
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== DESCRIPTION
+
+endif::[]
+
 Emilua is based on LuaJIT which means Lua 5.1 + some Lua 5.2 extensions. However
 some builtin Lua modules conflict with Emilua modules and thus are not
 available. This page lists the divergences.

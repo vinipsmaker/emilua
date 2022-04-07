@@ -1,5 +1,15 @@
 = unix.stream_socket
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== SYNOPSIS
+
+endif::[]
+
 [source,lua]
 ----
 local a, b = unix.stream_socket.pair()

@@ -1,5 +1,15 @@
 = sys.signal.set
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== DESCRIPTION
+
+endif::[]
+
 [source,lua]
 ----
 local set = sys.signal.set.new(sys.signal.SIGTERM, sys.signal.SIGINT)

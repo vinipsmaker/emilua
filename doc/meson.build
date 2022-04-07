@@ -52,8 +52,9 @@ foreach input : src3
             asciidoctor,
             '--backend=manpage',
             '--doctype=manpage',
-            '--attribute=VERSION=' + meson.project_version() +
+            '--attribute=mansource=Emilua ' + meson.project_version() +
             get_option('version_suffix'),
+            '--attribute=manmanual=Emilua reference',
             '--attribute=doctitle=@BASENAME@(3em)',
             '--out-file=@OUTPUT@',
             '@INPUT@',
@@ -87,8 +88,9 @@ foreach input : src7
             asciidoctor,
             '--backend=manpage',
             '--doctype=manpage',
-            '--attribute=VERSION=' + meson.project_version() +
+            '--attribute=mansource=Emilua ' + meson.project_version() +
             get_option('version_suffix'),
+            '--attribute=manmanual=Emilua reference',
             '--attribute=doctitle=emilua-@BASENAME@(7)',
             '--out-file=@OUTPUT@',
             '@INPUT@',

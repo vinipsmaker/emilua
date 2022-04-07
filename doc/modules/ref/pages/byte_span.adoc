@@ -2,6 +2,16 @@
 
 :_:
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== DESCRIPTION
+
+endif::[]
+
 [source,lua]
 ----
 local byte_span = require 'byte_span'

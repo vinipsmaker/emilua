@@ -3,6 +3,16 @@
 :cpp: C++
 :_:
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== DESCRIPTION
+
+endif::[]
+
 Emilua also provides an interruption API that you can use to cancel fibers (you
 might use it to free resources from fibers stuck in IO requets that might never
 complete).

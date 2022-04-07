@@ -1,5 +1,15 @@
 = unix.datagram_socket
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== SYNOPSIS
+
+endif::[]
+
 [source,lua]
 ----
 local sock = unix.datagram_socket.new()

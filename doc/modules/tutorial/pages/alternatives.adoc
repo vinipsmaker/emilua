@@ -4,6 +4,16 @@
 :_:
 :cpp: C++
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== DESCRIPTION
+
+endif::[]
+
 toc::[]
 
 == https://github.com/wahern/cqueues[cqueues]

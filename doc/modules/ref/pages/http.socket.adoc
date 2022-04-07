@@ -1,5 +1,15 @@
 = http.socket
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== DESCRIPTION
+
+endif::[]
+
 [source,lua]
 ----
 local s = ip.tcp.socket.new()

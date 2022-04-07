@@ -1,5 +1,15 @@
 = tls.context_flag
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== DESCRIPTION
+
+endif::[]
+
 This module contains SSL options flag constants.
 
 == `default_workarounds`

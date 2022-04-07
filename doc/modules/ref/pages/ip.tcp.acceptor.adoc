@@ -1,5 +1,15 @@
 = ip.tcp.acceptor
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== SYNOPSIS
+
+endif::[]
+
 [source,lua]
 ----
 local a = ip.tcp.acceptor.new()

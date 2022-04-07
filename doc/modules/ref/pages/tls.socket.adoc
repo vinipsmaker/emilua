@@ -1,5 +1,15 @@
 = tls.socket
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== SYNOPSIS
+
+endif::[]
+
 [source,lua]
 ----
 tls_ctx = tls.context.new('tlsv13')

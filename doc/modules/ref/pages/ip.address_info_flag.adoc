@@ -1,5 +1,15 @@
 = ip.address_info_flag
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== DESCRIPTION
+
+endif::[]
+
 This module contains flag constants useful to name resolvers.
 
 The following example demonstrates how you can use these flags in other modules:

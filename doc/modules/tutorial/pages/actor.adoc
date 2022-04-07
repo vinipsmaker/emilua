@@ -3,6 +3,16 @@
 :_:
 :cpp: C++
 
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== SYNOPSIS
+
+endif::[]
+
 [source,lua]
 ----
 -- Instantiates a new lua VM that shares the caller's `asio::io_context`
