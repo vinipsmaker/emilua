@@ -169,6 +169,7 @@ src = [
     'src/byte_span.cpp',
     'src/lua_shim.cpp',
     'src/stream.cpp',
+    'src/system.cpp',
     'src/fiber.cpp',
     'src/mutex.cpp',
     'src/regex.cpp',
@@ -176,7 +177,6 @@ src = [
     'src/cond.cpp',
     'src/core.cpp',
     'src/json.cpp',
-    'src/sys.cpp',
     'src/tls.cpp',
     'src/ip.cpp',
 ]

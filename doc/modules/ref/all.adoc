@@ -53,9 +53,9 @@ include::pages/steady_timer.adoc[]
 
 include::pages/stream.adoc[]
 
-include::pages/sys.adoc[]
+include::pages/system.adoc[]
 
-include::pages/sys.signal.set.adoc[]
+include::pages/system.signal.set.adoc[]
 
 include::pages/tls.context.adoc[]
 

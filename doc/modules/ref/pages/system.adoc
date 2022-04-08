@@ -1,4 +1,4 @@
-= sys
+= system
 
 ifeval::[{doctype} == manpage]
 
@@ -72,7 +72,7 @@ function `abort()`).
 
 Has the following types:
 
-* link:../sys.signal.set/[`set`].
+* link:../system.signal.set/[`set`].
 
 Has the following functions:
 

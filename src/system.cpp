@@ -3,7 +3,7 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
-#include <emilua/sys.hpp>
+#include <emilua/system.hpp>
 #include <emilua/async_base.hpp>
 #include <emilua/byte_span.hpp>
 
@@ -33,17 +33,17 @@
 
 namespace emilua {
 
-char sys_key;
+char system_key;
 
-static char sys_signal_key;
-static char sys_signal_set_mt_key;
-static char sys_signal_set_wait_key;
+static char system_signal_key;
+static char system_signal_set_mt_key;
+static char system_signal_set_wait_key;
 
 #if !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
-static char sys_stdin_key;
+static char system_stdin_key;
 #endif // !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
-static char sys_stdout_key;
-static char sys_stderr_key;
+static char system_stdout_key;
+static char system_stderr_key;
 
 #if BOOST_OS_WINDOWS
 # if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
@@ -151,7 +151,7 @@ inline stdin_service::stdin_service(vm_context& vm_ctx)
     }}
 {}
 # endif // EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
-static int sys_stdout_write_some(lua_State* L)
+static int system_stdout_write_some(lua_State* L)
 {
     // we don't really need to check for suspend-allowed here given no
     // fiber-switch happens and we block the whole thread, but it's better to do
@@ -185,7 +185,7 @@ static int sys_stdout_write_some(lua_State* L)
     return 1;
 }
 
-static int sys_stderr_write_some(lua_State* L)
+static int system_stderr_write_some(lua_State* L)
 {
     // we don't really need to check for suspend-allowed here given no
     // fiber-switch happens and we block the whole thread, but it's better to do
@@ -244,7 +244,7 @@ struct stdstream_service: public pending_operation
 };
 #endif // BOOST_OS_WINDOWS
 
-static int sys_signal_set_new(lua_State* L)
+static int system_signal_set_new(lua_State* L)
 {
     int nargs = lua_gettop(L);
 
@@ -264,7 +264,7 @@ static int sys_signal_set_new(lua_State* L)
     auto set = reinterpret_cast<asio::signal_set*>(
         lua_newuserdata(L, sizeof(asio::signal_set))
     );
-    rawgetp(L, LUA_REGISTRYINDEX, &sys_signal_set_mt_key);
+    rawgetp(L, LUA_REGISTRYINDEX, &system_signal_set_mt_key);
     setmetatable(L, -2);
     new (set) asio::signal_set{vm_ctx.strand().context()};
 
@@ -280,7 +280,7 @@ static int sys_signal_set_new(lua_State* L)
     return 1;
 }
 
-static int sys_signal_set_wait(lua_State* L)
+static int system_signal_set_wait(lua_State* L)
 {
     auto vm_ctx = get_vm_context(L).shared_from_this();
     auto current_fiber = vm_ctx->current_fiber();
@@ -291,7 +291,7 @@ static int sys_signal_set_wait(lua_State* L)
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
-    rawgetp(L, LUA_REGISTRYINDEX, &sys_signal_set_mt_key);
+    rawgetp(L, LUA_REGISTRYINDEX, &system_signal_set_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -327,7 +327,7 @@ static int sys_signal_set_wait(lua_State* L)
     return lua_yield(L, 0);
 }
 
-static int sys_signal_set_add(lua_State* L)
+static int system_signal_set_add(lua_State* L)
 {
     lua_settop(L, 2);
 
@@ -336,7 +336,7 @@ static int sys_signal_set_add(lua_State* L)
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
-    rawgetp(L, LUA_REGISTRYINDEX, &sys_signal_set_mt_key);
+    rawgetp(L, LUA_REGISTRYINDEX, &system_signal_set_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -355,7 +355,7 @@ static int sys_signal_set_add(lua_State* L)
     return 0;
 }
 
-static int sys_signal_set_remove(lua_State* L)
+static int system_signal_set_remove(lua_State* L)
 {
     lua_settop(L, 2);
 
@@ -364,7 +364,7 @@ static int sys_signal_set_remove(lua_State* L)
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
-    rawgetp(L, LUA_REGISTRYINDEX, &sys_signal_set_mt_key);
+    rawgetp(L, LUA_REGISTRYINDEX, &system_signal_set_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -383,14 +383,14 @@ static int sys_signal_set_remove(lua_State* L)
     return 0;
 }
 
-static int sys_signal_set_clear(lua_State* L)
+static int system_signal_set_clear(lua_State* L)
 {
     auto set = reinterpret_cast<asio::signal_set*>(lua_touserdata(L, 1));
     if (!set || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
-    rawgetp(L, LUA_REGISTRYINDEX, &sys_signal_set_mt_key);
+    rawgetp(L, LUA_REGISTRYINDEX, &system_signal_set_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -405,14 +405,14 @@ static int sys_signal_set_clear(lua_State* L)
     return 0;
 }
 
-static int sys_signal_set_cancel(lua_State* L)
+static int system_signal_set_cancel(lua_State* L)
 {
     auto set = reinterpret_cast<asio::signal_set*>(lua_touserdata(L, 1));
     if (!set || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
-    rawgetp(L, LUA_REGISTRYINDEX, &sys_signal_set_mt_key);
+    rawgetp(L, LUA_REGISTRYINDEX, &system_signal_set_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -427,42 +427,42 @@ static int sys_signal_set_cancel(lua_State* L)
     return 0;
 }
 
-static int sys_signal_set_mt_index(lua_State* L)
+static int system_signal_set_mt_index(lua_State* L)
 {
     return dispatch_table::dispatch(
         hana::make_tuple(
             hana::make_pair(
                 BOOST_HANA_STRING("wait"),
                 [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &sys_signal_set_wait_key);
+                    rawgetp(L, LUA_REGISTRYINDEX, &system_signal_set_wait_key);
                     return 1;
                 }
             ),
             hana::make_pair(
                 BOOST_HANA_STRING("cancel"),
                 [](lua_State* L) -> int {
-                    lua_pushcfunction(L, sys_signal_set_cancel);
+                    lua_pushcfunction(L, system_signal_set_cancel);
                     return 1;
                 }
             ),
             hana::make_pair(
                 BOOST_HANA_STRING("add"),
                 [](lua_State* L) -> int {
-                    lua_pushcfunction(L, sys_signal_set_add);
+                    lua_pushcfunction(L, system_signal_set_add);
                     return 1;
                 }
             ),
             hana::make_pair(
                 BOOST_HANA_STRING("remove"),
                 [](lua_State* L) -> int {
-                    lua_pushcfunction(L, sys_signal_set_remove);
+                    lua_pushcfunction(L, system_signal_set_remove);
                     return 1;
                 }
             ),
             hana::make_pair(
                 BOOST_HANA_STRING("clear"),
                 [](lua_State* L) -> int {
-                    lua_pushcfunction(L, sys_signal_set_clear);
+                    lua_pushcfunction(L, system_signal_set_clear);
                     return 1;
                 }
             )
@@ -476,7 +476,7 @@ static int sys_signal_set_mt_index(lua_State* L)
     );
 }
 
-static int sys_signal_raise(lua_State* L)
+static int system_signal_raise(lua_State* L)
 {
     int signal_number = luaL_checkinteger(L, 1);
 
@@ -556,7 +556,7 @@ static int sys_signal_raise(lua_State* L)
 
 #if BOOST_OS_WINDOWS
 # if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
-static int sys_stdin_read_some(lua_State* L)
+static int system_stdin_read_some(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
     EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
@@ -658,7 +658,7 @@ static int sys_stdin_read_some(lua_State* L)
 }
 # endif // EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
 #else // BOOST_OS_WINDOWS
-static int sys_stdin_read_some(lua_State* L)
+static int system_stdin_read_some(lua_State* L)
 {
     auto vm_ctx = get_vm_context(L).shared_from_this();
     auto current_fiber = vm_ctx->current_fiber();
@@ -717,7 +717,7 @@ static int sys_stdin_read_some(lua_State* L)
     return lua_yield(L, 0);
 }
 
-static int sys_stdout_write_some(lua_State* L)
+static int system_stdout_write_some(lua_State* L)
 {
     auto vm_ctx = get_vm_context(L).shared_from_this();
     auto current_fiber = vm_ctx->current_fiber();
@@ -776,7 +776,7 @@ static int sys_stdout_write_some(lua_State* L)
     return lua_yield(L, 0);
 }
 
-static int sys_stderr_write_some(lua_State* L)
+static int system_stderr_write_some(lua_State* L)
 {
     auto vm_ctx = get_vm_context(L).shared_from_this();
     auto current_fiber = vm_ctx->current_fiber();
@@ -836,7 +836,7 @@ static int sys_stderr_write_some(lua_State* L)
 }
 #endif // BOOST_OS_WINDOWS
 
-inline int sys_args(lua_State* L)
+inline int system_args(lua_State* L)
 {
     auto& appctx = get_vm_context(L).appctx;
     lua_createtable(L, /*narr=*/appctx.app_args.size(), /*nrec=*/0);
@@ -848,7 +848,7 @@ inline int sys_args(lua_State* L)
     return 1;
 }
 
-inline int sys_environment(lua_State* L)
+inline int system_environment(lua_State* L)
 {
     auto& appctx = get_vm_context(L).appctx;
     lua_createtable(L, /*narr=*/0, /*nrec=*/appctx.app_env.size());
@@ -861,32 +861,32 @@ inline int sys_environment(lua_State* L)
 }
 
 #if !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
-inline int sys_stdin(lua_State* L)
+inline int system_stdin(lua_State* L)
 {
-    rawgetp(L, LUA_REGISTRYINDEX, &sys_stdin_key);
+    rawgetp(L, LUA_REGISTRYINDEX, &system_stdin_key);
     return 1;
 }
 #endif // !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
 
-inline int sys_stdout(lua_State* L)
+inline int system_stdout(lua_State* L)
 {
-    rawgetp(L, LUA_REGISTRYINDEX, &sys_stdout_key);
+    rawgetp(L, LUA_REGISTRYINDEX, &system_stdout_key);
     return 1;
 }
 
-inline int sys_stderr(lua_State* L)
+inline int system_stderr(lua_State* L)
 {
-    rawgetp(L, LUA_REGISTRYINDEX, &sys_stderr_key);
+    rawgetp(L, LUA_REGISTRYINDEX, &system_stderr_key);
     return 1;
 }
 
-inline int sys_signal(lua_State* L)
+inline int system_signal(lua_State* L)
 {
-    rawgetp(L, LUA_REGISTRYINDEX, &sys_signal_key);
+    rawgetp(L, LUA_REGISTRYINDEX, &system_signal_key);
     return 1;
 }
 
-static int sys_exit(lua_State* L)
+static int system_exit(lua_State* L)
 {
     lua_settop(L, 2);
 
@@ -942,22 +942,23 @@ static int sys_exit(lua_State* L)
     return lua_yield(L, 0);
 }
 
-static int sys_mt_index(lua_State* L)
+static int system_mt_index(lua_State* L)
 {
     return dispatch_table::dispatch(
         hana::make_tuple(
-            hana::make_pair(BOOST_HANA_STRING("environment"), sys_environment),
-            hana::make_pair(BOOST_HANA_STRING("signal"), sys_signal),
-            hana::make_pair(BOOST_HANA_STRING("args"), sys_args),
+            hana::make_pair(
+                BOOST_HANA_STRING("environment"), system_environment),
+            hana::make_pair(BOOST_HANA_STRING("signal"), system_signal),
+            hana::make_pair(BOOST_HANA_STRING("args"), system_args),
 #if !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
-            hana::make_pair(BOOST_HANA_STRING("stdin"), sys_stdin),
+            hana::make_pair(BOOST_HANA_STRING("stdin"), system_stdin),
 #endif // !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
-            hana::make_pair(BOOST_HANA_STRING("stdout"), sys_stdout),
-            hana::make_pair(BOOST_HANA_STRING("stderr"), sys_stderr),
+            hana::make_pair(BOOST_HANA_STRING("stdout"), system_stdout),
+            hana::make_pair(BOOST_HANA_STRING("stderr"), system_stderr),
             hana::make_pair(
                 BOOST_HANA_STRING("exit"),
                 [](lua_State* L) -> int {
-                    lua_pushcfunction(L, sys_exit);
+                    lua_pushcfunction(L, system_exit);
                     return 1;
                 })
         ),
@@ -970,9 +971,9 @@ static int sys_mt_index(lua_State* L)
     );
 }
 
-void init_sys(lua_State* L)
+void init_system(lua_State* L)
 {
-    lua_pushlightuserdata(L, &sys_key);
+    lua_pushlightuserdata(L, &system_key);
     {
         lua_newuserdata(L, /*size=*/1);
 
@@ -980,11 +981,11 @@ void init_sys(lua_State* L)
             lua_createtable(L, /*narr=*/0, /*nrec=*/2);
 
             lua_pushliteral(L, "__metatable");
-            lua_pushliteral(L, "sys");
+            lua_pushliteral(L, "system");
             lua_rawset(L, -3);
 
             lua_pushliteral(L, "__index");
-            lua_pushcfunction(L, sys_mt_index);
+            lua_pushcfunction(L, system_mt_index);
             lua_rawset(L, -3);
         }
 
@@ -992,12 +993,12 @@ void init_sys(lua_State* L)
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
-    lua_pushlightuserdata(L, &sys_signal_key);
+    lua_pushlightuserdata(L, &system_signal_key);
     {
         lua_newtable(L);
 
         lua_pushliteral(L, "raise");
-        lua_pushcfunction(L, sys_signal_raise);
+        lua_pushcfunction(L, system_signal_raise);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "set");
@@ -1005,7 +1006,7 @@ void init_sys(lua_State* L)
             lua_createtable(L, /*narr=*/0, /*nrec=*/1);
 
             lua_pushliteral(L, "new");
-            lua_pushcfunction(L, sys_signal_set_new);
+            lua_pushcfunction(L, system_signal_set_new);
             lua_rawset(L, -3);
         }
         lua_rawset(L, -3);
@@ -1064,7 +1065,7 @@ void init_sys(lua_State* L)
     lua_rawset(L, LUA_REGISTRYINDEX);
 
 #if !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
-    lua_pushlightuserdata(L, &sys_stdin_key);
+    lua_pushlightuserdata(L, &system_stdin_key);
     {
         lua_createtable(L, /*narr=*/0, /*nrec=*/1);
 
@@ -1072,59 +1073,59 @@ void init_sys(lua_State* L)
         rawgetp(L, LUA_REGISTRYINDEX,
                 &var_args__retval1_to_error__fwd_retval2__key);
         rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
-        lua_pushcfunction(L, sys_stdin_read_some);
+        lua_pushcfunction(L, system_stdin_read_some);
         lua_call(L, 2, 1);
         lua_rawset(L, -3);
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 #endif // !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
 
-    lua_pushlightuserdata(L, &sys_stdout_key);
+    lua_pushlightuserdata(L, &system_stdout_key);
     {
         lua_createtable(L, /*narr=*/0, /*nrec=*/1);
 
         lua_pushliteral(L, "write_some");
 #if BOOST_OS_WINDOWS
-        lua_pushcfunction(L, sys_stdout_write_some);
+        lua_pushcfunction(L, system_stdout_write_some);
 #else // BOOST_OS_WINDOWS
         rawgetp(L, LUA_REGISTRYINDEX,
                 &var_args__retval1_to_error__fwd_retval2__key);
         rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
-        lua_pushcfunction(L, sys_stdout_write_some);
+        lua_pushcfunction(L, system_stdout_write_some);
         lua_call(L, 2, 1);
 #endif // BOOST_OS_WINDOWS
         lua_rawset(L, -3);
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
-    lua_pushlightuserdata(L, &sys_stderr_key);
+    lua_pushlightuserdata(L, &system_stderr_key);
     {
         lua_createtable(L, /*narr=*/0, /*nrec=*/1);
 
         lua_pushliteral(L, "write_some");
 #if BOOST_OS_WINDOWS
-        lua_pushcfunction(L, sys_stderr_write_some);
+        lua_pushcfunction(L, system_stderr_write_some);
 #else // BOOST_OS_WINDOWS
         rawgetp(L, LUA_REGISTRYINDEX,
                 &var_args__retval1_to_error__fwd_retval2__key);
         rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
-        lua_pushcfunction(L, sys_stderr_write_some);
+        lua_pushcfunction(L, system_stderr_write_some);
         lua_call(L, 2, 1);
 #endif // BOOST_OS_WINDOWS
         lua_rawset(L, -3);
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
-    lua_pushlightuserdata(L, &sys_signal_set_mt_key);
+    lua_pushlightuserdata(L, &system_signal_set_mt_key);
     {
         lua_createtable(L, /*narr=*/0, /*nrec=*/3);
 
         lua_pushliteral(L, "__metatable");
-        lua_pushliteral(L, "sys.signal.set");
+        lua_pushliteral(L, "system.signal.set");
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__index");
-        lua_pushcfunction(L, sys_signal_set_mt_index);
+        lua_pushcfunction(L, system_signal_set_mt_index);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__gc");
@@ -1133,11 +1134,11 @@ void init_sys(lua_State* L)
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
-    lua_pushlightuserdata(L, &sys_signal_set_wait_key);
+    lua_pushlightuserdata(L, &system_signal_set_wait_key);
     rawgetp(L, LUA_REGISTRYINDEX,
             &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
-    lua_pushcfunction(L, sys_signal_set_wait);
+    lua_pushcfunction(L, system_signal_set_wait);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 }

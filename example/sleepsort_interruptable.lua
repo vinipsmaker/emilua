@@ -1,5 +1,5 @@
 local sleep_for = require('sleep_for')
-local sys = require('sys')
+local system = require('system')
 
 local numbers = {8, 42, 38, 111, 2, 39, 1}
 
@@ -22,9 +22,10 @@ local sleeper = spawn(function()
 end)
 
 local sigwaiter = spawn(function()
-    local set = sys.signal.set.new(sys.signal.SIGTERM, sys.signal.SIGINT)
-    if sys.signal.SIGUSR1 then
-        set:add(sys.signal.SIGUSR1)
+    local set = system.signal.set.new(
+        system.signal.SIGTERM, system.signal.SIGINT)
+    if system.signal.SIGUSR1 then
+        set:add(system.signal.SIGUSR1)
     end
     set:wait()
     sleeper:interrupt()

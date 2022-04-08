@@ -9,8 +9,8 @@
 
 namespace emilua {
 
-extern char sys_key;
+extern char system_key;
 
-void init_sys(lua_State* L);
+void init_system(lua_State* L);
 
 } // namespace emilua

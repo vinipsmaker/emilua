@@ -36,8 +36,8 @@
 ** sync primitives
 *** xref:ref:mutex.adoc[]
 *** xref:ref:cond.adoc[]
-** xref:ref:sys.adoc[]
-** xref:ref:sys.signal.set.adoc[]
+** xref:ref:system.adoc[]
+** xref:ref:system.signal.set.adoc[]
 ** tls
 *** xref:ref:tls.context.adoc[]
 *** xref:ref:tls.context_flag.adoc[]

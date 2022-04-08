@@ -17,6 +17,7 @@
 #include <emilua/lua_shim.hpp>
 #include <emilua/windows.hpp>
 #include <emilua/stream.hpp>
+#include <emilua/system.hpp>
 #include <emilua/fiber.hpp>
 #include <emilua/actor.hpp>
 #include <emilua/mutex.hpp>
@@ -25,7 +26,6 @@
 #include <emilua/timer.hpp>
 #include <emilua/cond.hpp>
 #include <emilua/json.hpp>
-#include <emilua/sys.hpp>
 #include <emilua/tls.hpp>
 #include <emilua/ip.hpp>
 
@@ -901,10 +901,10 @@ static int require(lua_State* L)
                     }
                 ),
                 hana::make_pair(
-                    BOOST_HANA_STRING("sys"),
+                    BOOST_HANA_STRING("system"),
                     [](lua_State* L) -> int {
                         lua_pushboolean(L, 1);
-                        rawgetp(L, LUA_REGISTRYINDEX, &sys_key);
+                        rawgetp(L, LUA_REGISTRYINDEX, &system_key);
                         return 2;
                     }
                 )
@@ -1237,7 +1237,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     init_json_module(L);
     init_ip(L);
     init_tls(L);
-    init_sys(L);
+    init_system(L);
     init_byte_span(L);
     init_serial_port(L);
     init_regex(L);

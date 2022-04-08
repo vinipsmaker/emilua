@@ -1,4 +1,4 @@
-= sys.signal.set
+= system.signal.set
 
 ifeval::[{doctype} == manpage]
 
@@ -12,7 +12,7 @@ endif::[]
 
 [source,lua]
 ----
-local set = sys.signal.set.new(sys.signal.SIGTERM, sys.signal.SIGINT)
+local set = system.signal.set.new(system.signal.SIGTERM, system.signal.SIGINT)
 set:wait()
 ----
 
@@ -33,7 +33,7 @@ ____
 
 == Functions
 
-=== `new([sig1: number, ...]) -> sys.signal.set`
+=== `new([sig1: number, ...]) -> system.signal.set`
 
 Constructor.
 
