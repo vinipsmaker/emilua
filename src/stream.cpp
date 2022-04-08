@@ -133,6 +133,7 @@ void init_stream(lua_State* L)
                             get_line_bytecode_size, nullptr);
                         assert(res == 0); boost::ignore_unused(res);
                         rawgetp(L, LUA_REGISTRYINDEX, &raw_type_key);
+                        rawgetp(L, LUA_REGISTRYINDEX, &raw_getmetatable_key);
                         rawgetp(L, LUA_REGISTRYINDEX, &raw_pcall_key);
                         rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
                         lua_pushcfunction(L, byte_span_new);
@@ -143,7 +144,7 @@ void init_stream(lua_State* L)
                         lua_pushliteral(L, " \f\n\r\t\v");
                         push(L, make_error_code(asio::error::eof));
                         push(L, std::errc::message_size);
-                        lua_call(L, 11, 1);
+                        lua_call(L, 12, 1);
                     }
                     lua_rawset(L, -3);
 

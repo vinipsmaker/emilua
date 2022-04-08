@@ -30,6 +30,7 @@ char raw_pairs_key;
 char raw_ipairs_key;
 char raw_next_key;
 char raw_setmetatable_key;
+char raw_getmetatable_key;
 
 asio::io_context::id properties_service::id;
 

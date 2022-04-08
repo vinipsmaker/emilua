@@ -111,9 +111,9 @@ f:write(read_at_bytecode)
 f:close()
 read_at_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
 
-function get_line_bootstrap(type, pcall, error, byte_span_new, regex_search,
-                            re_search_flags, regex_split, regex_patsplit, lws,
-                            EEOF, EMSGSIZE)
+function get_line_bootstrap(type, getmetatable, pcall, error, byte_span_new,
+                            regex_search, re_search_flags, regex_split,
+                            regex_patsplit, lws, EEOF, EMSGSIZE)
     return function(self)
         local ready_wnd = self.buffer_:slice(
             1, self.buffer_used - self.record_size)
@@ -128,6 +128,9 @@ function get_line_bootstrap(type, pcall, error, byte_span_new, regex_search,
         local trim_record = self.trim_record
         local field_separator = self.field_separator
         local field_separator_type = type(field_separator)
+        if field_separator_type ~= 'string' then
+            field_separator_type = getmetatable(field_separator)
+        end
         local field_pattern = self.field_pattern
         local max_record_size = self.max_record_size
         local stream = self.stream
@@ -180,8 +183,10 @@ function get_line_bootstrap(type, pcall, error, byte_span_new, regex_search,
                         end
                         ret[nf] = line
                         return ret
-                    else
+                    elseif field_separator_type == 'regex' then
                         return regex_split(field_separator, line)
+                    else
+                        return field_separator(line)
                     end
                 elseif field_pattern then
                     return regex_patsplit(field_pattern, line)

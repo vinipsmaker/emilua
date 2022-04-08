@@ -105,6 +105,7 @@ extern char raw_pairs_key;
 extern char raw_ipairs_key;
 extern char raw_next_key;
 extern char raw_setmetatable_key;
+extern char raw_getmetatable_key;
 extern char fiber_list_key;
 
 enum FiberDataIndex: lua_Integer
