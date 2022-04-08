@@ -22,7 +22,7 @@ The environment variables.
 
 == Functions
 
-=== `stdin.read_some(self, buffer: byte_span) -> number`
+=== `in_.read_some(self, buffer: byte_span) -> number`
 
 Read data from stdin and blocks current fiber until it completes or errs.
 
@@ -31,7 +31,7 @@ Returns the number of bytes read.
 NOTE: First argument is ignored and it's only there to make it have a
 stream-like interface.
 
-=== `stdout.write_some(self, buffer: byte_span) -> number`
+=== `out.write_some(self, buffer: byte_span) -> number`
 
 Write data to stdout and blocks current fiber until it completes or errs.
 
@@ -40,7 +40,7 @@ Returns the number of bytes written.
 NOTE: First argument is ignored and it's only there to make it have a
 stream-like interface.
 
-=== `stderr.write_some(self, buffer: byte_span) -> number`
+=== `err.write_some(self, buffer: byte_span) -> number`
 
 Write data to stderr and blocks current fiber until it completes or errs.
 

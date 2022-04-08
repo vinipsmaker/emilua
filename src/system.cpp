@@ -40,10 +40,10 @@ static char system_signal_set_mt_key;
 static char system_signal_set_wait_key;
 
 #if !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
-static char system_stdin_key;
+static char system_in_key;
 #endif // !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
-static char system_stdout_key;
-static char system_stderr_key;
+static char system_out_key;
+static char system_err_key;
 
 #if BOOST_OS_WINDOWS
 # if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
@@ -151,7 +151,7 @@ inline stdin_service::stdin_service(vm_context& vm_ctx)
     }}
 {}
 # endif // EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
-static int system_stdout_write_some(lua_State* L)
+static int system_out_write_some(lua_State* L)
 {
     // we don't really need to check for suspend-allowed here given no
     // fiber-switch happens and we block the whole thread, but it's better to do
@@ -185,7 +185,7 @@ static int system_stdout_write_some(lua_State* L)
     return 1;
 }
 
-static int system_stderr_write_some(lua_State* L)
+static int system_err_write_some(lua_State* L)
 {
     // we don't really need to check for suspend-allowed here given no
     // fiber-switch happens and we block the whole thread, but it's better to do
@@ -556,7 +556,7 @@ static int system_signal_raise(lua_State* L)
 
 #if BOOST_OS_WINDOWS
 # if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
-static int system_stdin_read_some(lua_State* L)
+static int system_in_read_some(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
     EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
@@ -658,7 +658,7 @@ static int system_stdin_read_some(lua_State* L)
 }
 # endif // EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
 #else // BOOST_OS_WINDOWS
-static int system_stdin_read_some(lua_State* L)
+static int system_in_read_some(lua_State* L)
 {
     auto vm_ctx = get_vm_context(L).shared_from_this();
     auto current_fiber = vm_ctx->current_fiber();
@@ -717,7 +717,7 @@ static int system_stdin_read_some(lua_State* L)
     return lua_yield(L, 0);
 }
 
-static int system_stdout_write_some(lua_State* L)
+static int system_out_write_some(lua_State* L)
 {
     auto vm_ctx = get_vm_context(L).shared_from_this();
     auto current_fiber = vm_ctx->current_fiber();
@@ -776,7 +776,7 @@ static int system_stdout_write_some(lua_State* L)
     return lua_yield(L, 0);
 }
 
-static int system_stderr_write_some(lua_State* L)
+static int system_err_write_some(lua_State* L)
 {
     auto vm_ctx = get_vm_context(L).shared_from_this();
     auto current_fiber = vm_ctx->current_fiber();
@@ -861,22 +861,22 @@ inline int system_environment(lua_State* L)
 }
 
 #if !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
-inline int system_stdin(lua_State* L)
+inline int system_in(lua_State* L)
 {
-    rawgetp(L, LUA_REGISTRYINDEX, &system_stdin_key);
+    rawgetp(L, LUA_REGISTRYINDEX, &system_in_key);
     return 1;
 }
 #endif // !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
 
-inline int system_stdout(lua_State* L)
+inline int system_out(lua_State* L)
 {
-    rawgetp(L, LUA_REGISTRYINDEX, &system_stdout_key);
+    rawgetp(L, LUA_REGISTRYINDEX, &system_out_key);
     return 1;
 }
 
-inline int system_stderr(lua_State* L)
+inline int system_err(lua_State* L)
 {
-    rawgetp(L, LUA_REGISTRYINDEX, &system_stderr_key);
+    rawgetp(L, LUA_REGISTRYINDEX, &system_err_key);
     return 1;
 }
 
@@ -951,10 +951,10 @@ static int system_mt_index(lua_State* L)
             hana::make_pair(BOOST_HANA_STRING("signal"), system_signal),
             hana::make_pair(BOOST_HANA_STRING("args"), system_args),
 #if !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
-            hana::make_pair(BOOST_HANA_STRING("stdin"), system_stdin),
+            hana::make_pair(BOOST_HANA_STRING("in_"), system_in),
 #endif // !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
-            hana::make_pair(BOOST_HANA_STRING("stdout"), system_stdout),
-            hana::make_pair(BOOST_HANA_STRING("stderr"), system_stderr),
+            hana::make_pair(BOOST_HANA_STRING("out"), system_out),
+            hana::make_pair(BOOST_HANA_STRING("err"), system_err),
             hana::make_pair(
                 BOOST_HANA_STRING("exit"),
                 [](lua_State* L) -> int {
@@ -1065,7 +1065,7 @@ void init_system(lua_State* L)
     lua_rawset(L, LUA_REGISTRYINDEX);
 
 #if !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
-    lua_pushlightuserdata(L, &system_stdin_key);
+    lua_pushlightuserdata(L, &system_in_key);
     {
         lua_createtable(L, /*narr=*/0, /*nrec=*/1);
 
@@ -1073,43 +1073,43 @@ void init_system(lua_State* L)
         rawgetp(L, LUA_REGISTRYINDEX,
                 &var_args__retval1_to_error__fwd_retval2__key);
         rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
-        lua_pushcfunction(L, system_stdin_read_some);
+        lua_pushcfunction(L, system_in_read_some);
         lua_call(L, 2, 1);
         lua_rawset(L, -3);
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 #endif // !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
 
-    lua_pushlightuserdata(L, &system_stdout_key);
+    lua_pushlightuserdata(L, &system_out_key);
     {
         lua_createtable(L, /*narr=*/0, /*nrec=*/1);
 
         lua_pushliteral(L, "write_some");
 #if BOOST_OS_WINDOWS
-        lua_pushcfunction(L, system_stdout_write_some);
+        lua_pushcfunction(L, system_out_write_some);
 #else // BOOST_OS_WINDOWS
         rawgetp(L, LUA_REGISTRYINDEX,
                 &var_args__retval1_to_error__fwd_retval2__key);
         rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
-        lua_pushcfunction(L, system_stdout_write_some);
+        lua_pushcfunction(L, system_out_write_some);
         lua_call(L, 2, 1);
 #endif // BOOST_OS_WINDOWS
         lua_rawset(L, -3);
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
-    lua_pushlightuserdata(L, &system_stderr_key);
+    lua_pushlightuserdata(L, &system_err_key);
     {
         lua_createtable(L, /*narr=*/0, /*nrec=*/1);
 
         lua_pushliteral(L, "write_some");
 #if BOOST_OS_WINDOWS
-        lua_pushcfunction(L, system_stderr_write_some);
+        lua_pushcfunction(L, system_err_write_some);
 #else // BOOST_OS_WINDOWS
         rawgetp(L, LUA_REGISTRYINDEX,
                 &var_args__retval1_to_error__fwd_retval2__key);
         rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
-        lua_pushcfunction(L, system_stderr_write_some);
+        lua_pushcfunction(L, system_err_write_some);
         lua_call(L, 2, 1);
 #endif // BOOST_OS_WINDOWS
         lua_rawset(L, -3);
