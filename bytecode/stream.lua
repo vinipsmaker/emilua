@@ -129,7 +129,6 @@ function get_line_bootstrap(type, pcall, error, byte_span_new, regex_search,
         local field_separator = self.field_separator
         local field_separator_type = type(field_separator)
         local field_pattern = self.field_pattern
-        local field_pattern_type = type(field_pattern)
         local max_record_size = self.max_record_size
         local stream = self.stream
         local read_some = stream.read_some
