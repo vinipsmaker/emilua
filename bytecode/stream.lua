@@ -334,7 +334,7 @@ function scanner_new_bootstrap(mt, setmetatable, byte_span_new)
             ret.record_separator = '\r\n'
         end
 
-        ret.buffer_ = byte_span_new(INITIAL_BUFFER_SIZE)
+        ret.buffer_ = byte_span_new(ret.buffer_size_hint or INITIAL_BUFFER_SIZE)
         ret.buffer_used = 0
         ret.record_size = 0
         ret.record_number = 0
@@ -342,6 +342,8 @@ function scanner_new_bootstrap(mt, setmetatable, byte_span_new)
         if not ret.max_record_size then
             ret.max_record_size = MAX_RECORD_SIZE
         end
+
+        ret.buffer_size_hint = nil
 
         setmetatable(ret, mt)
         return ret
