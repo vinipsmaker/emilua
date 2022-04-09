@@ -53,6 +53,8 @@ include::pages/steady_timer.adoc[]
 
 include::pages/stream.adoc[]
 
+include::pages/stream.scanner.adoc[]
+
 include::pages/system.adoc[]
 
 include::pages/system.signal.set.adoc[]

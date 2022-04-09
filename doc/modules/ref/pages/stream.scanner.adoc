@@ -1,0 +1,130 @@
+= stream.scanner
+
+ifeval::[{doctype} == manpage]
+
+== NAME
+
+Emilua - Lua execution engine
+
+== DESCRIPTION
+
+endif::[]
+
+[source,lua]
+----
+local stream = require "stream"
+local scanner = stream.scanner.new{ stream = system.in_ }
+scanner:get_line()
+----
+
+This class abstracts formatted buffered textual input as an AWK-inspired
+scanner.
+
+== Functions
+
+=== `new(opts: table|nil) -> scanner`
+
+Set attributes required by `scanner.mt`, set ``opts``'s metatable to
+`scanner.mt` and returns `opts`. If `opts` is `nil`, then a new table is
+returned.
+
+You *MUST* set the `stream` attribute (before or after the call to ``new()``)
+before using ``scanner``'s methods.
+
+Optional attributes to `opts`:
+
+`record_separator: string|regex = "\r\n"`::
+  The pattern used to split records.
++
+[IMPORTANT]
+====
+Regexes must be used with care on streaming content. For instance, if you set
+`record_separator` to the regex `/abc(XYZ)?/`, it is possible that "XYZ" will
+not match just because it wasn't buffered yet even if it'll appear in the next
+calls to read() on the stream.
+
+Other tools such as GAWK suffer from the same
+constraint. https://www.boost.org/doc/libs/1_78_0/libs/regex/doc/html/boost_regex/partial_matches.html[Some
+regexes engines offer special support when working on streaming content], but
+they don't solve the whole problem as it'd be impossible to differentiate “max
+record size reached” from “`record_separator` not found” if an attempt were made
+to use this support.
+====
+
+`field_separator: string|regex|function|nil`::
+  If non-``nil``, defines how to split fields. Otherwise, the whole line/record
+  is returned as is.
++
+Check `regex.split()` to understand how fields are separated. In short,
+`field_separator` defines what fields _are not_.
++
+On functions, the function is used to split the fields out of the line/record
+and its return is passed through.
+
+`field_pattern: regex|nil`:: Defines what fields *are* (as opposed to
+`field_separator` that defines what fields *are not*). It must be a regex. Check
+`regex.patsplit()` for details.
+
+`trim_record: boolean|nil = false`:: Whether to strip linear whitespace from the
+beginning and end of each record.
+
+`buffer_size_hint: number|nil`:: The initial size for the buffer. As is the case
+for every hint, it might be ignored.
+
+`max_record_size: number`:: The maximum size for each record/buffer.
+
+=== `with_awk_defaults(stream) -> scanner`
+
+Returns a scanner acting on `stream` that has the semantics from AWK defaults:
+
+`record_separator`:: `"\n"`
+`trim_record`:: `true`
+`field_separator`:: A regex that describes a sequence of linear whitespace.
+
+=== `get_line(self) -> byte_span|fields`
+
+Reads next record buffering any bytes as required and returns it. If
+`field_separator`, or `field_pattern` were set, the record's extracted fields
+are returned.
+
+It also sets `self.record_terminator` to the record separator just read. On end
+of streams that don't include the record separator, `self.record_terminator`
+will be set to an empty `byte_span` (or an empty string if record separator was
+specified as a string).
+
+It also increments `self.record_number` by one on success (it is initially
+zero).
+
+=== `buffered_line(self) -> byte_span`
+
+Returns current buffered record without extracting its field. It works like
+AWK's `$0` variable.
+
+[WARNING]
+.Precondition
+====
+A record must be present in the buffer from a previous call to `get_line()`.
+====
+
+=== `remove_line(self)`
+
+Removes current record from the buffer and sets `self.record_terminator` to
+`nil`.
+
+[WARNING]
+.Precondition
+====
+A record must be present in the buffer from a previous call to `get_line()`.
+====
+
+=== `buffer(self) -> byte_span`
+
+Returns current buffered data.
+
+TIP: The returned buffer's capacity may be greater than its length.
+
+=== `set_buffer(self, buf: byte_span)`
+
+Set `buf` as the new internal buffer.
+
+NOTE: Previously buffered record and `self.record_terminator` are discarded.

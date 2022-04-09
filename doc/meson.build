@@ -26,6 +26,7 @@ src3 = [
     'modules/ref/pages/serial_port.adoc',
     'modules/ref/pages/steady_timer.adoc',
     'modules/ref/pages/stream.adoc',
+    'modules/ref/pages/stream.scanner.adoc',
     'modules/ref/pages/system.adoc',
     'modules/ref/pages/system.signal.set.adoc',
     'modules/ref/pages/tls.context.adoc',
