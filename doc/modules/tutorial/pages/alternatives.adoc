@@ -1,6 +1,5 @@
 = Alternative projects
 
-:toc: macro
 :_:
 :cpp: C++
 
@@ -13,8 +12,6 @@ Emilua - Lua execution engine
 == DESCRIPTION
 
 endif::[]
-
-toc::[]
 
 == https://github.com/wahern/cqueues[cqueues]
 

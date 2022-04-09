@@ -1,7 +1,5 @@
 = json
 
-:toc: macro
-
 ifeval::[{doctype} == manpage]
 
 == NAME
@@ -28,8 +26,6 @@ print(json.encode({c = 0, b = 0, a = 0}))
 local obj = json.decode('["foo", {"bar":["baz", null, 1.0, 2]}]')
 print(json.decode('"\\"foo\\bar"'))
 ----
-
-toc::[]
 
 == Types
 

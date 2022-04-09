@@ -1,6 +1,5 @@
 = HACKING
 
-:toc: macro
 :_:
 :cpp: C++
 
@@ -27,8 +26,6 @@ the project, and how to interact with the native code.
 
 We assume that you already have some familiarity with the lua C API and
 Boost.Asio.
-
-toc::[]
 
 == Multiple lua VMs
 
