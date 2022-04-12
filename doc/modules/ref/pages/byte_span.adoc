@@ -88,6 +88,26 @@ capacity) is left unspecified and may change among Emilua releases.].
 For the second overload (non-member function), a new byte span is created from
 scratch.
 
+== Functions (string algorithms)
+
+These functions operate in terms of octets/bytes (kinda like an 8-bit ASCII) and
+have no concept of UTF-8 encoding.
+
+=== `find(self, tgt: string|byte_span[, start: number]) -> number|nil`
+
+Finds the substring equals to `tgt` and returns its index, or `nil` if not
+found.
+
+=== `find_first_not_of(self, strlist: string|byte_span[, start: number]) -> number|nil`
+
+Finds the first octet not equals to any of the octets within `strlist` and
+returns its index, or `nil` if not found.
+
+=== `find_last_not_of(self, strlist: string|byte_span[, end: number]) -> number|nil`
+
+Finds the last octet not equals to any of the octets within `strlist` and
+returns its index, or `nil` if not found.
+
 == Properties
 
 === `capacity: number`
