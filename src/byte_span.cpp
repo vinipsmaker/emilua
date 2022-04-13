@@ -365,6 +365,86 @@ static int byte_span_non_member_append(lua_State* L)
     }
 }
 
+static int byte_span_starts_with(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 1));
+    if (!bs || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    std::string_view src;
+    switch (lua_type(L, 2)) {
+    default:
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    case LUA_TSTRING:
+        src = tostringview(L, 2);
+        break;
+    case LUA_TUSERDATA: {
+        if (!lua_getmetatable(L, 2) || !lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        auto src_bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+        src = static_cast<std::string_view>(*src_bs);
+    }
+    }
+
+    lua_pushboolean(
+        L,
+        static_cast<std::string_view>(*bs).substr(0, src.size()) == src);
+    return 1;
+}
+
+static int byte_span_ends_with(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 1));
+    if (!bs || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    std::string_view src;
+    switch (lua_type(L, 2)) {
+    default:
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    case LUA_TSTRING:
+        src = tostringview(L, 2);
+        break;
+    case LUA_TUSERDATA: {
+        if (!lua_getmetatable(L, 2) || !lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        auto src_bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+        src = static_cast<std::string_view>(*src_bs);
+    }
+    }
+
+    auto self = static_cast<std::string_view>(*bs);
+    bool ret =
+        self.size() >= src.size() &&
+        self.substr(self.size() - src.size()) == src;
+    lua_pushboolean(L, ret ? 1 : 0);
+    return 1;
+}
+
 static int byte_span_find(lua_State* L)
 {
     lua_settop(L, 3);
@@ -424,6 +504,207 @@ static int byte_span_find(lua_State* L)
     }
 
     auto ret = static_cast<std::string_view>(*bs).find(pat, start - 1);
+    if (ret == std::string_view::npos) {
+        lua_pushnil(L);
+        return 1;
+    }
+    lua_pushinteger(L, ret + 1);
+    return 1;
+}
+
+static int byte_span_rfind(lua_State* L)
+{
+    lua_settop(L, 3);
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 1));
+    if (!bs || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    std::string_view pat;
+    switch (lua_type(L, 2)) {
+    default:
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    case LUA_TNIL:
+        break;
+    case LUA_TSTRING:
+        pat = tostringview(L, 2);
+        break;
+    case LUA_TUSERDATA: {
+        if (!lua_getmetatable(L, 2) || !lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        auto src_bs = reinterpret_cast<byte_span_handle*>(
+            lua_touserdata(L, 2));
+        pat = static_cast<std::string_view>(*src_bs);
+    }
+    }
+
+    lua_Integer end;
+    switch (lua_type(L, 3)) {
+    default:
+        push(L, std::errc::invalid_argument, "arg", 3);
+        return lua_error(L);
+    case LUA_TNUMBER:
+        end = lua_tointeger(L, 3);
+        break;
+    case LUA_TNIL:
+    case LUA_TNONE:
+        end = bs->size;
+    }
+
+    if (end < 0 || end > bs->size) {
+        push(L, std::errc::result_out_of_range);
+        return lua_error(L);
+    }
+    if (end == 0) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    auto ret = static_cast<std::string_view>(*bs).rfind(pat, end - 1);
+    if (ret == std::string_view::npos) {
+        lua_pushnil(L);
+        return 1;
+    }
+    lua_pushinteger(L, ret + 1);
+    return 1;
+}
+
+static int byte_span_find_first_of(lua_State* L)
+{
+    lua_settop(L, 3);
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 1));
+    if (!bs || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    std::string_view pat;
+    switch (lua_type(L, 2)) {
+    default:
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    case LUA_TNIL:
+        break;
+    case LUA_TSTRING:
+        pat = tostringview(L, 2);
+        break;
+    case LUA_TUSERDATA: {
+        if (!lua_getmetatable(L, 2) || !lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        auto src_bs = reinterpret_cast<byte_span_handle*>(
+            lua_touserdata(L, 2));
+        pat = static_cast<std::string_view>(*src_bs);
+    }
+    }
+
+    lua_Integer start;
+    switch (lua_type(L, 3)) {
+    default:
+        push(L, std::errc::invalid_argument, "arg", 3);
+        return lua_error(L);
+    case LUA_TNUMBER:
+        start = lua_tointeger(L, 3);
+        break;
+    case LUA_TNIL:
+    case LUA_TNONE:
+        start = 1;
+    }
+
+    if (start < 1 || start - 1 > bs->size) {
+        push(L, std::errc::result_out_of_range);
+        return lua_error(L);
+    }
+    if (start > bs->size) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    auto ret = static_cast<std::string_view>(*bs).find_first_of(pat, start - 1);
+    if (ret == std::string_view::npos) {
+        lua_pushnil(L);
+        return 1;
+    }
+    lua_pushinteger(L, ret + 1);
+    return 1;
+}
+
+static int byte_span_find_last_of(lua_State* L)
+{
+    lua_settop(L, 3);
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 1));
+    if (!bs || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    std::string_view pat;
+    switch (lua_type(L, 2)) {
+    default:
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    case LUA_TNIL:
+        break;
+    case LUA_TSTRING:
+        pat = tostringview(L, 2);
+        break;
+    case LUA_TUSERDATA: {
+        if (!lua_getmetatable(L, 2) || !lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        auto src_bs = reinterpret_cast<byte_span_handle*>(
+            lua_touserdata(L, 2));
+        pat = static_cast<std::string_view>(*src_bs);
+    }
+    }
+
+    lua_Integer end;
+    switch (lua_type(L, 3)) {
+    default:
+        push(L, std::errc::invalid_argument, "arg", 3);
+        return lua_error(L);
+    case LUA_TNUMBER:
+        end = lua_tointeger(L, 3);
+        break;
+    case LUA_TNIL:
+    case LUA_TNONE:
+        end = bs->size;
+    }
+
+    if (end < 0 || end > bs->size) {
+        push(L, std::errc::result_out_of_range);
+        return lua_error(L);
+    }
+    if (end == 0) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    auto ret = static_cast<std::string_view>(*bs).find_last_of(pat, end - 1);
     if (ret == std::string_view::npos) {
         lua_pushnil(L);
         return 1;
@@ -613,9 +894,44 @@ static int byte_span_mt_index(lua_State* L)
                 }
             ),
             hana::make_pair(
+                BOOST_HANA_STRING("starts_with"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, byte_span_starts_with);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("ends_with"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, byte_span_ends_with);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
                 BOOST_HANA_STRING("find"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, byte_span_find);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("rfind"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, byte_span_rfind);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("find_first_of"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, byte_span_find_first_of);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("find_last_of"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, byte_span_find_last_of);
                     return 1;
                 }
             ),

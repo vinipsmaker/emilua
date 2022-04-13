@@ -93,10 +93,33 @@ scratch.
 These functions operate in terms of octets/bytes (kinda like an 8-bit ASCII) and
 have no concept of UTF-8 encoding.
 
+=== `starts_with(self, prefix: string|byte_span) -> boolean`
+
+Returns whether `self` begins with `prefix`.
+
+=== `ends_with(self, suffix: string|byte_span) -> boolean`
+
+Returns whether `self` ends with `suffix`.
+
 === `find(self, tgt: string|byte_span[, start: number]) -> number|nil`
 
-Finds the substring equals to `tgt` and returns its index, or `nil` if not
+Finds the first substring equals to `tgt` and returns its index, or `nil` if not
 found.
+
+=== `rfind(self, tgt: string|byte_span[, end_: number]) -> number|nil`
+
+Finds the last substring equals to `tgt` and returns its index, or `nil` if not
+found.
+
+=== `find_first_of(self, strlist: string|byte_span[, start: number]) -> number|nil`
+
+Finds the first octet equals to any of the octets within `strlist` and returns
+its index, or `nil` if not found.
+
+=== `find_last_of(self, strlist: string|byte_span[, end_: number]) -> number|nil`
+
+Finds the last octet equals to any of the octets within `strlist` and returns
+its index, or `nil` if not found.
 
 === `find_first_not_of(self, strlist: string|byte_span[, start: number]) -> number|nil`
 
