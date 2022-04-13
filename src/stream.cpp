@@ -141,10 +141,9 @@ void init_stream(lua_State* L)
                         lua_pushinteger(L, re_search_flags);
                         lua_pushcfunction(L, regex_split);
                         lua_pushcfunction(L, regex_patsplit);
-                        lua_pushliteral(L, " \f\n\r\t\v");
                         push(L, make_error_code(asio::error::eof));
                         push(L, std::errc::message_size);
-                        lua_call(L, 12, 1);
+                        lua_call(L, 11, 1);
                     }
                     lua_rawset(L, -3);
 

@@ -113,7 +113,7 @@ read_at_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
 
 function get_line_bootstrap(type, getmetatable, pcall, error, byte_span_new,
                             regex_search, re_search_flags, regex_split,
-                            regex_patsplit, lws, EEOF, EMSGSIZE)
+                            regex_patsplit, EEOF, EMSGSIZE)
     return function(self)
         local ready_wnd = self.buffer_:slice(
             1, self.buffer_used - self.record_size)
@@ -126,6 +126,10 @@ function get_line_bootstrap(type, getmetatable, pcall, error, byte_span_new,
         local record_separator = self.record_separator
         local record_separator_type = type(record_separator)
         local trim_record = self.trim_record
+        local lws
+        if type(trim_record) ~= 'boolean' then
+            lws = trim_record
+        end
         local field_separator = self.field_separator
         local field_separator_type = type(field_separator)
         if field_separator_type ~= 'string' then
@@ -156,13 +160,7 @@ function get_line_bootstrap(type, getmetatable, pcall, error, byte_span_new,
             end
             if line then
                 if trim_record then
-                    local start = line:find_first_not_of(lws)
-                    if start then
-                        local end_ = line:find_last_not_of(lws)
-                        line = line:slice(start, end_)
-                    else
-                        line = byte_span_new(0)
-                    end
+                    line = line:trimmed(lws)
                 end
                 self.record_number = self.record_number + 1
                 if field_separator then
@@ -213,13 +211,7 @@ function get_line_bootstrap(type, getmetatable, pcall, error, byte_span_new,
                     error(nread, 0)
                 end
                 if trim_record then
-                    local start = ready_wnd:find_first_not_of(lws)
-                    if start then
-                        local end_ = ready_wnd:find_last_not_of(lws)
-                        ready_wnd = ready_wnd:slice(start, end_)
-                    else
-                        ready_wnd = byte_span_new(0)
-                    end
+                    ready_wnd = ready_wnd:trimmed(lws)
                 end
                 if record_separator_type == 'string' then
                     self.record_terminator = ''

@@ -131,6 +131,11 @@ returns its index, or `nil` if not found.
 Finds the last octet not equals to any of the octets within `strlist` and
 returns its index, or `nil` if not found.
 
+=== `trimmed(self[, lws: string|byte_span = ' \f\n\r\t\v']) -> byte_span`
+
+Returns a slice from `self` that doesn't start nor ends with any octet from
+`lws`.
+
 == Properties
 
 === `capacity: number`

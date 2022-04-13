@@ -65,8 +65,9 @@ and its return is passed through.
 `field_separator` that defines what fields *are not*). It must be a regex. Check
 `regex.patsplit()` for details.
 
-`trim_record: boolean|nil = false`:: Whether to strip linear whitespace from the
-beginning and end of each record.
+`trim_record: boolean|string|nil = false`:: Whether to strip linear whitespace
+(if string is given, then it'll define the list of whitespace characters) from
+the beginning and end of each record.
 
 `buffer_size_hint: number|nil`:: The initial size for the buffer. As is the case
 for every hint, it might be ignored.

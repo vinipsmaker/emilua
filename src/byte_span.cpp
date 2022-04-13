@@ -849,6 +849,77 @@ static int byte_span_find_last_not_of(lua_State* L)
     return 1;
 }
 
+static int byte_span_trimmed(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 1));
+    if (!bs || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    std::string_view lws;
+    switch (lua_type(L, 2)) {
+    default:
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    case LUA_TSTRING:
+        lws = tostringview(L, 2);
+        break;
+    case LUA_TUSERDATA: {
+        if (!lua_getmetatable(L, 2) || !lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        auto lws_bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+        lws = static_cast<std::string_view>(*lws_bs);
+        break;
+    }
+    case LUA_TNIL:
+    case LUA_TNONE:
+        lws = " \f\n\r\t\v";
+    }
+
+    auto self = static_cast<std::string_view>(*bs);
+    auto start = self.find_first_not_of(lws);
+    if (start == std::string_view::npos) {
+        auto new_bs = reinterpret_cast<byte_span_handle*>(
+            lua_newuserdata(L, sizeof(byte_span_handle))
+        );
+        rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+        setmetatable(L, -2);
+        new (new_bs) byte_span_handle{nullptr, 0, 0};
+        return 1;
+    }
+
+    auto end = self.find_last_not_of(lws);
+    assert(end != std::string_view::npos);
+
+    std::shared_ptr<unsigned char[]> new_data(
+        bs->data,
+        bs->data.get() + start
+    );
+
+    auto new_bs = reinterpret_cast<byte_span_handle*>(
+        lua_newuserdata(L, sizeof(byte_span_handle))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    setmetatable(L, -2);
+    new (new_bs) byte_span_handle(
+        std::move(new_data),
+        end - start + 1,
+        bs->capacity - start
+    );
+
+    return 1;
+}
+
 inline int byte_span_capacity(lua_State* L)
 {
     auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 1));
@@ -946,6 +1017,13 @@ static int byte_span_mt_index(lua_State* L)
                 BOOST_HANA_STRING("find_last_not_of"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, byte_span_find_last_not_of);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("trimmed"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, byte_span_trimmed);
                     return 1;
                 }
             ),
