@@ -11,14 +11,14 @@ namespace emilua {
 
 extern unsigned char stream_connect_bytecode[];
 extern std::size_t stream_connect_bytecode_size;
-extern unsigned char write_bytecode[];
-extern std::size_t write_bytecode_size;
-extern unsigned char read_bytecode[];
-extern std::size_t read_bytecode_size;
-extern unsigned char write_at_bytecode[];
-extern std::size_t write_at_bytecode_size;
-extern unsigned char read_at_bytecode[];
-extern std::size_t read_at_bytecode_size;
+extern unsigned char write_all_bytecode[];
+extern std::size_t write_all_bytecode_size;
+extern unsigned char read_all_bytecode[];
+extern std::size_t read_all_bytecode_size;
+extern unsigned char write_all_at_bytecode[];
+extern std::size_t write_all_at_bytecode_size;
+extern unsigned char read_all_at_bytecode[];
+extern std::size_t read_all_at_bytecode_size;
 extern unsigned char get_line_bytecode[];
 extern std::size_t get_line_bytecode_size;
 extern unsigned char scanner_buffer_bytecode[];
@@ -91,27 +91,27 @@ void init_stream(lua_State* L)
         lua_call(L, 6, 1);
         lua_rawset(L, -3);
 
-        lua_pushliteral(L, "write");
-        res = luaL_loadbuffer(L, reinterpret_cast<char*>(write_bytecode),
-                              write_bytecode_size, nullptr);
+        lua_pushliteral(L, "write_all");
+        res = luaL_loadbuffer(L, reinterpret_cast<char*>(write_all_bytecode),
+                              write_all_bytecode_size, nullptr);
         assert(res == 0); boost::ignore_unused(res);
         lua_rawset(L, -3);
 
-        lua_pushliteral(L, "read");
-        res = luaL_loadbuffer(L, reinterpret_cast<char*>(read_bytecode),
-                              read_bytecode_size, nullptr);
+        lua_pushliteral(L, "read_all");
+        res = luaL_loadbuffer(L, reinterpret_cast<char*>(read_all_bytecode),
+                              read_all_bytecode_size, nullptr);
         assert(res == 0); boost::ignore_unused(res);
         lua_rawset(L, -3);
 
-        lua_pushliteral(L, "write_at");
-        res = luaL_loadbuffer(L, reinterpret_cast<char*>(write_at_bytecode),
-                              write_at_bytecode_size, nullptr);
+        lua_pushliteral(L, "write_all_at");
+        res = luaL_loadbuffer(L, reinterpret_cast<char*>(write_all_at_bytecode),
+                              write_all_at_bytecode_size, nullptr);
         assert(res == 0); boost::ignore_unused(res);
         lua_rawset(L, -3);
 
-        lua_pushliteral(L, "read_at");
-        res = luaL_loadbuffer(L, reinterpret_cast<char*>(read_at_bytecode),
-                              read_at_bytecode_size, nullptr);
+        lua_pushliteral(L, "read_all_at");
+        res = luaL_loadbuffer(L, reinterpret_cast<char*>(read_all_at_bytecode),
+                              read_all_at_bytecode_size, nullptr);
         assert(res == 0); boost::ignore_unused(res);
         lua_rawset(L, -3);
 

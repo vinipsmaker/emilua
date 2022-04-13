@@ -54,7 +54,7 @@ local addr, port = stream.connect(
 print("Connected to: [" .. tostring(addr) .. "]:" .. port)
 ----
 
-=== `write(io_object, buffer: byte_span) -> number`
+=== `write_all(io_object, buffer: byte_span) -> number`
 
 Write all of the supplied data to the stream and blocks current fiber until it
 completes or errs.
@@ -73,7 +73,7 @@ async_write, the stream's async_write_some function, or any other composed
 operations that perform writes) until this operation completes.
 ____
 
-=== `read(io_object, buffer: byte_span) -> number`
+=== `read_all(io_object, buffer: byte_span) -> number`
 
 Read data until the supplied buffer is full and blocks current fiber until it
 completes or errs.
@@ -92,14 +92,14 @@ async_read, the stream's async_read_some function, or any other composed
 operations that perform reads) until this operation completes.
 ____
 
-=== `write_at(io_object, offset: number, buffer: byte_span) -> number`
+=== `write_all_at(io_object, offset: number, buffer: byte_span) -> number`
 
 Write all of the supplied data at the specified offset before returning.
 
 NOTE: This operation is implemented in terms of zero or more calls to the
 device's `write_some_at` function.
 
-=== `read_at(io_object, offset: number, buffer: byte_span) -> number`
+=== `read_all_at(io_object, offset: number, buffer: byte_span) -> number`
 
 Attempt to read a certain amount of data at the specified offset before
 returning.

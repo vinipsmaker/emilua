@@ -49,7 +49,7 @@ f:write(connect_bytecode)
 f:close()
 connect_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
 
-function write_bootstrap(stream, buffer)
+function write_all_bootstrap(stream, buffer)
    local ret = #buffer
    while #buffer > 0 do
        local nwritten = stream:write_some(buffer)
@@ -58,13 +58,13 @@ function write_bootstrap(stream, buffer)
    return ret
 end
 
-write_bytecode = string.dump(write_bootstrap, true)
+write_all_bytecode = string.dump(write_all_bootstrap, true)
 f = io.open(OUTPUT, 'wb')
-f:write(write_bytecode)
+f:write(write_all_bytecode)
 f:close()
-write_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
+write_all_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
 
-function read_bootstrap(stream, buffer)
+function read_all_bootstrap(stream, buffer)
     local ret = #buffer
     while #buffer > 0 do
         local nread = stream:read_some(buffer)
@@ -73,13 +73,13 @@ function read_bootstrap(stream, buffer)
     return ret
 end
 
-read_bytecode = string.dump(read_bootstrap, true)
+read_all_bytecode = string.dump(read_all_bootstrap, true)
 f = io.open(OUTPUT, 'wb')
-f:write(read_bytecode)
+f:write(read_all_bytecode)
 f:close()
-read_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
+read_all_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
 
-function write_at_bootstrap(io_obj, offset, buffer)
+function write_all_at_bootstrap(io_obj, offset, buffer)
    local ret = #buffer
    while #buffer > 0 do
        local nwritten = io_obj:write_some_at(offset, buffer)
@@ -89,13 +89,13 @@ function write_at_bootstrap(io_obj, offset, buffer)
    return ret
 end
 
-write_at_bytecode = string.dump(write_at_bootstrap, true)
+write_all_at_bytecode = string.dump(write_all_at_bootstrap, true)
 f = io.open(OUTPUT, 'wb')
-f:write(write_at_bytecode)
+f:write(write_all_at_bytecode)
 f:close()
-write_at_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
+write_all_at_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
 
-function read_at_bootstrap(io_obj, offset, buffer)
+function read_all_at_bootstrap(io_obj, offset, buffer)
     local ret = #buffer
     while #buffer > 0 do
         local nread = io_obj:read_some_at(offset, buffer)
@@ -105,11 +105,11 @@ function read_at_bootstrap(io_obj, offset, buffer)
     return ret
 end
 
-read_at_bytecode = string.dump(read_at_bootstrap, true)
+read_all_at_bytecode = string.dump(read_all_at_bootstrap, true)
 f = io.open(OUTPUT, 'wb')
-f:write(read_at_bytecode)
+f:write(read_all_at_bytecode)
 f:close()
-read_at_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
+read_all_at_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
 
 function get_line_bootstrap(type, getmetatable, pcall, error, byte_span_new,
                             regex_search, re_search_flags, regex_split,
@@ -404,42 +404,43 @@ f:write('};')
 f:write(string.format('std::size_t stream_connect_bytecode_size = %i;', #connect_bytecode))
 
 f:write([[
-unsigned char write_bytecode[] = {
+unsigned char write_all_bytecode[] = {
 ]])
 
-f:write(write_cdef)
+f:write(write_all_cdef)
 
 f:write('};')
-f:write(string.format('std::size_t write_bytecode_size = %i;', #write_bytecode))
+f:write(string.format('std::size_t write_all_bytecode_size = %i;', #write_all_bytecode))
 
 f:write([[
-unsigned char read_bytecode[] = {
+unsigned char read_all_bytecode[] = {
 ]])
 
-f:write(read_cdef)
+f:write(read_all_cdef)
 
 f:write('};')
-f:write(string.format('std::size_t read_bytecode_size = %i;', #read_bytecode))
+f:write(string.format('std::size_t read_all_bytecode_size = %i;',
+                      #read_all_bytecode))
 
 f:write([[
-unsigned char write_at_bytecode[] = {
+unsigned char write_all_at_bytecode[] = {
 ]])
 
-f:write(write_at_cdef)
+f:write(write_all_at_cdef)
 
 f:write('};')
-f:write(string.format('std::size_t write_at_bytecode_size = %i;',
-                      #write_at_bytecode))
+f:write(string.format('std::size_t write_all_at_bytecode_size = %i;',
+                      #write_all_at_bytecode))
 
 f:write([[
-unsigned char read_at_bytecode[] = {
+unsigned char read_all_at_bytecode[] = {
 ]])
 
-f:write(read_at_cdef)
+f:write(read_all_at_cdef)
 
 f:write('};')
-f:write(string.format('std::size_t read_at_bytecode_size = %i;',
-                      #read_at_bytecode))
+f:write(string.format('std::size_t read_all_at_bytecode_size = %i;',
+                      #read_all_at_bytecode))
 
 f:write([[
 unsigned char get_line_bytecode[] = {
