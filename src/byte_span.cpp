@@ -70,16 +70,15 @@ static int byte_span_mt_eq(lua_State* L)
     auto bs2 = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
     lua_pushboolean(
         L,
-        std::string_view(reinterpret_cast<char*>(bs1->data.get()), bs1->size) ==
-        std::string_view(reinterpret_cast<char*>(bs2->data.get()), bs2->size));
+        static_cast<std::string_view>(*bs1) ==
+        static_cast<std::string_view>(*bs2));
     return 1;
 }
 
 static int byte_span_mt_tostring(lua_State* L)
 {
     auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 1));
-    std::string_view sv(reinterpret_cast<char*>(bs->data.get()), bs->size);
-    push(L, sv);
+    push(L, static_cast<std::string_view>(*bs));
     return 1;
 }
 
@@ -187,8 +186,7 @@ static int byte_span_copy(lua_State* L)
             return lua_error(L);
         }
         auto src_bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
-        src = std::string_view(
-            reinterpret_cast<char*>(src_bs->data.get()), src_bs->size);
+        src = static_cast<std::string_view>(*src_bs);
     }
     }
 
@@ -241,8 +239,7 @@ static int byte_span_member_append(lua_State* L)
             lua_pop(L, 1);
             auto src_bs = reinterpret_cast<byte_span_handle*>(
                 lua_touserdata(L, i));
-            tail_slices.emplace_back(
-                reinterpret_cast<char*>(src_bs->data.get()), src_bs->size);
+            tail_slices.emplace_back(static_cast<std::string_view>(*src_bs));
         }
         }
     }
@@ -327,8 +324,7 @@ static int byte_span_non_member_append(lua_State* L)
             lua_pop(L, 1);
             auto src_bs = reinterpret_cast<byte_span_handle*>(
                 lua_touserdata(L, i));
-            slices.emplace_back(
-                reinterpret_cast<char*>(src_bs->data.get()), src_bs->size);
+            slices.emplace_back(static_cast<std::string_view>(*src_bs));
         }
         }
     }
@@ -383,7 +379,6 @@ static int byte_span_find(lua_State* L)
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
-    std::string_view v(reinterpret_cast<char*>(bs->data.get()), bs->size);
 
     std::string_view pat;
     switch (lua_type(L, 2)) {
@@ -402,8 +397,7 @@ static int byte_span_find(lua_State* L)
         }
         auto src_bs = reinterpret_cast<byte_span_handle*>(
             lua_touserdata(L, 2));
-        pat = std::string_view(
-            reinterpret_cast<char*>(src_bs->data.get()), src_bs->size);
+        pat = static_cast<std::string_view>(*src_bs);
     }
     }
 
@@ -429,7 +423,7 @@ static int byte_span_find(lua_State* L)
         return 1;
     }
 
-    auto ret = v.find(pat, start - 1);
+    auto ret = static_cast<std::string_view>(*bs).find(pat, start - 1);
     if (ret == std::string_view::npos) {
         lua_pushnil(L);
         return 1;
@@ -452,7 +446,6 @@ static int byte_span_find_first_not_of(lua_State* L)
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
-    std::string_view v(reinterpret_cast<char*>(bs->data.get()), bs->size);
 
     std::string_view pat;
     switch (lua_type(L, 2)) {
@@ -471,8 +464,7 @@ static int byte_span_find_first_not_of(lua_State* L)
         }
         auto src_bs = reinterpret_cast<byte_span_handle*>(
             lua_touserdata(L, 2));
-        pat = std::string_view(
-            reinterpret_cast<char*>(src_bs->data.get()), src_bs->size);
+        pat = static_cast<std::string_view>(*src_bs);
     }
     }
 
@@ -498,7 +490,8 @@ static int byte_span_find_first_not_of(lua_State* L)
         return 1;
     }
 
-    auto ret = v.find_first_not_of(pat, start - 1);
+    auto ret = static_cast<std::string_view>(*bs).
+        find_first_not_of(pat, start - 1);
     if (ret == std::string_view::npos) {
         lua_pushnil(L);
         return 1;
@@ -521,7 +514,6 @@ static int byte_span_find_last_not_of(lua_State* L)
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
-    std::string_view v(reinterpret_cast<char*>(bs->data.get()), bs->size);
 
     std::string_view pat;
     switch (lua_type(L, 2)) {
@@ -540,8 +532,7 @@ static int byte_span_find_last_not_of(lua_State* L)
         }
         auto src_bs = reinterpret_cast<byte_span_handle*>(
             lua_touserdata(L, 2));
-        pat = std::string_view(
-            reinterpret_cast<char*>(src_bs->data.get()), src_bs->size);
+        pat = static_cast<std::string_view>(*src_bs);
     }
     }
 
@@ -567,7 +558,8 @@ static int byte_span_find_last_not_of(lua_State* L)
         return 1;
     }
 
-    auto ret = v.find_last_not_of(pat, end - 1);
+    auto ret = static_cast<std::string_view>(*bs).
+        find_last_not_of(pat, end - 1);
     if (ret == std::string_view::npos) {
         lua_pushnil(L);
         return 1;

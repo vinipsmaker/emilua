@@ -39,6 +39,13 @@ struct byte_span_handle
         , capacity(capacity)
     {}
 
+    explicit operator std::string_view() const
+    {
+        return {
+            reinterpret_cast<char*>(data.get()),
+            static_cast<std::string_view::size_type>(size)};
+    }
+
     const std::shared_ptr<unsigned char[]> data;
     const lua_Integer size;
     const lua_Integer capacity;
