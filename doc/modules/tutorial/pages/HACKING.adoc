@@ -211,20 +211,17 @@ structure (also protected by the same strand as the vm).
 As long as lua code is executing, there is a current fiber and this property
 stays unchanged for as long as control doesn't return to host.
 
-[quote]
-....
-(definitions)
-%
-transparent, adj.:
-        Being or pertaining to an existing, nontangible object.
-        "It's there, but you can't see it"
-                -- IBM System/360 announcement, 1964.
+transparent, adj.::
+Being or pertaining to an existing, nontangible object.
++
+[quote, 'IBM System/360 announcement, 1964']
+It's there, but you can't see it
 
-virtual, adj.:
-        Being or pertaining to a tangible, nonexistent object.
-        "I can see it, but it's not there."
-                -- Lady Macbeth.
-....
+virtual, adj.::
+Being or pertaining to a tangible, nonexistent object.
++
+[quote,Lady Macbeth]
+I can see it, but it's not there.
 
 This property is mostly transparent to lua code. Which is to say that the
 programmer is aware of this property, but there isn't a tangible object that it
