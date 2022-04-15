@@ -273,8 +273,8 @@ f:close()
 scanner_buffer_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
 
 function scanner_set_buffer_bootstrap(self, buffer)
-    self.buffer_ = buffer
-    self.buffer_used = 0
+    self.buffer_ = buffer:slice(1, buffer.capacity)
+    self.buffer_used = #buffer
     self.record_size = 0
     self.record_terminator = nil
 end
