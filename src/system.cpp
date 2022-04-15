@@ -836,7 +836,7 @@ static int system_err_write_some(lua_State* L)
 }
 #endif // BOOST_OS_WINDOWS
 
-inline int system_args(lua_State* L)
+inline int system_arguments(lua_State* L)
 {
     auto& appctx = get_vm_context(L).appctx;
     lua_createtable(L, /*narr=*/appctx.app_args.size(), /*nrec=*/0);
@@ -949,7 +949,7 @@ static int system_mt_index(lua_State* L)
             hana::make_pair(
                 BOOST_HANA_STRING("environment"), system_environment),
             hana::make_pair(BOOST_HANA_STRING("signal"), system_signal),
-            hana::make_pair(BOOST_HANA_STRING("args"), system_args),
+            hana::make_pair(BOOST_HANA_STRING("arguments"), system_arguments),
 #if !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
             hana::make_pair(BOOST_HANA_STRING("in_"), system_in),
 #endif // !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
