@@ -272,9 +272,12 @@ f:write(scanner_buffer_bytecode)
 f:close()
 scanner_buffer_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
 
-function scanner_set_buffer_bootstrap(self, buffer)
+function scanner_set_buffer_bootstrap(self, buffer, offset)
+    if not offset then
+        offset = 1
+    end
     self.buffer_ = buffer:slice(1, buffer.capacity)
-    self.buffer_used = #buffer
+    self.buffer_used = buffer:copy(buffer:slice(offset))
     self.record_size = 0
     self.record_terminator = nil
 end

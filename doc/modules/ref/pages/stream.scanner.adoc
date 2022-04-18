@@ -98,7 +98,7 @@ zero).
 
 === `buffered_line(self) -> byte_span`
 
-Returns current buffered record without extracting its field. It works like
+Returns current buffered record without extracting its fields. It works like
 AWK's `$0` variable.
 
 [WARNING]
@@ -124,8 +124,19 @@ Returns current buffered data.
 
 TIP: The returned buffer's capacity may be greater than its length.
 
-=== `set_buffer(self, buf: byte_span)`
+=== `set_buffer(self, buf: byte_span[, offset: number = 1])`
 
 Set `buf` as the new internal buffer.
 
+``buf``'s capacity will indicate the usable part of the buffer for IO ops and
+``buf``'s length (after slicing from `offset`) will indicate the buffered data.
+
 NOTE: Previously buffered record and `self.record_terminator` are discarded.
+
+.Example
+
+[source,cpp]
+----
+local buffered_data = buf:slice(offset)
+scanner:set_buffer(buf, offset)
+----
