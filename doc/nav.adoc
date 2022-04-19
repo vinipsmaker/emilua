@@ -35,8 +35,10 @@
 ** xref:ref:regex.adoc[]
 ** xref:ref:serial_port.adoc[]
 ** xref:ref:steady_timer.adoc[]
-** xref:ref:stream.adoc[]
-** xref:ref:stream.scanner.adoc[]
+** stream
+*** xref:ref:stream.write_all.adoc[]
+*** xref:ref:stream.read_all.adoc[]
+*** xref:ref:stream.scanner.adoc[]
 ** sync primitives
 *** xref:ref:mutex.adoc[]
 *** xref:ref:cond.adoc[]

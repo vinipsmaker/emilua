@@ -57,7 +57,9 @@ include::pages/serial_port.adoc[]
 
 include::pages/steady_timer.adoc[]
 
-include::pages/stream.adoc[]
+include::pages/stream.write_all.adoc[]
+
+include::pages/stream.read_all.adoc[]
 
 include::pages/stream.scanner.adoc[]
 

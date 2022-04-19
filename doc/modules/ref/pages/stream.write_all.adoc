@@ -1,0 +1,36 @@
+= stream.write_all
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local stream = require "stream"
+stream.write_all(io_object, buffer: byte_span) -> number
+----
+
+== Description
+
+Write all of the supplied data to the stream and blocks current fiber until it
+completes or errs.
+
+Returns the ``buffer``'s size (number of bytes written).
+
+https://www.boost.org/doc/libs/1_77_0/doc/html/boost_asio/reference/async_write/overload1.html[As
+in Boost.Asio]:
+
+[quote]
+____
+This operation is implemented in terms of zero or more calls to the stream's
+async_write_some function, and is known as a _composed operation_. The program
+must ensure that the stream performs no other write operations (such as
+async_write, the stream's async_write_some function, or any other composed
+operations that perform writes) until this operation completes.
+____
