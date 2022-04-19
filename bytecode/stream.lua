@@ -11,13 +11,18 @@ function strip_xxd_hdr(file)
     return table.concat(lines)
 end
 
-function write_all_bootstrap(stream, buffer)
-   local ret = #buffer
-   while #buffer > 0 do
-       local nwritten = stream:write_some(buffer)
-       buffer = buffer:slice(1 + nwritten)
-   end
-   return ret
+function write_all_bootstrap(type, byte_span_append)
+    return function(stream, buffer)
+       local ret = #buffer
+       if type(buffer) == 'string' then
+           buffer = byte_span_append(buffer)
+       end
+       while #buffer > 0 do
+           local nwritten = stream:write_some(buffer)
+           buffer = buffer:slice(1 + nwritten)
+       end
+       return ret
+    end
 end
 
 write_all_bytecode = string.dump(write_all_bootstrap, true)

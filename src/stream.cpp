@@ -31,6 +31,7 @@ extern std::size_t scanner_with_awk_defaults_bytecode_size;
 char stream_key;
 
 int byte_span_new(lua_State* L);
+int byte_span_non_member_append(lua_State* L);
 int regex_new(lua_State* L);
 int regex_search(lua_State* L);
 int regex_split(lua_State* L);
@@ -72,9 +73,15 @@ void init_stream(lua_State* L)
         lua_createtable(L, /*narr=*/0, /*nrec=*/3);
 
         lua_pushliteral(L, "write_all");
-        res = luaL_loadbuffer(L, reinterpret_cast<char*>(write_all_bytecode),
-                              write_all_bytecode_size, nullptr);
-        assert(res == 0); boost::ignore_unused(res);
+        {
+            res = luaL_loadbuffer(
+                L, reinterpret_cast<char*>(write_all_bytecode),
+                write_all_bytecode_size, nullptr);
+            assert(res == 0); boost::ignore_unused(res);
+            rawgetp(L, LUA_REGISTRYINDEX, &raw_type_key);
+            lua_pushcfunction(L, byte_span_non_member_append);
+            lua_call(L, 2, 1);
+        }
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "read_all");

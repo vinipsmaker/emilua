@@ -287,7 +287,7 @@ static int byte_span_member_append(lua_State* L)
     }
 }
 
-static int byte_span_non_member_append(lua_State* L)
+int byte_span_non_member_append(lua_State* L)
 {
     int nargs = lua_gettop(L);
 

@@ -27,6 +27,8 @@ static char stream_write_some_key;
 static char random_access_read_some_at_key;
 static char random_access_write_some_at_key;
 
+int byte_span_non_member_append(lua_State* L);
+
 static int stream_open(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
@@ -718,15 +720,21 @@ void init_file(lua_State* L)
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "write_all_at");
-        int res = luaL_loadbuffer(
-            L, reinterpret_cast<char*>(write_all_at_bytecode),
-            write_all_at_bytecode_size, nullptr);
-        assert(res == 0); boost::ignore_unused(res);
+        {
+            int res = luaL_loadbuffer(
+                L, reinterpret_cast<char*>(write_all_at_bytecode),
+                write_all_at_bytecode_size, nullptr);
+            assert(res == 0); boost::ignore_unused(res);
+            rawgetp(L, LUA_REGISTRYINDEX, &raw_type_key);
+            lua_pushcfunction(L, byte_span_non_member_append);
+            lua_call(L, 2, 1);
+        }
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "read_all_at");
-        res = luaL_loadbuffer(L, reinterpret_cast<char*>(read_all_at_bytecode),
-                              read_all_at_bytecode_size, nullptr);
+        int res = luaL_loadbuffer(
+            L, reinterpret_cast<char*>(read_all_at_bytecode),
+            read_all_at_bytecode_size, nullptr);
         assert(res == 0); boost::ignore_unused(res);
         lua_rawset(L, -3);
 

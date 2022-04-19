@@ -20,7 +20,7 @@ spawn(function()
     print(buf:slice(1, nread))
 end):detach()
 
-local nwritten = stream.write_all(a, byte_span.append('Hello World'))
+local nwritten = stream.write_all(a, 'Hello World')
 print(nwritten)
 ----
 
