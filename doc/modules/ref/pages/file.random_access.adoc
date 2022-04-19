@@ -1,8 +1,8 @@
 = file.random_access
 
-ifeval::[{doctype} == manpage]
+ifeval::["{doctype}" == "manpage"]
 
-== NAME
+== Name
 
 Emilua - Lua execution engine
 

@@ -3,13 +3,13 @@
 :_:
 :cpp: C++
 
-ifeval::[{doctype} == manpage]
+ifeval::["{doctype}" == "manpage"]
 
-== NAME
+== Name
 
 Emilua - Lua execution engine
 
-== DESCRIPTION
+== Description
 
 endif::[]
 
