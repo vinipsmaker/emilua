@@ -1,0 +1,25 @@
+= file.read_all_at
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local file = require "file"
+file.read_all_at(io_object, offset: number, buffer: byte_span) -> number
+----
+
+== Description
+
+Attempt to read a certain amount of data at the specified offset before
+returning.
+
+NOTE: This operation is implemented in terms of zero or more calls to the
+device's `read_some_at` function.

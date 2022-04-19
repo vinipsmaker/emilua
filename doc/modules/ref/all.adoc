@@ -13,6 +13,10 @@ include::pages/file.random_access.adoc[]
 
 include::pages/file.stream.adoc[]
 
+include::pages/file.read_all_at.adoc[]
+
+include::pages/file.write_all_at.adoc[]
+
 include::pages/http.headers.adoc[]
 
 include::pages/http.request.adoc[]

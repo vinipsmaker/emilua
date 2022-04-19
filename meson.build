@@ -190,6 +190,7 @@ bytecode_src = [
     'bytecode/scope.lua',
     'bytecode/state.lua',
     'bytecode/cond.lua',
+    'bytecode/file.lua',
     'bytecode/json.lua',
 ]
 

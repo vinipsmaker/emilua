@@ -1,0 +1,24 @@
+= file.write_all_at
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local file = require "file"
+file.write_all_at(io_object, offset: number, buffer: byte_span) -> number
+----
+
+== Description
+
+Write all of the supplied data at the specified offset before returning.
+
+NOTE: This operation is implemented in terms of zero or more calls to the
+device's `write_some_at` function.

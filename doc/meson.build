@@ -6,6 +6,8 @@ src3 = [
     'modules/ref/pages/file.open_flag.adoc',
     'modules/ref/pages/file.random_access.adoc',
     'modules/ref/pages/file.stream.adoc',
+    'modules/ref/pages/file.read_all_at.adoc',
+    'modules/ref/pages/file.write_all_at.adoc',
     'modules/ref/pages/http.headers.adoc',
     'modules/ref/pages/http.request.adoc',
     'modules/ref/pages/http.response.adoc',

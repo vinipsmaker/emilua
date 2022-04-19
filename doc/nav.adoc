@@ -12,6 +12,8 @@
 *** xref:ref:file.open_flag.adoc[]
 *** xref:ref:file.random_access.adoc[]
 *** xref:ref:file.stream.adoc[]
+*** xref:ref:file.read_all_at.adoc[]
+*** xref:ref:file.write_all_at.adoc[]
 ** http
 *** xref:ref:http.headers.adoc[]
 *** xref:ref:http.request.adoc[]
