@@ -118,9 +118,9 @@ Removes current record from the buffer and sets `self.record_terminator` to
 A record must be present in the buffer from a previous call to `get_line()`.
 ====
 
-=== `buffer(self) -> byte_span`
+=== `buffer(self) -> byte_span, number`
 
-Returns current buffered data.
+Returns the buffer {plus} the offset where the read data begins.
 
 TIP: The returned buffer's capacity may be greater than its length.
 
