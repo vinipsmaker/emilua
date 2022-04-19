@@ -1,0 +1,23 @@
+= system.arguments
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.arguments: table
+----
+
+== Description
+
+Arguments passed on the CLI (a.k.a. ARGV). First element in the table is emilua
+binary path. Second element is the script path. Rest of the elements are
+anything passed after `"--"` in the command line.

@@ -1,0 +1,39 @@
+= system.exit
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.exit([code: number = 0 [, opts: table]])
+----
+
+== Description
+
+Exit the VM. Other VMs in the process are not stopped.
+
+== Parameters
+
+=== `code`
+
+If caller is the main VM, `code` is used as the application exit code.
+
+=== `opts`
+
+If caller is the main VM, then `opts` is a table that accepts the following
+options:
+
+`force=0`:: Nothing. That's the default behaviour.
+`force=1`:: Not implemented yet.
+`force=2`:: Exit the process forcefully (little to none cleanup steps are
+performed).
+`force="abort"`:: Exit the process even more forcefully (equivalent to the C
+function `abort()`).

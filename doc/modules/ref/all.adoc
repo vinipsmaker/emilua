@@ -63,7 +63,21 @@ include::pages/stream.read_all.adoc[]
 
 include::pages/stream.scanner.adoc[]
 
-include::pages/system.adoc[]
+include::pages/system.arguments.adoc[]
+
+include::pages/system.environment.adoc[]
+
+include::pages/system.in_.adoc[]
+
+include::pages/system.out.adoc[]
+
+include::pages/system.err.adoc[]
+
+include::pages/system.exit.adoc[]
+
+include::pages/system.signal.adoc[]
+
+include::pages/system.signal.raise.adoc[]
 
 include::pages/system.signal.set.adoc[]
 

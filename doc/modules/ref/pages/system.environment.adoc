@@ -1,0 +1,21 @@
+= system.environment
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.environment: table
+----
+
+== Description
+
+The environment variables.

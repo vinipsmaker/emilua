@@ -1,0 +1,63 @@
+= system.signal
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.signal: table
+----
+
+== Constants
+
+* `SIGABRT`.
+* `SIGFPE`.
+* `SIGILL`.
+* `SIGINT`.
+* `SIGSEGV`.
+* `SIGTERM`.
+
+== UNIX constants
+
+NOTE: Availability depending on the host system.
+
+* `SIGALRM`.
+* `SIGBUS`.
+* `SIGCHLD`.
+* `SIGCONT`.
+* `SIGHUP`.
+* `SIGIO`.
+* `SIGKILL`.
+* `SIGPIPE`.
+* `SIGPROF`.
+* `SIGQUIT`.
+* `SIGSTOP`.
+* `SIGSYS`.
+* `SIGTRAP`.
+* `SIGTSTP`.
+* `SIGTTIN`.
+* `SIGTTOU`.
+* `SIGURG`.
+* `SIGUSR1`.
+* `SIGUSR2`.
+* `SIGVTALRM`.
+* `SIGWINCH`.
+* `SIGXCPU`.
+* `SIGXFSZ`.
+
+== Windows constants
+
+NOTE: Availability depending on the host system.
+
+* `SIGBREAK`.
+
+NOTE: Signal handling also works on Windows, as the Microsoft Visual C++ runtime
+library maps console events like Ctrl+C to the equivalent signal.

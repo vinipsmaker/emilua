@@ -1,0 +1,21 @@
+= system.signal.raise
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.signal.raise(signal: number)
+----
+
+== Description
+
+Sends a signal to the calling process.

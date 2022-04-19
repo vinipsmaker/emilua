@@ -1,0 +1,28 @@
+= system.in_
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.in_
+----
+
+== Functions
+
+=== `read_some(self, buffer: byte_span) -> number`
+
+Read data from stdin and blocks current fiber until it completes or errs.
+
+Returns the number of bytes read.
+
+NOTE: First argument is ignored and it's only there to make it have a
+stream-like interface.
