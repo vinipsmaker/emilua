@@ -13,6 +13,7 @@ src3 = [
     'modules/ref/pages/http.response.adoc',
     'modules/ref/pages/http.socket.adoc',
     'modules/ref/pages/ip.address.adoc',
+    'modules/ref/pages/ip.connect.adoc',
     'modules/ref/pages/ip.address_info_flag.adoc',
     'modules/ref/pages/ip.get_address_info.adoc',
     'modules/ref/pages/ip.get_name_info.adoc',

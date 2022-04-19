@@ -33,6 +33,8 @@ include::pages/ip.get_address_info.adoc[]
 
 include::pages/ip.get_name_info.adoc[]
 
+include::pages/ip.connect.adoc[]
+
 include::pages/ip.host_name.adoc[]
 
 include::pages/ip.message_flag.adoc[]

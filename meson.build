@@ -192,6 +192,7 @@ bytecode_src = [
     'bytecode/cond.lua',
     'bytecode/file.lua',
     'bytecode/json.lua',
+    'bytecode/ip.lua',
 ]
 
 re2c_src = [

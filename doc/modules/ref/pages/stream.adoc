@@ -10,50 +10,6 @@ endif::[]
 
 == Functions
 
-=== `connect(sock, resolve_results: table[, condition: function]) -> ip.address, number`
-
-Attempts to connect a socket to one of a sequence of endpoints. It does this by
-repeated calls to the ``socket``'s connect member function, once for each
-endpoint in the sequence, until a connection is successfully established.
-
-.Parameters
-
-`sock`:: The socket to be connected. If the socket is already open, it will be
-closed.
-
-`resolve_results`:: The return from the function `get_address_info()`. If the
-sequence is empty, the error `not_found` will be raised.
-
-`condition`:: A function that is called prior to each connection attempt. The
-signature of the function object must be:
-+
-[source,lua]
-----
-function condition(last_error, next_address, next_port) -> boolean
-----
-+
-The `last_error` parameter contains the result from the most recent connect
-operation. Before the first connection attempt, `last_error` is `nil`. The next
-parameters together specify the next endpoint to be tried. The closure should
-return `true` if the next endpoint should be tried, and `false` if it should be
-skipped.
-
-[source]
-.Example
-----
-local addr, port = stream.connect(
-    sock, ip.tcp.get_address_info("www.example.com", "http"),
-    function(last_error, next_addr, next_port)
-        if last_error then
-            print("Error: " .. tostring(last_error))
-        end
-        print("Trying: [" .. tostring(next_addr) .. "]:" .. next_port)
-        return true
-    end
-)
-print("Connected to: [" .. tostring(addr) .. "]:" .. port)
-----
-
 === `write_all(io_object, buffer: byte_span) -> number`
 
 Write all of the supplied data to the stream and blocks current fiber until it

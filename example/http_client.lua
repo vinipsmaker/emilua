@@ -1,5 +1,4 @@
 local ip = require 'ip'
-local stream = require 'stream'
 local http = require 'http'
 
 local function print_headers(headers)
@@ -24,7 +23,7 @@ print('Resolving ' .. host .. '...')
 local endpoints = ip.tcp.get_address_info(host, 'http')
 
 print('Connecting...')
-stream.connect(sock, endpoints)
+ip.connect(sock, endpoints)
 sock = http.socket.new(sock)
 
 req.method = 'GET'

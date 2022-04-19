@@ -15,7 +15,7 @@ endif::[]
 tls_ctx = tls.context.new('tlsv13')
 
 local s = ip.tcp.socket.new()
-stream.connect(s, ip.tcp.get_address_info('www.example.com', 'https'))
+ip.connect(s, ip.tcp.get_address_info('www.example.com', 'https'))
 s = tls.socket.new(s, tls_ctx)
 s:client_handshake()
 s = http.socket.new(s)

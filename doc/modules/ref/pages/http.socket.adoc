@@ -13,7 +13,7 @@ endif::[]
 [source,lua]
 ----
 local s = ip.tcp.socket.new()
-stream.connect(s, ip.tcp.get_address_info('www.example.com', 'http'))
+ip.connect(s, ip.tcp.get_address_info('www.example.com', 'http'))
 s = http.socket.new(s)
 
 local req = http.request.new()

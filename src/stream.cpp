@@ -9,8 +9,6 @@
 
 namespace emilua {
 
-extern unsigned char stream_connect_bytecode[];
-extern std::size_t stream_connect_bytecode_size;
 extern unsigned char write_all_bytecode[];
 extern std::size_t write_all_bytecode_size;
 extern unsigned char read_all_bytecode[];
@@ -71,21 +69,7 @@ void init_stream(lua_State* L)
 
     lua_pushlightuserdata(L, &stream_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/4);
-
-        lua_pushliteral(L, "connect");
-        res = luaL_loadbuffer(
-            L, reinterpret_cast<char*>(stream_connect_bytecode),
-            stream_connect_bytecode_size, nullptr);
-        assert(res == 0); boost::ignore_unused(res);
-        rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
-        rawgetp(L, LUA_REGISTRYINDEX, &raw_type_key);
-        rawgetp(L, LUA_REGISTRYINDEX, &raw_next_key);
-        rawgetp(L, LUA_REGISTRYINDEX, &raw_pcall_key);
-        push(L, make_error_code(asio::error::not_found));
-        push(L, std::errc::invalid_argument);
-        lua_call(L, 6, 1);
-        lua_rawset(L, -3);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/3);
 
         lua_pushliteral(L, "write_all");
         res = luaL_loadbuffer(L, reinterpret_cast<char*>(write_all_bytecode),
