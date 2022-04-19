@@ -7,3 +7,7 @@ endif::[]
 include::modules/tutorial/all.adoc[]
 
 include::modules/ref/all.adoc[]
+
+ifeval::["{doctype}" != "book"]
+:leveloffset: -1
+endif::[]
