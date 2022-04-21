@@ -1,4 +1,4 @@
-/* Copyright (c) 2020, 2021 Vinícius dos Santos Oliveira
+/* Copyright (c) 2020, 2021, 2022 Vinícius dos Santos Oliveira
 
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
@@ -1310,6 +1310,38 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
         }
         push(L, ctx_str);
         lua_setglobal(L, "_CONTEXT");
+    }
+
+    // async_event_thread
+    {
+        lua_State* async_event_thread = lua_newthread(L);
+        init_new_coro_or_fiber_scope(async_event_thread, L);
+
+        rawgetp(async_event_thread, LUA_REGISTRYINDEX, &fiber_list_key);
+        lua_pushthread(async_event_thread);
+        lua_createtable(
+            async_event_thread,
+            /*narr=*/EMILUA_IMPL_INITIAL_FIBER_DATA_CAPACITY,
+            /*nrec=*/0);
+        {
+            lua_pushboolean(async_event_thread, 1);
+            lua_rawseti(async_event_thread, -2,
+                        FiberDataIndex::INTERRUPTION_DISABLED);
+
+            lua_pushinteger(async_event_thread, 1);
+            lua_rawseti(async_event_thread, -2,
+                        FiberDataIndex::SUSPENSION_DISALLOWED);
+
+            lua_pushboolean(async_event_thread, 0);
+            lua_rawseti(async_event_thread, -2, FiberDataIndex::JOINER);
+
+            push(async_event_thread, entry_point);
+            lua_rawseti(async_event_thread, -2, FiberDataIndex::SOURCE_PATH);
+        }
+        lua_rawset(async_event_thread, -3);
+        state->async_event_thread(async_event_thread);
+        lua_pop(async_event_thread, 1);
+        lua_pop(L, 1);
     }
 
     std::string& module_source = load_module_source(state->appctx, entry_point);

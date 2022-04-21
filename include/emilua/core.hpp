@@ -520,6 +520,17 @@ public:
         return L_;
     }
 
+    // A thread that is useful to execute async handlers. This thread has
+    // suspension disallowed eternally. It's not much different from a C
+    // sighandler in the sense that not every function call is legal. C++ code
+    // might use this thread to avoid lua_resume() and call lua_pcall()
+    // directly.
+    lua_State* async_event_thread()
+    {
+        current_fiber_ = async_event_thread_;
+        return async_event_thread_;
+    }
+
     void close();
 
     lua_State* current_fiber()
@@ -545,6 +556,18 @@ public:
     {
         return this == appctx.master_vm.lock().get();
     }
+
+    void async_event_thread(lua_State* new_async_event_thread)
+    {
+        assert(async_event_thread_ == nullptr);
+        async_event_thread_ = new_async_event_thread;
+    }
+
+    lua_State* async_event_thread_
+#ifndef NDEBUG
+        = nullptr
+#endif // NDEBUG
+        ;
 
     // Use it to detect cycles when loading modules from external packages.
     std::set<std::string, TransparentStringComp> visited_external_packages;

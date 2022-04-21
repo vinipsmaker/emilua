@@ -246,6 +246,34 @@ with user code (as is the case for `Fiber#resume` in Ruby which would be better
 suited by a `Fiber#spawn()` that accepts ``post``/``dispatch`` execution
 policies and would avoid the (un-)parking unsound ideas altogether).
 
+== Asynchronous event notification
+
+Some events are intrusive and will be generated even when no thread/fiber asked
+for them. The classical example are UNIX signals. A sighandler must be
+registered to handle them, but that begs the question: from which thread are
+these functions called? In the C world there are multiple answers:
+
+`SIGEV_SIGNAL`:: The handler will be called asynchronously from any thread. That
+means a lot of restrictions to what a sighandler can do.
+
+`SIGEV_THREAD`:: The handler will be called from an unspecified thread. Now we
+have way less restrictions, but some still exist (e.g. unsafe thread-local
+variables and thread cancelability state).
+
+`SIGEV_KEVENT`:: The golden standard for event multiplexing in the C world.
+
+Generally the need for asynchronous events spurs from bad design and should be
+avoided. However when integrating lua code to existing libraries we must deal
+with asynchronous events now and then. Emilua reserves a lua coroutine/thread
+for which no suspension is ever allowed and that will give the lua user a mix
+between `SIGEV_SIGNAL` and `SIGEV_THREAD` restrictions. From the handler the
+user can notify a condition variable to achieve friction-less handling from a
+different fiber similar to what `SIGEV_KEVENT` enables.
+
+From the {cpp} side, one just needs to get the asynchronous event (lua) thread
+and rely on `lua_pcall()` (no need for complex `lua_resume()` handling, nor
+fiber APIs).
+
 == `LUA_ERRMEM`
 
 Lua code cannot recover from allocation failures. As an example (and single-VM

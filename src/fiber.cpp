@@ -462,7 +462,11 @@ static int this_fiber_yield(lua_State* L)
 
 inline int increment_this_fiber_counter(lua_State* L, FiberDataIndex counter)
 {
-    auto current_fiber = get_vm_context(L).current_fiber();
+    auto& vmctx = get_vm_context(L);
+    auto current_fiber = vmctx.current_fiber();
+
+    if (current_fiber == vmctx.async_event_thread_)
+        return 0;
 
     rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
     lua_pushthread(current_fiber);
@@ -480,7 +484,11 @@ inline int increment_this_fiber_counter(lua_State* L, FiberDataIndex counter)
 inline int decrement_this_fiber_counter(lua_State* L, FiberDataIndex counter,
                                         errc e)
 {
-    auto current_fiber = get_vm_context(L).current_fiber();
+    auto& vmctx = get_vm_context(L);
+    auto current_fiber = vmctx.current_fiber();
+
+    if (current_fiber == vmctx.async_event_thread_)
+        return 0;
 
     rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
     lua_pushthread(current_fiber);

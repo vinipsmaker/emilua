@@ -257,6 +257,7 @@ void vm_context::close()
 void vm_context::fiber_epilogue(int resume_result)
 {
     assert(valid_);
+    assert(current_fiber_ != async_event_thread_);
     if (lua_errmem || failed_cleanup_handler_coro || exit_request) {
         close();
         return;
