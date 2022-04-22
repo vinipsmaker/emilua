@@ -5,6 +5,8 @@
 
 #include <optional>
 
+#include <boost/smart_ptr/local_shared_ptr.hpp>
+#include <boost/scope_exit.hpp>
 #include <boost/asio/ssl.hpp>
 
 #include <emilua/dispatch_table.hpp>
@@ -23,6 +25,90 @@ static char socket_client_handshake_key;
 static char socket_server_handshake_key;
 static char tls_socket_read_some_key;
 static char tls_socket_write_some_key;
+
+struct context_password_callback
+{
+    struct resource
+    {
+        resource(vm_context& vm_ctx, int ref)
+            : vm_ctx{vm_ctx.weak_from_this()}
+            , ref{ref}
+        {
+            assert(ref != LUA_NOREF);
+        }
+
+        ~resource()
+        {
+            auto vm_ctx = this->vm_ctx.lock();
+            if (!vm_ctx)
+                return;
+
+            auto executor = vm_ctx->strand();
+            executor.dispatch([ref=this->ref,vm_ctx]() {
+                if (!vm_ctx->valid())
+                    return;
+
+                lua_State* L = vm_ctx->async_event_thread();
+                luaL_unref(L, LUA_REGISTRYINDEX, ref);
+            });
+        }
+
+        std::weak_ptr<vm_context> vm_ctx;
+        int ref;
+    };
+
+    context_password_callback(vm_context& vm_ctx, int ref)
+        : shared_resource{new resource{vm_ctx, ref}}
+    {}
+
+    std::string operator()(std::size_t max_length,
+                           asio::ssl::context::password_purpose purpose)
+    {
+        auto vm_ctx = shared_resource->vm_ctx.lock();
+        if (!vm_ctx)
+            return {};
+
+        assert(vm_ctx->strand().running_in_this_thread());
+        if (!vm_ctx->valid())
+            return {};
+
+        lua_State* L = vm_ctx->async_event_thread();
+        lua_rawgeti(L, LUA_REGISTRYINDEX, shared_resource->ref);
+        lua_pushinteger(L, max_length);
+        try {
+            switch (purpose) {
+            case asio::ssl::context::for_reading:
+                lua_pushliteral(L, "for_reading");
+                break;
+            case asio::ssl::context::for_writing:
+                lua_pushliteral(L, "for_writing");
+            }
+        } catch (...) {
+            vm_ctx->notify_errmem();
+            vm_ctx->close();
+            return {};
+        }
+        int res = lua_pcall(L, 2, 1, 0);
+        if (res == LUA_ERRMEM) {
+            vm_ctx->notify_errmem();
+            vm_ctx->close();
+            return {};
+        }
+
+        BOOST_SCOPE_EXIT_ALL(&) { lua_settop(L, 0); };
+        switch (res) {
+        case 0:
+            if (lua_type(L, -1) != LUA_TSTRING) {
+        default:
+                return {};
+            }
+
+            return static_cast<std::string>(tostringview(L));
+        }
+    }
+
+    boost::local_shared_ptr<resource> shared_resource;
+};
 
 static int tls_context_new(lua_State* L)
 {
@@ -245,6 +331,37 @@ static int context_set_options(lua_State* L)
     (*ctx)->set_options(lua_tointeger(L, 2), ec);
     if (ec) {
         push(L, ec);
+        return lua_error(L);
+    }
+    return 0;
+}
+
+static int context_set_password_callback(lua_State* L)
+{
+    luaL_checktype(L, 2, LUA_TFUNCTION);
+
+    auto& vm_ctx = get_vm_context(L);
+
+    auto ctx = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+        lua_touserdata(L, 1)
+    );
+    if (!ctx || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &tls_context_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    lua_pushvalue(L, 2);
+    int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+
+    boost::system::error_code ec;
+    (*ctx)->set_password_callback(context_password_callback{vm_ctx, ref}, ec);
+    if (ec) {
+        push(L, static_cast<std::error_code>(ec));
         return lua_error(L);
     }
     return 0;
@@ -824,6 +941,13 @@ static int tls_context_mt_index(lua_State* L)
                 BOOST_HANA_STRING("set_options"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, context_set_options);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("set_password_callback"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, context_set_password_callback);
                     return 1;
                 }
             ),

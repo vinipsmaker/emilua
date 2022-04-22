@@ -67,6 +67,22 @@ authority certificates.
 
 Set options on the context.
 
+=== `set_password_callback(self, callback: function)`
+
+Set the password callback.
+
+``callback``'s signature must be:
+
+[source,lua]
+----
+function callback(max_length: number, purpose: string) -> string
+----
+
+`purpose` will be either `"for_reading"` or `"for_writing"`.
+
+NOTE: The function `callback` will be called from an unspecified fiber where
+IO/blocking operations are disabled.
+
 === `set_verify_callback(self, callback: string[, callback_options...])`
 
 Set the callback used to verify peer certificates.
