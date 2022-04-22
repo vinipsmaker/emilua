@@ -75,7 +75,7 @@ struct get_address_info_context_t: public pending_operation
         // destroyed before `hCompletion->native_handle()` has been set (and
         // then we hit this very destructor). The underlying asynchronous
         // operation will not stop along with it. The underlying asynchronous
-        // operation be writing to this freed memory and a random memory
+        // operation will be writing to this freed memory and a random memory
         // corruption will occur. If we're **lucky** this `assert()` will
         // trigger.
         //
@@ -91,7 +91,7 @@ struct get_address_info_context_t: public pending_operation
         // begin with. Therefore we can safely use the simpler approach
         // (i.e. remove `asio::io_context::stop()` from your new buggy code).
         //
-        // Maybe you'll think that yet another approach would to cancel the
+        // Maybe you'll think that yet another approach would be to cancel the
         // operation right here and sync with it. This approach would have other
         // problems for which I won't write any prose.
         assert(results == nullptr);
