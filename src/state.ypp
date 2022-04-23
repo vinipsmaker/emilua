@@ -41,6 +41,7 @@
 #endif // BOOST_OS_WINDOWS
 
 #if BOOST_OS_UNIX
+#include <emilua/file_descriptor.hpp>
 #include <emilua/unix.hpp>
 #endif // BOOST_OS_UNIX
 
@@ -1235,6 +1236,10 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     init_cond_module(L);
     init_actor_module(L);
     init_async_base(L);
+
+#if BOOST_OS_UNIX
+    init_file_descriptor(L);
+#endif // BOOST_OS_UNIX
     // }}}
 
     // extra modules {{{

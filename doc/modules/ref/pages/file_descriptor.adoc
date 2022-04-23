@@ -1,0 +1,25 @@
+= file_descriptor
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+== Description
+
+endif::[]
+
+A file descriptor.
+
+NOTE: It cannot be created directly.
+
+NOTE: This type is not available on Windows.
+
+== Functions
+
+=== `close(self)`
+
+Closes the file descriptor w/o waiting for the GC.
+
+NOTE: It can only be called once.

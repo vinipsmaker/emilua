@@ -202,7 +202,10 @@ re2c_src = [
 ]
 
 if host_machine.system() != 'windows'
-    src += 'src/unix.cpp'
+    src += [
+        'src/file_descriptor.cpp',
+        'src/unix.cpp',
+    ]
 endif
 
 if get_option('enable_plugins')

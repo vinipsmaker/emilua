@@ -97,4 +97,6 @@ include::pages/unix.stream_socket.adoc[]
 
 include::pages/websocket.adoc[]
 
+include::pages/file_descriptor.adoc[]
+
 :leveloffset: -1
