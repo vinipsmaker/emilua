@@ -41,7 +41,7 @@ spawn_vm(module)
 
 -- Instantiates a new lua VM in a new
 -- thread with its own `asio::io_context`
-spawn_vm(module, { inherit_ctx=false })
+spawn_vm(module, { inherit_context=false })
 ----
 
 You must specify a lua module name to run in the new VM, not a function. The
@@ -71,7 +71,7 @@ be configured purely in the lua side of coding.
 ----
 -- Spawn extra threads to the
 -- caller's `asio::io_context`
-spawn_ctx_threads(count)
+spawn_context_threads(count)
 ----
 
 Leaving the actor model aside for a moment, it's now easy to have threads with

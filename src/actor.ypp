@@ -813,7 +813,7 @@ static int spawn_vm(lua_State* L)
     case LUA_TNIL:
         break;
     case LUA_TTABLE:
-        lua_getfield(L, 2, "inherit_ctx");
+        lua_getfield(L, 2, "inherit_context");
         if (lua_type(L, -1) == LUA_TBOOLEAN)
             inherit_ctx = lua_toboolean(L, -1);
 #if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
@@ -980,7 +980,7 @@ static int spawn_vm(lua_State* L)
     }
 }
 
-static int spawn_ctx_threads(lua_State* L)
+static int spawn_context_threads(lua_State* L)
 {
 #if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL < 2
     push(L, std::errc::function_not_supported);
@@ -1098,8 +1098,8 @@ void init_actor_module(lua_State* L)
     lua_pushcfunction(L, spawn_vm);
     lua_rawset(L, LUA_GLOBALSINDEX);
 
-    lua_pushliteral(L, "spawn_ctx_threads");
-    lua_pushcfunction(L, spawn_ctx_threads);
+    lua_pushliteral(L, "spawn_context_threads");
+    lua_pushcfunction(L, spawn_context_threads);
     lua_rawset(L, LUA_GLOBALSINDEX);
 
     lua_pushlightuserdata(L, &tx_chan_mt_key);

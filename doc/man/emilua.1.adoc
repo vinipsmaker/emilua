@@ -27,7 +27,7 @@ execution engine for Lua.
 
 *--main-context-concurrency-hint* _HINT_::
 
-  Use _HINT=1_ to inform *spawn_ctx_threads()* won't be called from the main
+  Use _HINT=1_ to inform *spawn_context_threads()* won't be called from the main
   execution context and enable a few optimisations. Recompile Emilua with the
   proper configure flags to enable even more aggressive optimizations. Check
   <https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/overview/core/concurrency_hint.html>
