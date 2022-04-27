@@ -2,6 +2,11 @@ fs = import('fs')
 
 src3 = [
     'modules/ref/pages/file_descriptor.adoc',
+    'modules/ref/pages/readable_pipe.adoc',
+    'modules/ref/pages/writable_pipe.adoc',
+    'modules/ref/pages/pipe.pair.adoc',
+    'modules/ref/pages/pipe.readable_from_fd.adoc',
+    'modules/ref/pages/pipe.writable_from_fd.adoc',
     'modules/ref/pages/byte_span.adoc',
     'modules/ref/pages/cond.adoc',
     'modules/ref/pages/file.open_flag.adoc',

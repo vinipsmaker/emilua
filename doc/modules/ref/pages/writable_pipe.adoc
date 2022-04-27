@@ -1,0 +1,56 @@
+= writable_pipe
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Functions
+
+=== `close(self)`
+
+Close the pipe.
+
+Forward the call to
+https://www.boost.org/doc/libs/1_79_0/doc/html/boost_asio/reference/basic_writable_pipe/close/overload2.html[the
+function with same name in Boost.Asio]:
+
+[quote]
+____
+Any asynchronous write operations will be cancelled immediately, and will
+complete with the `boost::asio::error::operation_aborted` error.
+____
+
+=== `cancel(self)`
+
+Cancel all asynchronous operations associated with the pipe.
+
+Forward the call to
+https://www.boost.org/doc/libs/1_79_0/doc/html/boost_asio/reference/basic_writable_pipe/cancel/overload2.html[the
+function with same name in Boost.Asio]:
+
+[quote]
+____
+This function causes all outstanding asynchronous write operations to finish
+immediately, and the handlers for cancelled operations will be passed the
+`boost::asio::error::operation_aborted` error.
+____
+
+=== `release() -> file_descriptor`
+
+Release ownership of the native descriptor implementation.
+
+=== `write_some(self, buffer: byte_span) -> number`
+
+Write data to the pipe and blocks current fiber until it completes or errs.
+
+Returns the number of bytes written.
+
+== Properties
+
+=== `is_open: boolean`
+
+Whether the pipe is open.

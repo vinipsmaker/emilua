@@ -32,6 +32,12 @@
 *** xref:ref:ip.udp.socket.adoc[]
 ** xref:ref:json.adoc[]
 ** xref:ref:json.writer.adoc[]
+** pipes
+*** xref:ref:readable_pipe.adoc[]
+*** xref:ref:writable_pipe.adoc[]
+*** xref:ref:pipe.pair.adoc[]
+*** xref:ref:pipe.readable_from_fd.adoc[]
+*** xref:ref:pipe.writable_from_fd.adoc[]
 ** xref:ref:regex.adoc[]
 ** xref:ref:serial_port.adoc[]
 ** xref:ref:steady_timer.adoc[]

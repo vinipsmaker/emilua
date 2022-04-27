@@ -13,6 +13,7 @@
 #include <boost/core/ignore_unused.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/intrusive/list.hpp>
+#include <boost/predef/os/unix.h>
 #include <boost/config.hpp>
 
 #include <boost/hana/functional/overload.hpp>

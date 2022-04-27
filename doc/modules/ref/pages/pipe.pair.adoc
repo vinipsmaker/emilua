@@ -1,0 +1,21 @@
+= pipe.pair
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local pipe = require "pipe"
+pipe.pair() -> readable_pipe, writable_pipe
+----
+
+== Description
+
+Creates a pipe.

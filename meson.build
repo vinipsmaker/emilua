@@ -177,6 +177,7 @@ src = [
     'src/cond.cpp',
     'src/core.cpp',
     'src/json.cpp',
+    'src/pipe.cpp',
     'src/tls.cpp',
     'src/ip.cpp',
 ]

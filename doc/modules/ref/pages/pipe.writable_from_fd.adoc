@@ -1,0 +1,21 @@
+= pipe.writable_from_fd
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local pipe = require "pipe"
+pipe.writable_from_fd(fd: file_descriptor) -> writable_pipe
+----
+
+== Description
+
+Converts a file descriptor into a pipe end.

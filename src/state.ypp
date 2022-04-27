@@ -26,10 +26,10 @@
 #include <emilua/timer.hpp>
 #include <emilua/cond.hpp>
 #include <emilua/json.hpp>
+#include <emilua/pipe.hpp>
 #include <emilua/tls.hpp>
 #include <emilua/ip.hpp>
 
-#include <boost/predef/os/unix.h>
 #include <boost/scope_exit.hpp>
 
 #if __has_include(<experimental/memory>)
@@ -823,6 +823,14 @@ static int require(lua_State* L)
                         return 2;
                     }
                 ),
+                hana::make_pair(
+                    BOOST_HANA_STRING("pipe"),
+                    [](lua_State* L) -> int {
+                        lua_pushboolean(L, 1);
+                        rawgetp(L, LUA_REGISTRYINDEX, &pipe_key);
+                        return 2;
+                    }
+                ),
 #if EMILUA_CONFIG_ENABLE_HTTP
                 hana::make_pair(
                     BOOST_HANA_STRING("http"),
@@ -1252,6 +1260,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     init_serial_port(L);
     init_regex(L);
     init_stream(L); //< scanner depends on regex mt
+    init_pipe(L);
 
 #if BOOST_OS_UNIX
     init_unix(L);
