@@ -110,6 +110,23 @@ errs.
 
 Returns the number of bytes written.
 
+=== `receive_with_fds(self, buffer: byte_span, maxfds: number) -> number, table`
+
+Read data from the stream socket and blocks current fiber until it completes or
+errs.
+
+Returns the number of bytes read {plus} the table containing the `fds` read.
+
+=== `send_with_fds(self, buffer: byte_span, fds: table) -> number`
+
+Write data to the stream socket and blocks current fiber until it completes or
+errs.
+
+Returns the number of bytes written.
+
+NOTE: `fds` are not closed and can be re-converted to some Emilua IO object if
+so one wishes.
+
 === `set_option(self, opt: string, val)`
 
 Set an option on the socket.

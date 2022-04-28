@@ -4,11 +4,16 @@
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
 #include <boost/asio/local/connect_pair.hpp>
+#include <boost/scope_exit.hpp>
 
+#include <emilua/file_descriptor.hpp>
 #include <emilua/dispatch_table.hpp>
 #include <emilua/async_base.hpp>
 #include <emilua/byte_span.hpp>
 #include <emilua/unix.hpp>
+
+// Linux internally defines this to 255
+#define SCM_MAX_FD 255
 
 namespace emilua {
 
@@ -20,10 +25,341 @@ char unix_stream_socket_mt_key;
 static char unix_datagram_socket_receive_key;
 static char unix_datagram_socket_send_key;
 static char unix_datagram_socket_send_to_key;
+static char unix_datagram_socket_receive_with_fds_key;
+static char unix_datagram_socket_receive_from_with_fds_key;
+static char unix_datagram_socket_send_with_fds_key;
+static char unix_datagram_socket_send_to_with_fds_key;
 static char unix_stream_acceptor_accept_key;
 static char unix_stream_socket_connect_key;
 static char unix_stream_socket_read_some_key;
 static char unix_stream_socket_write_some_key;
+static char unix_stream_socket_receive_with_fds_key;
+static char unix_stream_socket_send_with_fds_key;
+
+template<class T, bool IS_RECEIVE_FROM = false>
+struct receive_with_fds_op
+    : public std::enable_shared_from_this<
+        receive_with_fds_op<T, IS_RECEIVE_FROM>>
+{
+    receive_with_fds_op(emilua::vm_context& vm_ctx,
+                        asio::cancellation_slot cancel_slot,
+                        T& sock,
+                        const std::shared_ptr<unsigned char[]>& buffer,
+                        lua_Integer buffer_size,
+                        lua_Integer maxfds)
+        : sock{sock}
+        , current_fiber{vm_ctx.current_fiber()}
+        , vm_ctx{vm_ctx.shared_from_this()}
+        , cancel_slot{std::move(cancel_slot)}
+        , buffer{buffer}
+        , buffer_size{buffer_size}
+        , maxfds{maxfds}
+    {}
+
+    void do_wait()
+    {
+        sock.socket.async_wait(
+            asio::socket_base::wait_read,
+            asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
+                vm_ctx->strand_using_defer(),
+                [self=this->shared_from_this()](
+                    const boost::system::error_code& ec
+                ) {
+                    self->on_wait(ec);
+                }
+            ))
+        );
+    }
+
+    void on_wait(const boost::system::error_code& ec)
+    {
+        if (!vm_ctx->valid())
+            return;
+
+        if (ec) {
+            --sock.nbusy;
+            vm_ctx->fiber_resume(
+                current_fiber,
+                hana::make_set(
+                    vm_context::options::auto_detect_interrupt,
+                    hana::make_pair(opt_args, hana::make_tuple(ec))));
+            return;
+        }
+
+        struct msghdr msg;
+        std::memset(&msg, 0, sizeof(msg));
+
+        struct sockaddr_un remote_endpoint;
+        if (IS_RECEIVE_FROM) {
+            msg.msg_name = &remote_endpoint;
+            msg.msg_namelen = sizeof(remote_endpoint);
+        }
+
+        struct iovec iov;
+        iov.iov_base = buffer.get();
+        iov.iov_len = buffer_size;
+        msg.msg_iov = &iov;
+        msg.msg_iovlen = 1;
+
+        std::vector<struct cmsghdr> cmsgbuf;
+        msg.msg_controllen = CMSG_SPACE(sizeof(int) * maxfds);
+        cmsgbuf.resize(msg.msg_controllen / sizeof(struct cmsghdr) + 1);
+        msg.msg_control = cmsgbuf.data();
+
+        auto nread = recvmsg(sock.socket.native_handle(), &msg, MSG_DONTWAIT);
+        if (nread == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+            do_wait();
+            return;
+        }
+
+        if (nread == -1) {
+            --sock.nbusy;
+            std::error_code ec2{errno, std::system_category()};
+            vm_ctx->fiber_resume(
+                current_fiber,
+                hana::make_set(
+                    vm_context::options::auto_detect_interrupt,
+                    hana::make_pair(opt_args, hana::make_tuple(ec2))));
+            return;
+        }
+
+        std::vector<int> fds;
+        BOOST_SCOPE_EXIT_ALL(&) {
+            for (auto& fd: fds) {
+                if (fd != -1) {
+                    int res = close(fd);
+                    boost::ignore_unused(res);
+                }
+            }
+        };
+        for (struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg) ; cmsg != NULL ;
+             cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+            if (cmsg->cmsg_level != SOL_SOCKET ||
+                cmsg->cmsg_type != SCM_RIGHTS) {
+                continue;
+            }
+
+            int* in = (int*)CMSG_DATA(cmsg);
+            auto nfds = (cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int);
+            for (std::size_t i = 0 ; i != nfds ; ++i) {
+                int fd;
+                std::memcpy(&fd, in++, sizeof(int));
+                if (fd != -1)
+                    fds.emplace_back(fd);
+            }
+        }
+
+        auto ep_pusher = [&msg,&remote_endpoint](lua_State* L) {
+            if (msg.msg_namelen <= sizeof(sa_family_t)) {
+                lua_pushnil(L);
+                return;
+            }
+
+            if (remote_endpoint.sun_family != AF_UNIX) {
+                lua_pushnil(L);
+                return;
+            }
+
+            std::size_t len = msg.msg_namelen -
+                offsetof(struct sockaddr_un, sun_path);
+            assert(len > 0);
+            if (remote_endpoint.sun_path[0] != '\0')
+                --len;
+            lua_pushlstring(L, remote_endpoint.sun_path, len);
+        };
+
+        auto fds_pusher = [&fds,maxfds=this->maxfds](lua_State* L) {
+            lua_createtable(L, /*narr=*/fds.size(), /*nrec=*/0);
+            rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+
+            int i = 0;
+            for (auto& fd: fds) {
+                auto fdhandle = reinterpret_cast<file_descriptor_handle*>(
+                    lua_newuserdata(L, sizeof(file_descriptor_handle))
+                );
+                lua_pushvalue(L, -2);
+                setmetatable(L, -2);
+                *fdhandle = fd;
+                fd = -1;
+                lua_rawseti(L, -3, ++i);
+
+                if (i == maxfds)
+                    break;
+            }
+
+            lua_pop(L, 1);
+        };
+
+        --sock.nbusy;
+        if (IS_RECEIVE_FROM) {
+            vm_ctx->fiber_resume(
+                current_fiber,
+                hana::make_set(
+                    vm_context::options::auto_detect_interrupt,
+                    hana::make_pair(
+                        opt_args,
+                        hana::make_tuple(ec, nread, ep_pusher, fds_pusher))));
+        } else {
+            vm_ctx->fiber_resume(
+                current_fiber,
+                hana::make_set(
+                    vm_context::options::auto_detect_interrupt,
+                    hana::make_pair(
+                        opt_args, hana::make_tuple(ec, nread, fds_pusher))));
+        }
+    }
+
+    T& sock;
+    lua_State* current_fiber;
+    std::shared_ptr<emilua::vm_context> vm_ctx;
+    asio::cancellation_slot cancel_slot;
+    std::shared_ptr<unsigned char[]> buffer;
+    lua_Integer buffer_size;
+    lua_Integer maxfds;
+
+    static constexpr auto opt_args = vm_context::options::arguments;
+};
+
+template<class T>
+struct send_with_fds_op
+    : public std::enable_shared_from_this<send_with_fds_op<T>>
+{
+    struct file_descriptor_lock
+    {
+        file_descriptor_lock(file_descriptor_handle* reference)
+            : reference{reference}
+            , value{*reference}
+        {}
+
+        file_descriptor_handle* reference;
+        file_descriptor_handle value;
+    };
+
+    send_with_fds_op(emilua::vm_context& vm_ctx,
+                     asio::cancellation_slot cancel_slot,
+                     T& sock,
+                     const std::shared_ptr<unsigned char[]>& buffer,
+                     lua_Integer buffer_size)
+        : sock{sock}
+        , current_fiber{vm_ctx.current_fiber()}
+        , vm_ctx{vm_ctx.shared_from_this()}
+        , cancel_slot{std::move(cancel_slot)}
+        , buffer{buffer}
+        , buffer_size{buffer_size}
+    {}
+
+    void do_wait()
+    {
+        sock.socket.async_wait(
+            asio::socket_base::wait_write,
+            asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
+                vm_ctx->strand_using_defer(),
+                [self=this->shared_from_this()](
+                    const boost::system::error_code& ec
+                ) {
+                    self->on_wait(ec);
+                }
+            ))
+        );
+    }
+
+    void on_wait(const boost::system::error_code& ec)
+    {
+        if (!vm_ctx->valid()) {
+            for (auto& fdlock: fds) {
+                int res = close(fdlock.value);
+                boost::ignore_unused(res);
+            }
+            return;
+        }
+
+        if (ec) {
+            --sock.nbusy;
+            for (auto& fdlock: fds) {
+                *fdlock.reference = fdlock.value;
+            }
+            vm_ctx->fiber_resume(
+                current_fiber,
+                hana::make_set(
+                    vm_context::options::auto_detect_interrupt,
+                    hana::make_pair(opt_args, hana::make_tuple(ec))));
+            return;
+        }
+
+        struct msghdr msg;
+        std::memset(&msg, 0, sizeof(msg));
+
+        asio::local::datagram_protocol::endpoint raw_ep{remote_endpoint};
+        if (remote_endpoint.size() > 0) {
+            msg.msg_name = raw_ep.data();
+            msg.msg_namelen = raw_ep.size();
+        }
+
+        struct iovec iov;
+        iov.iov_base = buffer.get();
+        iov.iov_len = buffer_size;
+        msg.msg_iov = &iov;
+        msg.msg_iovlen = 1;
+
+        std::vector<struct cmsghdr> cmsgbuf;
+        msg.msg_controllen = CMSG_SPACE(sizeof(int) * fds.size());
+        cmsgbuf.resize(msg.msg_controllen / sizeof(struct cmsghdr) + 1);
+        msg.msg_control = cmsgbuf.data();
+
+        struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+        cmsg->cmsg_level = SOL_SOCKET;
+        cmsg->cmsg_type = SCM_RIGHTS;
+        cmsg->cmsg_len = CMSG_LEN(sizeof(int) * fds.size());
+        {
+            int* out = (int*)CMSG_DATA(cmsg);
+            for (auto& fdlock: fds) {
+                std::memcpy(out++, &fdlock.value, sizeof(int));
+            }
+        }
+
+        auto nwritten = sendmsg(sock.socket.native_handle(), &msg,
+                                MSG_DONTWAIT);
+        if (nwritten == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+            do_wait();
+            return;
+        }
+
+        if (nwritten == -1) {
+            --sock.nbusy;
+            for (auto& fdlock: fds) {
+                *fdlock.reference = fdlock.value;
+            }
+            std::error_code ec2{errno, std::system_category()};
+            vm_ctx->fiber_resume(
+                current_fiber,
+                hana::make_set(
+                    vm_context::options::auto_detect_interrupt,
+                    hana::make_pair(opt_args, hana::make_tuple(ec2))));
+            return;
+        }
+
+        --sock.nbusy;
+        for (auto& fdlock: fds) {
+            *fdlock.reference = fdlock.value;
+        }
+        vm_ctx->fiber_resume(
+            current_fiber,
+            hana::make_set(
+                vm_context::options::auto_detect_interrupt,
+                hana::make_pair(opt_args, hana::make_tuple(ec, nwritten))));
+    }
+
+    T& sock;
+    lua_State* current_fiber;
+    std::shared_ptr<emilua::vm_context> vm_ctx;
+    asio::cancellation_slot cancel_slot;
+    std::shared_ptr<unsigned char[]> buffer;
+    lua_Integer buffer_size;
+    std::vector<file_descriptor_lock> fds;
+    std::string_view remote_endpoint;
+
+    static constexpr auto opt_args = vm_context::options::arguments;
+};
 
 static int unix_datagram_socket_open(lua_State* L)
 {
@@ -505,6 +841,285 @@ static int unix_datagram_socket_send_to(lua_State* L)
     return lua_yield(L, 0);
 }
 
+static int unix_datagram_socket_receive_with_fds(lua_State* L)
+{
+    luaL_checktype(L, 3, LUA_TNUMBER);
+
+    auto& vm_ctx = get_vm_context(L);
+    EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
+
+    auto sock = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &unix_datagram_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    if (!bs || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    lua_Integer maxfds = lua_tointeger(L, 3);
+    if (maxfds < 1) {
+        push(L, std::errc::invalid_argument, "arg", 3);
+        return lua_error(L);
+    }
+
+    // impose smaller limit now so overflow handling on the next layer of code
+    // will be simpler (actually we won't even need to handle it as overflow
+    // will be impossible)
+    if (maxfds > SCM_MAX_FD)
+        maxfds = SCM_MAX_FD;
+
+    auto cancel_slot = set_default_interrupter(L, vm_ctx);
+
+    ++sock->nbusy;
+    auto op = std::make_shared<receive_with_fds_op<unix_datagram_socket>>(
+        vm_ctx, std::move(cancel_slot), *sock, bs->data, bs->size, maxfds);
+    op->do_wait();
+
+    return lua_yield(L, 0);
+}
+
+static int unix_datagram_socket_receive_from_with_fds(lua_State* L)
+{
+    luaL_checktype(L, 3, LUA_TNUMBER);
+
+    auto& vm_ctx = get_vm_context(L);
+    EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
+
+    auto sock = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &unix_datagram_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    if (!bs || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    lua_Integer maxfds = lua_tointeger(L, 3);
+    if (maxfds < 1) {
+        push(L, std::errc::invalid_argument, "arg", 3);
+        return lua_error(L);
+    }
+
+    // impose smaller limit now so overflow handling on the next layer of code
+    // will be simpler (actually we won't even need to handle it as overflow
+    // will be impossible)
+    if (maxfds > SCM_MAX_FD)
+        maxfds = SCM_MAX_FD;
+
+    auto cancel_slot = set_default_interrupter(L, vm_ctx);
+
+    ++sock->nbusy;
+    auto op = std::make_shared<
+        receive_with_fds_op<unix_datagram_socket, /*IS_RECEIVE_FROM=*/true>
+    >(vm_ctx, std::move(cancel_slot), *sock, bs->data, bs->size, maxfds);
+    op->do_wait();
+
+    return lua_yield(L, 0);
+}
+
+static int unix_datagram_socket_send_with_fds(lua_State* L)
+{
+    luaL_checktype(L, 3, LUA_TTABLE);
+
+    auto& vm_ctx = get_vm_context(L);
+    EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
+
+    auto sock = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &unix_datagram_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    if (!bs || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    auto cancel_slot = set_default_interrupter(L, vm_ctx);
+
+    auto op = std::make_shared<send_with_fds_op<unix_datagram_socket>>(
+        vm_ctx, std::move(cancel_slot), *sock, bs->data, bs->size);
+
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    for (int i = 1 ;; ++i) {
+        lua_rawgeti(L, 3, i);
+        auto current_element_type = lua_type(L, -1);
+        if (current_element_type == LUA_TNIL)
+            break;
+
+        switch (current_element_type) {
+        default:
+            assert(current_element_type != LUA_TNIL);
+            push(L, std::errc::invalid_argument, "arg", 3);
+            return lua_error(L);
+        case LUA_TUSERDATA:
+            break;
+        }
+
+        auto handle = reinterpret_cast<file_descriptor_handle*>(
+            lua_touserdata(L, -1));
+        if (!lua_getmetatable(L, -1)) {
+            push(L, std::errc::invalid_argument, "arg", 3);
+            return lua_error(L);
+        }
+        if (!lua_rawequal(L, -1, -3)) {
+            push(L, std::errc::invalid_argument, "arg", 1);
+            return lua_error(L);
+        }
+        if (*handle == INVALID_FILE_DESCRIPTOR) {
+            push(L, std::errc::device_or_resource_busy);
+            return lua_error(L);
+        }
+
+        bool found_in_the_set = false;
+        for (auto& fdlock: op->fds) {
+            if (fdlock.reference == handle) {
+                found_in_the_set = true;
+                break;
+            }
+        }
+
+        if (!found_in_the_set)
+            op->fds.emplace_back(handle);
+        lua_pop(L, 2);
+    }
+
+    ++sock->nbusy;
+    for (auto& fdlock: op->fds) {
+        *fdlock.reference = INVALID_FILE_DESCRIPTOR;
+    }
+    op->do_wait();
+
+    return lua_yield(L, 0);
+}
+
+static int unix_datagram_socket_send_to_with_fds(lua_State* L)
+{
+    luaL_checktype(L, 3, LUA_TSTRING);
+    luaL_checktype(L, 4, LUA_TTABLE);
+
+    auto& vm_ctx = get_vm_context(L);
+    EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
+
+    auto sock = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &unix_datagram_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    if (!bs || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    auto cancel_slot = set_default_interrupter(L, vm_ctx);
+
+    auto op = std::make_shared<send_with_fds_op<unix_datagram_socket>>(
+        vm_ctx, std::move(cancel_slot), *sock, bs->data, bs->size);
+    op->remote_endpoint = tostringview(L, 3);
+
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    for (int i = 1 ;; ++i) {
+        lua_rawgeti(L, 4, i);
+        auto current_element_type = lua_type(L, -1);
+        if (current_element_type == LUA_TNIL)
+            break;
+
+        switch (current_element_type) {
+        default:
+            assert(current_element_type != LUA_TNIL);
+            push(L, std::errc::invalid_argument, "arg", 4);
+            return lua_error(L);
+        case LUA_TUSERDATA:
+            break;
+        }
+
+        auto handle = reinterpret_cast<file_descriptor_handle*>(
+            lua_touserdata(L, -1));
+        if (!lua_getmetatable(L, -1)) {
+            push(L, std::errc::invalid_argument, "arg", 4);
+            return lua_error(L);
+        }
+        if (!lua_rawequal(L, -1, -3)) {
+            push(L, std::errc::invalid_argument, "arg", 1);
+            return lua_error(L);
+        }
+        if (*handle == INVALID_FILE_DESCRIPTOR) {
+            push(L, std::errc::device_or_resource_busy);
+            return lua_error(L);
+        }
+
+        bool found_in_the_set = false;
+        for (auto& fdlock: op->fds) {
+            if (fdlock.reference == handle) {
+                found_in_the_set = true;
+                break;
+            }
+        }
+
+        if (!found_in_the_set)
+            op->fds.emplace_back(handle);
+        lua_pop(L, 2);
+    }
+
+    ++sock->nbusy;
+    for (auto& fdlock: op->fds) {
+        *fdlock.reference = INVALID_FILE_DESCRIPTOR;
+    }
+    op->do_wait();
+
+    return lua_yield(L, 0);
+}
+
 static int unix_datagram_socket_io_control(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
@@ -653,6 +1268,38 @@ static int unix_datagram_socket_mt_index(lua_State* L)
                 [](lua_State* L) -> int {
                     rawgetp(L, LUA_REGISTRYINDEX,
                             &unix_datagram_socket_send_to_key);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("receive_with_fds"),
+                [](lua_State* L) -> int {
+                    rawgetp(L, LUA_REGISTRYINDEX,
+                            &unix_datagram_socket_receive_with_fds_key);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("receive_from_with_fds"),
+                [](lua_State* L) -> int {
+                    rawgetp(L, LUA_REGISTRYINDEX,
+                            &unix_datagram_socket_receive_from_with_fds_key);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("send_with_fds"),
+                [](lua_State* L) -> int {
+                    rawgetp(L, LUA_REGISTRYINDEX,
+                            &unix_datagram_socket_send_with_fds_key);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("send_to_with_fds"),
+                [](lua_State* L) -> int {
+                    rawgetp(L, LUA_REGISTRYINDEX,
+                            &unix_datagram_socket_send_to_with_fds_key);
                     return 1;
                 }
             ),
@@ -1077,6 +1724,144 @@ static int unix_stream_socket_write_some(lua_State* L)
     return lua_yield(L, 0);
 }
 
+static int unix_stream_socket_receive_with_fds(lua_State* L)
+{
+    luaL_checktype(L, 3, LUA_TNUMBER);
+
+    auto& vm_ctx = get_vm_context(L);
+    EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
+
+    auto s = reinterpret_cast<unix_stream_socket*>(lua_touserdata(L, 1));
+    if (!s || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &unix_stream_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    if (!bs || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    lua_Integer maxfds = lua_tointeger(L, 3);
+    if (maxfds < 1) {
+        push(L, std::errc::invalid_argument, "arg", 3);
+        return lua_error(L);
+    }
+
+    // impose smaller limit now so overflow handling on the next layer of code
+    // will be simpler (actually we won't even need to handle it as overflow
+    // will be impossible)
+    if (maxfds > SCM_MAX_FD)
+        maxfds = SCM_MAX_FD;
+
+    auto cancel_slot = set_default_interrupter(L, vm_ctx);
+
+    ++s->nbusy;
+    auto op = std::make_shared<receive_with_fds_op<unix_stream_socket>>(
+        vm_ctx, std::move(cancel_slot), *s, bs->data, bs->size, maxfds);
+    op->do_wait();
+
+    return lua_yield(L, 0);
+}
+
+static int unix_stream_socket_send_with_fds(lua_State* L)
+{
+    luaL_checktype(L, 3, LUA_TTABLE);
+
+    auto& vm_ctx = get_vm_context(L);
+    EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
+
+    auto s = reinterpret_cast<unix_stream_socket*>(lua_touserdata(L, 1));
+    if (!s || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &unix_stream_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    if (!bs || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    auto cancel_slot = set_default_interrupter(L, vm_ctx);
+
+    auto op = std::make_shared<send_with_fds_op<unix_stream_socket>>(
+        vm_ctx, std::move(cancel_slot), *s, bs->data, bs->size);
+
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    for (int i = 1 ;; ++i) {
+        lua_rawgeti(L, 3, i);
+        auto current_element_type = lua_type(L, -1);
+        if (current_element_type == LUA_TNIL)
+            break;
+
+        switch (current_element_type) {
+        default:
+            assert(current_element_type != LUA_TNIL);
+            push(L, std::errc::invalid_argument, "arg", 3);
+            return lua_error(L);
+        case LUA_TUSERDATA:
+            break;
+        }
+
+        auto handle = reinterpret_cast<file_descriptor_handle*>(
+            lua_touserdata(L, -1));
+        if (!lua_getmetatable(L, -1)) {
+            push(L, std::errc::invalid_argument, "arg", 3);
+            return lua_error(L);
+        }
+        if (!lua_rawequal(L, -1, -3)) {
+            push(L, std::errc::invalid_argument, "arg", 1);
+            return lua_error(L);
+        }
+        if (*handle == INVALID_FILE_DESCRIPTOR) {
+            push(L, std::errc::device_or_resource_busy);
+            return lua_error(L);
+        }
+
+        bool found_in_the_set = false;
+        for (auto& fdlock: op->fds) {
+            if (fdlock.reference == handle) {
+                found_in_the_set = true;
+                break;
+            }
+        }
+
+        if (!found_in_the_set)
+            op->fds.emplace_back(handle);
+        lua_pop(L, 2);
+    }
+
+    ++s->nbusy;
+    for (auto& fdlock: op->fds) {
+        *fdlock.reference = INVALID_FILE_DESCRIPTOR;
+    }
+    op->do_wait();
+
+    return lua_yield(L, 0);
+}
+
 static int unix_stream_socket_set_option(lua_State* L)
 {
     lua_settop(L, 3);
@@ -1365,6 +2150,22 @@ static int unix_stream_socket_mt_index(lua_State* L)
                 [](lua_State* L) -> int {
                     rawgetp(L, LUA_REGISTRYINDEX,
                             &unix_stream_socket_write_some_key);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("receive_with_fds"),
+                [](lua_State* L) -> int {
+                    rawgetp(L, LUA_REGISTRYINDEX,
+                            &unix_stream_socket_receive_with_fds_key);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("send_with_fds"),
+                [](lua_State* L) -> int {
+                    rawgetp(L, LUA_REGISTRYINDEX,
+                            &unix_stream_socket_send_with_fds_key);
                     return 1;
                 }
             ),
@@ -1973,6 +2774,38 @@ void init_unix(lua_State* L)
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
+    lua_pushlightuserdata(L, &unix_datagram_socket_receive_with_fds_key);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval23__key);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+    lua_pushcfunction(L, unix_datagram_socket_receive_with_fds);
+    lua_call(L, 2, 1);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &unix_datagram_socket_receive_from_with_fds_key);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval234__key);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+    lua_pushcfunction(L, unix_datagram_socket_receive_from_with_fds);
+    lua_call(L, 2, 1);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &unix_datagram_socket_send_with_fds_key);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+    lua_pushcfunction(L, unix_datagram_socket_send_with_fds);
+    lua_call(L, 2, 1);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &unix_datagram_socket_send_to_with_fds_key);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+    lua_pushcfunction(L, unix_datagram_socket_send_to_with_fds);
+    lua_call(L, 2, 1);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
     lua_pushlightuserdata(L, &unix_stream_socket_connect_key);
     rawgetp(L, LUA_REGISTRYINDEX, &var_args__retval1_to_error__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
@@ -1993,6 +2826,22 @@ void init_unix(lua_State* L)
             &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, unix_stream_socket_write_some);
+    lua_call(L, 2, 1);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &unix_stream_socket_receive_with_fds_key);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval23__key);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+    lua_pushcfunction(L, unix_stream_socket_receive_with_fds);
+    lua_call(L, 2, 1);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &unix_stream_socket_send_with_fds_key);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+    lua_pushcfunction(L, unix_stream_socket_send_with_fds);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 

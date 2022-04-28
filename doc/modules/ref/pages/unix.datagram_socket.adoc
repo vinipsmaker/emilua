@@ -107,6 +107,36 @@ Returns the number of bytes written.
 `flags` is `0` or an or-combination of values from
 link:../unix.message_flag/[`unix.message_flag`].
 
+=== `receive_with_fds(self, buffer: byte_span, maxfds: number) -> number, table`
+
+Receive a datagram and blocks current fiber until it completes or errs.
+
+Returns the number of bytes read plus the table containing the `fds` read.
+
+=== `receive_from_with_fds(self, buffer: byte_span, maxfds: number) -> number, string, table`
+
+Receive a datagram and blocks current fiber until it completes or errs.
+
+Returns the number of bytes read plus the pathname of the remote sender of the
+datagram plus the table containing the `fds` read.
+
+=== `send_with_fds(self, buffer: byte_span, fds: table) -> number`
+
+Send data on the datagram socket and blocks current fiber until it completes or
+errs.
+
+Returns the number of bytes written.
+
+NOTE: The `send` operation can only be used with a connected socket. Use the
+`send_to` function to send data on an unconnected datagram socket.
+
+=== `send_to_with_fds(self, buffer: byte_span, pathname: string, fds: table) -> number`
+
+Send a datagram to the specified remote endpoint and blocks current fiber until
+it completes or errs.
+
+Returns the number of bytes written.
+
 === `set_option(self, opt: string, val)`
 
 Set an option on the socket.
