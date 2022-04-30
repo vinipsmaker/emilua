@@ -46,7 +46,7 @@ static char tcp_socket_receive_key;
 static char tcp_socket_send_key;
 static char tcp_socket_wait_key;
 static char tcp_acceptor_accept_key;
-static char udp_socket_receive_key;
+static char udp_socket_receive_from_key;
 static char udp_socket_send_key;
 static char udp_socket_send_to_key;
 
@@ -4210,7 +4210,7 @@ static int udp_socket_get_option(lua_State* L)
     );
 }
 
-static int udp_socket_receive(lua_State* L)
+static int udp_socket_receive_from(lua_State* L)
 {
     lua_settop(L, 3);
 
@@ -4641,9 +4641,9 @@ static int udp_socket_mt_index(lua_State* L)
                 }
             ),
             hana::make_pair(
-                BOOST_HANA_STRING("receive"),
+                BOOST_HANA_STRING("receive_from"),
                 [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &udp_socket_receive_key);
+                    rawgetp(L, LUA_REGISTRYINDEX, &udp_socket_receive_from_key);
                     return 1;
                 }
             ),
@@ -6144,11 +6144,11 @@ void init_ip(lua_State* L)
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
-    lua_pushlightuserdata(L, &udp_socket_receive_key);
+    lua_pushlightuserdata(L, &udp_socket_receive_from_key);
     rawgetp(L, LUA_REGISTRYINDEX,
             &var_args__retval1_to_error__fwd_retval234__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
-    lua_pushcfunction(L, udp_socket_receive);
+    lua_pushcfunction(L, udp_socket_receive_from);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 

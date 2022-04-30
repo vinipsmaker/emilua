@@ -17,7 +17,7 @@ sock.open()
 sock.bind('/tmp/9Lq7BNBnBycd6nxy.socket')
 
 local buf = byte_span.new(1024)
-local nread = sock:receive(buf)
+local nread = sock:receive_from(buf)
 print(buf:slice(1, nread))
 ----
 
@@ -74,7 +74,7 @@ operations to finish immediately, and the handlers for cancelled operations will
 be passed the `boost::asio::error::operation_aborted` error.
 ____
 
-=== `receive(self, buffer: byte_span[, flags: number]) -> number, string`
+=== `receive_from(self, buffer: byte_span[, flags: number]) -> number, string`
 
 Receive a datagram and blocks current fiber until it completes or errs.
 

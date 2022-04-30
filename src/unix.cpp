@@ -22,7 +22,7 @@ char unix_datagram_socket_mt_key;
 char unix_stream_acceptor_mt_key;
 char unix_stream_socket_mt_key;
 
-static char unix_datagram_socket_receive_key;
+static char unix_datagram_socket_receive_from_key;
 static char unix_datagram_socket_send_key;
 static char unix_datagram_socket_send_to_key;
 static char unix_datagram_socket_receive_with_fds_key;
@@ -608,7 +608,7 @@ static int unix_datagram_socket_get_option(lua_State* L)
     );
 }
 
-static int unix_datagram_socket_receive(lua_State* L)
+static int unix_datagram_socket_receive_from(lua_State* L)
 {
     lua_settop(L, 3);
 
@@ -1248,10 +1248,10 @@ static int unix_datagram_socket_mt_index(lua_State* L)
                 }
             ),
             hana::make_pair(
-                BOOST_HANA_STRING("receive"),
+                BOOST_HANA_STRING("receive_from"),
                 [](lua_State* L) -> int {
                     rawgetp(L, LUA_REGISTRYINDEX,
-                            &unix_datagram_socket_receive_key);
+                            &unix_datagram_socket_receive_from_key);
                     return 1;
                 }
             ),
@@ -2750,11 +2750,11 @@ void init_unix(lua_State* L)
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
-    lua_pushlightuserdata(L, &unix_datagram_socket_receive_key);
+    lua_pushlightuserdata(L, &unix_datagram_socket_receive_from_key);
     rawgetp(L, LUA_REGISTRYINDEX,
             &var_args__retval1_to_error__fwd_retval23__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
-    lua_pushcfunction(L, unix_datagram_socket_receive);
+    lua_pushcfunction(L, unix_datagram_socket_receive_from);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
