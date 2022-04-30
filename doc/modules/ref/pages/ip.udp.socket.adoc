@@ -87,6 +87,15 @@ operations to finish immediately, and the handlers for cancelled operations will
 be passed the `boost::asio::error::operation_aborted` error.
 ____
 
+=== `receive(self, buffer: byte_span[, flags: number]) -> number`
+
+Receive a datagram and blocks current fiber until it completes or errs.
+
+Returns the number of bytes read.
+
+`flags` is `0` or an or-combination of values from
+link:../ip.message_flag/[`ip.message_flag`].
+
 === `receive_from(self, buffer: byte_span[, flags: number]) -> number, ip.address, number`
 
 Receive a datagram and blocks current fiber until it completes or errs.

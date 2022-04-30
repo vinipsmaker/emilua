@@ -46,6 +46,7 @@ static char tcp_socket_receive_key;
 static char tcp_socket_send_key;
 static char tcp_socket_wait_key;
 static char tcp_acceptor_accept_key;
+static char udp_socket_receive_key;
 static char udp_socket_receive_from_key;
 static char udp_socket_send_key;
 static char udp_socket_send_to_key;
@@ -4210,6 +4211,81 @@ static int udp_socket_get_option(lua_State* L)
     );
 }
 
+static int udp_socket_receive(lua_State* L)
+{
+    lua_settop(L, 3);
+
+    auto vm_ctx = get_vm_context(L).shared_from_this();
+    auto current_fiber = vm_ctx->current_fiber();
+    EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
+
+    auto sock = reinterpret_cast<udp_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_udp_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    if (!bs || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    // Lua BitOp underlying type is int32
+    std::int32_t flags;
+    switch (lua_type(L, 3)) {
+    default:
+        push(L, std::errc::invalid_argument, "arg", 3);
+        return lua_error(L);
+    case LUA_TNIL:
+        flags = 0;
+        break;
+    case LUA_TNUMBER:
+        flags = lua_tointeger(L, 3);
+    }
+
+    auto cancel_slot = set_default_interrupter(L, *vm_ctx);
+
+    ++sock->nbusy;
+    sock->socket.async_receive(
+        asio::buffer(bs->data.get(), bs->size),
+        flags,
+        asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
+            vm_ctx->strand_using_defer(),
+            [vm_ctx,current_fiber,buf=bs->data,sock](
+                const boost::system::error_code& ec,
+                std::size_t bytes_transferred
+            ) {
+                boost::ignore_unused(buf);
+                if (!vm_ctx->valid())
+                    return;
+
+                --sock->nbusy;
+
+                vm_ctx->fiber_resume(
+                    current_fiber,
+                    hana::make_set(
+                        vm_context::options::auto_detect_interrupt,
+                        hana::make_pair(
+                            vm_context::options::arguments,
+                            hana::make_tuple(ec, bytes_transferred))));
+            }
+        ))
+    );
+
+    return lua_yield(L, 0);
+}
+
 static int udp_socket_receive_from(lua_State* L)
 {
     lua_settop(L, 3);
@@ -4637,6 +4713,13 @@ static int udp_socket_mt_index(lua_State* L)
                 BOOST_HANA_STRING("get_option"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, udp_socket_get_option);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("receive"),
+                [](lua_State* L) -> int {
+                    rawgetp(L, LUA_REGISTRYINDEX, &udp_socket_receive_key);
                     return 1;
                 }
             ),
@@ -6141,6 +6224,14 @@ void init_ip(lua_State* L)
             &var_args__retval1_to_error__fwd_retval2__key);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, tcp_acceptor_accept);
+    lua_call(L, 2, 1);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &udp_socket_receive_key);
+    rawgetp(L, LUA_REGISTRYINDEX,
+            &var_args__retval1_to_error__fwd_retval2__key);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+    lua_pushcfunction(L, udp_socket_receive);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 

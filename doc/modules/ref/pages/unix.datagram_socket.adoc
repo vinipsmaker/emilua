@@ -17,7 +17,7 @@ sock.open()
 sock.bind('/tmp/9Lq7BNBnBycd6nxy.socket')
 
 local buf = byte_span.new(1024)
-local nread = sock:receive_from(buf)
+local nread = sock:receive(buf)
 print(buf:slice(1, nread))
 ----
 
@@ -73,6 +73,15 @@ This function causes all outstanding asynchronous connect, send and receive
 operations to finish immediately, and the handlers for cancelled operations will
 be passed the `boost::asio::error::operation_aborted` error.
 ____
+
+=== `receive(self, buffer: byte_span[, flags: number]) -> number`
+
+Receive a datagram and blocks current fiber until it completes or errs.
+
+Returns the number of bytes read.
+
+`flags` is `0` or an or-combination of values from
+link:../unix.message_flag/[`unix.message_flag`].
 
 === `receive_from(self, buffer: byte_span[, flags: number]) -> number, string`
 
