@@ -28,7 +28,7 @@ static char closed_tx_chan_mt_key;
 static char chan_receive_key;
 static char chan_send_key;
 
-int deserializer_closure(lua_State* L)
+static int deserializer_closure(lua_State* L)
 {
     using array_key_type = int;
 
