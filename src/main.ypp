@@ -265,7 +265,8 @@ end:
 #endif
 
     if (
-        auto it = appctx.app_env.find("EMILUA_PATH") ; it != appctx.app_env.end()
+        auto it = appctx.app_env.find("EMILUA_PATH") ;
+        it != appctx.app_env.end()
     ) {
         for (std::string_view spec{it->second} ;;) {
             std::string_view::size_type sepidx = spec.find(
