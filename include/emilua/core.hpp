@@ -194,7 +194,6 @@ struct TransparentStringComp
     }
 };
 
-namespace detail {
 template<class Executor>
 class remap_post_to_defer: private Executor
 {
@@ -256,7 +255,6 @@ public:
         Executor::defer(std::forward<F>(f), a);
     }
 };
-} // namespace detail
 
 #if EMILUA_CONFIG_ENABLE_PLUGINS
 class BOOST_SYMBOL_VISIBLE plugin;
@@ -505,9 +503,9 @@ public:
         return strand_;
     }
 
-    detail::remap_post_to_defer<strand_type> strand_using_defer()
+    remap_post_to_defer<strand_type> strand_using_defer()
     {
-        return detail::remap_post_to_defer<strand_type>{strand_};
+        return remap_post_to_defer<strand_type>{strand_};
     }
 
     asio::executor_work_guard<asio::io_context::executor_type> work_guard()
