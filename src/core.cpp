@@ -390,6 +390,11 @@ void vm_context::fiber_epilogue(int resume_result)
             // or else we may experience stack overflow on really really long
             // join()-chains. Still better than the round-trip of post
             // semantics.
+#ifdef __has_attribute
+#  if __has_attribute(musttail)
+            __attribute__((musttail))
+#  endif // __has_attribute(musttail)
+#endif // defined(__has_attribute)
             return fiber_epilogue(res);
         } else {
             // Handle still alive
