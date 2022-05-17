@@ -319,7 +319,7 @@ struct send_with_fds_op
         }
 
         auto nwritten = sendmsg(sock.socket.native_handle(), &msg,
-                                MSG_DONTWAIT);
+                                MSG_DONTWAIT | MSG_NOSIGNAL);
         if (nwritten == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
             do_wait();
             return;
