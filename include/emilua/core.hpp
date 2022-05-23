@@ -354,8 +354,37 @@ struct actor_address
 
 struct inbox_t
 {
+#if BOOST_OS_UNIX
+    struct file_descriptor_box
+    {
+        file_descriptor_box()
+            : value{-1}
+        {}
+
+        file_descriptor_box(int value)
+            : value{value}
+        {}
+
+        file_descriptor_box(const file_descriptor_box&) = delete;
+        file_descriptor_box& operator=(const file_descriptor_box&) = delete;
+
+        ~file_descriptor_box()
+        {
+            if (value == -1)
+                return;
+
+            close(value);
+        }
+
+        int value;
+    };
+#endif // BOOST_OS_UNIX
+
     struct value_type: std::variant<
         bool, lua_Number, std::string,
+#if BOOST_OS_UNIX
+        std::shared_ptr<file_descriptor_box>,
+#endif // BOOST_OS_UNIX
         std::map<std::string, value_type>,
         std::vector<value_type>,
         actor_address
