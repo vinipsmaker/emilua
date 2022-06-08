@@ -19,7 +19,7 @@ Constructor.
 Open the file using the specified path.
 
 `flags` is an or-combination of values from
-link:../file.open_flag/[`file.open_flag`].
+xref:file.open_flag.adoc[file.open_flag(3em)].
 
 === `close(self)`
 

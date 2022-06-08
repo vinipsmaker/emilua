@@ -94,7 +94,7 @@ Receive a datagram and blocks current fiber until it completes or errs.
 Returns the number of bytes read.
 
 `flags` is `0` or an or-combination of values from
-link:../ip.message_flag/[`ip.message_flag`].
+xref:ip.message_flag.adoc[ip.message_flag(3em)].
 
 === `receive_from(self, buffer: byte_span[, flags: number]) -> number, ip.address, number`
 
@@ -104,7 +104,7 @@ Returns the number of bytes read plus the endpoint (address {plus} port) of the
 remote sender of the datagram.
 
 `flags` is `0` or an or-combination of values from
-link:../ip.message_flag/[`ip.message_flag`].
+xref:ip.message_flag.adoc[ip.message_flag(3em)].
 
 === `send(self, buffer: byte_span[, flags: number]) -> number`
 
@@ -114,7 +114,7 @@ errs.
 Returns the number of bytes written.
 
 `flags` is `0` or an or-combination of values from
-link:../ip.message_flag/[`ip.message_flag`].
+xref:ip.message_flag.adoc[ip.message_flag(3em)].
 
 NOTE: The `send` operation can only be used with a connected socket. Use the
 `send_to` function to send data on an unconnected datagram socket.
@@ -127,7 +127,7 @@ it completes or errs.
 Returns the number of bytes written.
 
 `flags` is `0` or an or-combination of values from
-link:../ip.message_flag/[`ip.message_flag`].
+xref:ip.message_flag.adoc[ip.message_flag(3em)].
 
 === `set_option(self, opt: string, val)`
 

@@ -29,7 +29,7 @@ print(json.decode('"\\"foo\\bar"'))
 
 == Types
 
-* link:../json.writer/[`json.writer]`
+* xref:json.writer.adoc[json.writer(3em)].
 
 == Constants
 

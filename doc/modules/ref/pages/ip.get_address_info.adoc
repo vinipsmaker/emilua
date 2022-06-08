@@ -30,7 +30,7 @@ Forward-resolves host and service into a list of endpoint entries. Current fiber
 is suspended until operation finishes.
 
 `flags` is `0` or an or-combination of values from
-link:../ip.address_info_flag/[`ip.address_info_flag`].
+xref:ip.address_info_flag.adoc[ip.address_info_flag(3em)].
 
 NOTE: If no `flags` are passed to this function (i.e. `flags` is `nil`) then
 this function will follow the glibc defaults even on non-glibc systems:
