@@ -63,7 +63,7 @@ static int sleep_for(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto handle = reinterpret_cast<sleep_for_operation*>(
+            auto handle = static_cast<sleep_for_operation*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             try {
                 handle->timer.cancel();
@@ -100,7 +100,7 @@ static int timer_wait(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto handle = reinterpret_cast<handle_type*>(lua_touserdata(L, 1));
+    auto handle = static_cast<handle_type*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -132,7 +132,7 @@ static int timer_wait(lua_State* L)
 
 static int timer_expires_after(lua_State* L)
 {
-    auto handle = reinterpret_cast<handle_type*>(lua_touserdata(L, 1));
+    auto handle = static_cast<handle_type*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -157,7 +157,7 @@ static int timer_expires_after(lua_State* L)
 
 static int timer_cancel(lua_State* L)
 {
-    auto handle = reinterpret_cast<handle_type*>(lua_touserdata(L, 1));
+    auto handle = static_cast<handle_type*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -216,7 +216,7 @@ static int timer_mt_index(lua_State* L)
 static int timer_new(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
-    auto buf = reinterpret_cast<handle_type*>(
+    auto buf = static_cast<handle_type*>(
         lua_newuserdata(L, sizeof(handle_type))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &timer_mt_key);

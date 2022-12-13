@@ -28,7 +28,7 @@ inline mutex_handle::~mutex_handle()
 
 static int mutex_lock(lua_State* L)
 {
-    auto handle = reinterpret_cast<mutex_handle*>(lua_touserdata(L, 1));
+    auto handle = static_cast<mutex_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -53,7 +53,7 @@ static int mutex_lock(lua_State* L)
 
 static int mutex_unlock(lua_State* L)
 {
-    auto handle = reinterpret_cast<mutex_handle*>(lua_touserdata(L, 1));
+    auto handle = static_cast<mutex_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -115,7 +115,7 @@ static int mutex_mt_index(lua_State* L)
 static int mutex_new(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
-    auto buf = reinterpret_cast<mutex_handle*>(
+    auto buf = static_cast<mutex_handle*>(
         lua_newuserdata(L, sizeof(mutex_handle))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &mutex_mt_key);

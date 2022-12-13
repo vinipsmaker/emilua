@@ -175,7 +175,7 @@ struct receive_with_fds_op
 
             int i = 0;
             for (auto& fd: fds) {
-                auto fdhandle = reinterpret_cast<file_descriptor_handle*>(
+                auto fdhandle = static_cast<file_descriptor_handle*>(
                     lua_newuserdata(L, sizeof(file_descriptor_handle))
                 );
                 lua_pushvalue(L, -2);
@@ -364,7 +364,7 @@ struct send_with_fds_op
 
 static int unix_datagram_socket_open(lua_State* L)
 {
-    auto sock = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -387,7 +387,7 @@ static int unix_datagram_socket_open(lua_State* L)
 static int unix_datagram_socket_bind(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
-    auto sock = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -410,7 +410,7 @@ static int unix_datagram_socket_bind(lua_State* L)
 static int unix_datagram_socket_connect(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
-    auto sock = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -432,7 +432,7 @@ static int unix_datagram_socket_connect(lua_State* L)
 
 static int unix_datagram_socket_close(lua_State* L)
 {
-    auto sock = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -454,7 +454,7 @@ static int unix_datagram_socket_close(lua_State* L)
 
 static int unix_datagram_socket_cancel(lua_State* L)
 {
-    auto sock = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -479,7 +479,7 @@ static int unix_datagram_socket_set_option(lua_State* L)
     lua_settop(L, 3);
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto socket = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    auto socket = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
     if (!socket || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -547,7 +547,7 @@ static int unix_datagram_socket_get_option(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto socket = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    auto socket = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
     if (!socket || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -617,7 +617,7 @@ static int unix_datagram_socket_receive(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto sock = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -628,7 +628,7 @@ static int unix_datagram_socket_receive(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -693,7 +693,7 @@ static int unix_datagram_socket_receive_from(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto sock = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -704,7 +704,7 @@ static int unix_datagram_socket_receive_from(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -774,7 +774,7 @@ static int unix_datagram_socket_send(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto sock = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -785,7 +785,7 @@ static int unix_datagram_socket_send(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -850,7 +850,7 @@ static int unix_datagram_socket_send_to(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto sock = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -861,7 +861,7 @@ static int unix_datagram_socket_send_to(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -925,7 +925,7 @@ static int unix_datagram_socket_receive_with_fds(lua_State* L)
     auto& vm_ctx = get_vm_context(L);
     EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
 
-    auto sock = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -936,7 +936,7 @@ static int unix_datagram_socket_receive_with_fds(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -976,7 +976,7 @@ static int unix_datagram_socket_receive_from_with_fds(lua_State* L)
     auto& vm_ctx = get_vm_context(L);
     EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
 
-    auto sock = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -987,7 +987,7 @@ static int unix_datagram_socket_receive_from_with_fds(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -1028,7 +1028,7 @@ static int unix_datagram_socket_send_with_fds(lua_State* L)
     auto& vm_ctx = get_vm_context(L);
     EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
 
-    auto sock = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1039,7 +1039,7 @@ static int unix_datagram_socket_send_with_fds(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -1071,7 +1071,7 @@ static int unix_datagram_socket_send_with_fds(lua_State* L)
             break;
         }
 
-        auto handle = reinterpret_cast<file_descriptor_handle*>(
+        auto handle = static_cast<file_descriptor_handle*>(
             lua_touserdata(L, -1));
         if (!lua_getmetatable(L, -1)) {
             push(L, std::errc::invalid_argument, "arg", 3);
@@ -1116,7 +1116,7 @@ static int unix_datagram_socket_send_to_with_fds(lua_State* L)
     auto& vm_ctx = get_vm_context(L);
     EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
 
-    auto sock = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1127,7 +1127,7 @@ static int unix_datagram_socket_send_to_with_fds(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -1160,7 +1160,7 @@ static int unix_datagram_socket_send_to_with_fds(lua_State* L)
             break;
         }
 
-        auto handle = reinterpret_cast<file_descriptor_handle*>(
+        auto handle = static_cast<file_descriptor_handle*>(
             lua_touserdata(L, -1));
         if (!lua_getmetatable(L, -1)) {
             push(L, std::errc::invalid_argument, "arg", 4);
@@ -1201,7 +1201,7 @@ static int unix_datagram_socket_io_control(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto socket = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    auto socket = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
     if (!socket || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1240,14 +1240,14 @@ static int unix_datagram_socket_io_control(lua_State* L)
 
 inline int unix_datagram_socket_is_open(lua_State* L)
 {
-    auto sock = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
     lua_pushboolean(L, sock->socket.is_open());
     return 1;
 }
 
 inline int unix_datagram_socket_local_path(lua_State* L)
 {
-    auto sock = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
     boost::system::error_code ec;
     auto ep = sock->socket.local_endpoint(ec);
     if (ec) {
@@ -1260,7 +1260,7 @@ inline int unix_datagram_socket_local_path(lua_State* L)
 
 inline int unix_datagram_socket_remote_path(lua_State* L)
 {
-    auto sock = reinterpret_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
     boost::system::error_code ec;
     auto ep = sock->socket.remote_endpoint(ec);
     if (ec) {
@@ -1416,7 +1416,7 @@ static int unix_datagram_socket_mt_index(lua_State* L)
 static int unix_datagram_socket_new(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
-    auto sock = reinterpret_cast<unix_datagram_socket*>(
+    auto sock = static_cast<unix_datagram_socket*>(
         lua_newuserdata(L, sizeof(unix_datagram_socket))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &unix_datagram_socket_mt_key);
@@ -1429,14 +1429,14 @@ static int unix_datagram_socket_pair(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
 
-    auto sock1 = reinterpret_cast<unix_datagram_socket*>(
+    auto sock1 = static_cast<unix_datagram_socket*>(
         lua_newuserdata(L, sizeof(unix_datagram_socket))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &unix_datagram_socket_mt_key);
     setmetatable(L, -2);
     new (sock1) unix_datagram_socket{vm_ctx.strand().context()};
 
-    auto sock2 = reinterpret_cast<unix_datagram_socket*>(
+    auto sock2 = static_cast<unix_datagram_socket*>(
         lua_newuserdata(L, sizeof(unix_datagram_socket))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &unix_datagram_socket_mt_key);
@@ -1454,7 +1454,7 @@ static int unix_datagram_socket_pair(lua_State* L)
 
 static int unix_stream_socket_open(lua_State* L)
 {
-    auto sock = reinterpret_cast<unix_stream_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_stream_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1477,7 +1477,7 @@ static int unix_stream_socket_open(lua_State* L)
 static int unix_stream_socket_bind(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
-    auto sock = reinterpret_cast<unix_stream_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_stream_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1499,7 +1499,7 @@ static int unix_stream_socket_bind(lua_State* L)
 
 static int unix_stream_socket_close(lua_State* L)
 {
-    auto sock = reinterpret_cast<unix_stream_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_stream_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1521,7 +1521,7 @@ static int unix_stream_socket_close(lua_State* L)
 
 static int unix_stream_socket_cancel(lua_State* L)
 {
-    auto sock = reinterpret_cast<unix_stream_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_stream_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1545,7 +1545,7 @@ static int unix_stream_socket_io_control(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto socket = reinterpret_cast<unix_stream_socket*>(lua_touserdata(L, 1));
+    auto socket = static_cast<unix_stream_socket*>(lua_touserdata(L, 1));
     if (!socket || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1586,7 +1586,7 @@ static int unix_stream_socket_shutdown(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto socket = reinterpret_cast<unix_stream_socket*>(lua_touserdata(L, 1));
+    auto socket = static_cast<unix_stream_socket*>(lua_touserdata(L, 1));
     if (!socket || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1646,7 +1646,7 @@ static int unix_stream_socket_connect(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<unix_stream_socket*>(lua_touserdata(L, 1));
+    auto s = static_cast<unix_stream_socket*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1693,7 +1693,7 @@ static int unix_stream_socket_read_some(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<unix_stream_socket*>(lua_touserdata(L, 1));
+    auto s = static_cast<unix_stream_socket*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1704,7 +1704,7 @@ static int unix_stream_socket_read_some(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -1755,7 +1755,7 @@ static int unix_stream_socket_write_some(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<unix_stream_socket*>(lua_touserdata(L, 1));
+    auto s = static_cast<unix_stream_socket*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1766,7 +1766,7 @@ static int unix_stream_socket_write_some(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -1816,7 +1816,7 @@ static int unix_stream_socket_receive_with_fds(lua_State* L)
     auto& vm_ctx = get_vm_context(L);
     EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
 
-    auto s = reinterpret_cast<unix_stream_socket*>(lua_touserdata(L, 1));
+    auto s = static_cast<unix_stream_socket*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1827,7 +1827,7 @@ static int unix_stream_socket_receive_with_fds(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -1867,7 +1867,7 @@ static int unix_stream_socket_send_with_fds(lua_State* L)
     auto& vm_ctx = get_vm_context(L);
     EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
 
-    auto s = reinterpret_cast<unix_stream_socket*>(lua_touserdata(L, 1));
+    auto s = static_cast<unix_stream_socket*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1878,7 +1878,7 @@ static int unix_stream_socket_send_with_fds(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -1910,7 +1910,7 @@ static int unix_stream_socket_send_with_fds(lua_State* L)
             break;
         }
 
-        auto handle = reinterpret_cast<file_descriptor_handle*>(
+        auto handle = static_cast<file_descriptor_handle*>(
             lua_touserdata(L, -1));
         if (!lua_getmetatable(L, -1)) {
             push(L, std::errc::invalid_argument, "arg", 3);
@@ -1952,7 +1952,7 @@ static int unix_stream_socket_set_option(lua_State* L)
     lua_settop(L, 3);
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto socket = reinterpret_cast<unix_stream_socket*>(lua_touserdata(L, 1));
+    auto socket = static_cast<unix_stream_socket*>(lua_touserdata(L, 1));
     if (!socket || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -2047,7 +2047,7 @@ static int unix_stream_socket_get_option(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto socket = reinterpret_cast<unix_stream_socket*>(lua_touserdata(L, 1));
+    auto socket = static_cast<unix_stream_socket*>(lua_touserdata(L, 1));
     if (!socket || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -2137,14 +2137,14 @@ static int unix_stream_socket_get_option(lua_State* L)
 
 inline int unix_stream_socket_is_open(lua_State* L)
 {
-    auto sock = reinterpret_cast<unix_stream_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_stream_socket*>(lua_touserdata(L, 1));
     lua_pushboolean(L, sock->socket.is_open());
     return 1;
 }
 
 inline int unix_stream_socket_local_path(lua_State* L)
 {
-    auto sock = reinterpret_cast<unix_stream_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_stream_socket*>(lua_touserdata(L, 1));
     boost::system::error_code ec;
     auto ep = sock->socket.local_endpoint(ec);
     if (ec) {
@@ -2157,7 +2157,7 @@ inline int unix_stream_socket_local_path(lua_State* L)
 
 inline int unix_stream_socket_remote_path(lua_State* L)
 {
-    auto sock = reinterpret_cast<unix_stream_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<unix_stream_socket*>(lua_touserdata(L, 1));
     boost::system::error_code ec;
     auto ep = sock->socket.remote_endpoint(ec);
     if (ec) {
@@ -2288,7 +2288,7 @@ static int unix_stream_socket_mt_index(lua_State* L)
 static int unix_stream_socket_new(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
-    auto sock = reinterpret_cast<unix_stream_socket*>(
+    auto sock = static_cast<unix_stream_socket*>(
         lua_newuserdata(L, sizeof(unix_stream_socket))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &unix_stream_socket_mt_key);
@@ -2301,14 +2301,14 @@ static int unix_stream_socket_pair(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
 
-    auto sock1 = reinterpret_cast<unix_stream_socket*>(
+    auto sock1 = static_cast<unix_stream_socket*>(
         lua_newuserdata(L, sizeof(unix_stream_socket))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &unix_stream_socket_mt_key);
     setmetatable(L, -2);
     new (sock1) unix_stream_socket{vm_ctx.strand().context()};
 
-    auto sock2 = reinterpret_cast<unix_stream_socket*>(
+    auto sock2 = static_cast<unix_stream_socket*>(
         lua_newuserdata(L, sizeof(unix_stream_socket))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &unix_stream_socket_mt_key);
@@ -2326,7 +2326,7 @@ static int unix_stream_socket_pair(lua_State* L)
 
 static int unix_stream_acceptor_open(lua_State* L)
 {
-    auto acceptor = reinterpret_cast<asio::local::stream_protocol::acceptor*>(
+    auto acceptor = static_cast<asio::local::stream_protocol::acceptor*>(
         lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
@@ -2350,7 +2350,7 @@ static int unix_stream_acceptor_open(lua_State* L)
 static int unix_stream_acceptor_bind(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
-    auto acceptor = reinterpret_cast<asio::local::stream_protocol::acceptor*>(
+    auto acceptor = static_cast<asio::local::stream_protocol::acceptor*>(
         lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
@@ -2374,7 +2374,7 @@ static int unix_stream_acceptor_bind(lua_State* L)
 static int unix_stream_acceptor_listen(lua_State* L)
 {
     lua_settop(L, 2);
-    auto acceptor = reinterpret_cast<asio::local::stream_protocol::acceptor*>(
+    auto acceptor = static_cast<asio::local::stream_protocol::acceptor*>(
         lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
@@ -2417,7 +2417,7 @@ static int unix_stream_acceptor_accept(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto acceptor = reinterpret_cast<asio::local::stream_protocol::acceptor*>(
+    auto acceptor = static_cast<asio::local::stream_protocol::acceptor*>(
         lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
@@ -2440,7 +2440,7 @@ static int unix_stream_acceptor_accept(lua_State* L)
                     if (ec) {
                         lua_pushnil(fiber);
                     } else {
-                        auto s = reinterpret_cast<unix_stream_socket*>(
+                        auto s = static_cast<unix_stream_socket*>(
                             lua_newuserdata(fiber, sizeof(unix_stream_socket)));
                         rawgetp(fiber, LUA_REGISTRYINDEX,
                                 &unix_stream_socket_mt_key);
@@ -2465,7 +2465,7 @@ static int unix_stream_acceptor_accept(lua_State* L)
 
 static int unix_stream_acceptor_close(lua_State* L)
 {
-    auto acceptor = reinterpret_cast<asio::local::stream_protocol::acceptor*>(
+    auto acceptor = static_cast<asio::local::stream_protocol::acceptor*>(
         lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
@@ -2488,7 +2488,7 @@ static int unix_stream_acceptor_close(lua_State* L)
 
 static int unix_stream_acceptor_cancel(lua_State* L)
 {
-    auto acceptor = reinterpret_cast<asio::local::stream_protocol::acceptor*>(
+    auto acceptor = static_cast<asio::local::stream_protocol::acceptor*>(
         lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
@@ -2511,7 +2511,7 @@ static int unix_stream_acceptor_cancel(lua_State* L)
 
 static int unix_stream_acceptor_set_option(lua_State* L)
 {
-    auto acceptor = reinterpret_cast<asio::local::stream_protocol::acceptor*>(
+    auto acceptor = static_cast<asio::local::stream_protocol::acceptor*>(
         lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
@@ -2565,7 +2565,7 @@ static int unix_stream_acceptor_set_option(lua_State* L)
 
 static int unix_stream_acceptor_get_option(lua_State* L)
 {
-    auto acceptor = reinterpret_cast<asio::local::stream_protocol::acceptor*>(
+    auto acceptor = static_cast<asio::local::stream_protocol::acceptor*>(
         lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
@@ -2617,7 +2617,7 @@ static int unix_stream_acceptor_get_option(lua_State* L)
 
 inline int unix_stream_acceptor_is_open(lua_State* L)
 {
-    auto acceptor = reinterpret_cast<asio::local::stream_protocol::acceptor*>(
+    auto acceptor = static_cast<asio::local::stream_protocol::acceptor*>(
         lua_touserdata(L, 1));
     lua_pushboolean(L, acceptor->is_open());
     return 1;
@@ -2625,7 +2625,7 @@ inline int unix_stream_acceptor_is_open(lua_State* L)
 
 inline int unix_stream_acceptor_local_path(lua_State* L)
 {
-    auto acceptor = reinterpret_cast<asio::local::stream_protocol::acceptor*>(
+    auto acceptor = static_cast<asio::local::stream_protocol::acceptor*>(
         lua_touserdata(L, 1));
     boost::system::error_code ec;
     auto ep = acceptor->local_endpoint(ec);
@@ -2716,7 +2716,7 @@ static int unix_stream_acceptor_mt_index(lua_State* L)
 static int unix_stream_acceptor_new(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
-    auto s = reinterpret_cast<asio::local::stream_protocol::acceptor*>(
+    auto s = static_cast<asio::local::stream_protocol::acceptor*>(
         lua_newuserdata(L, sizeof(asio::local::stream_protocol::acceptor))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &unix_stream_acceptor_mt_key);

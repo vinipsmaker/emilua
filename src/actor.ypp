@@ -72,13 +72,13 @@ static int deserializer_closure(lua_State* L)
         std::vector<inbox_t::value_type>& array;
     };
 
-    auto& value = *reinterpret_cast<inbox_t::value_type*>(
+    auto& value = *static_cast<inbox_t::value_type*>(
         lua_touserdata(L, lua_upvalueindex(1)));
 
     std::vector<std::variant<object_range, array_range>> path;
 
     static constexpr auto push_address = [](lua_State* L, actor_address& a) {
-        auto buf = reinterpret_cast<actor_address*>(
+        auto buf = static_cast<actor_address*>(
             lua_newuserdata(L, sizeof(actor_address))
         );
         rawgetp(L, LUA_REGISTRYINDEX, &tx_chan_mt_key);
@@ -92,7 +92,7 @@ static int deserializer_closure(lua_State* L)
     ) {
         assert(fdbox->value != -1);
 
-        auto fdhandle = reinterpret_cast<file_descriptor_handle*>(
+        auto fdhandle = static_cast<file_descriptor_handle*>(
             lua_newuserdata(L, sizeof(file_descriptor_handle))
         );
         rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
@@ -204,7 +204,7 @@ static int chan_send(lua_State* L)
     }
 
     auto& vm_ctx = get_vm_context(L);
-    auto handle = reinterpret_cast<actor_address*>(lua_touserdata(L, 1));
+    auto handle = static_cast<actor_address*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -425,7 +425,7 @@ static int chan_send(lua_State* L)
                 if (lua_getmetatable(L, -1)) {
                     rawgetp(L, LUA_REGISTRYINDEX, &tx_chan_mt_key);
                     if (lua_rawequal(L, -1, -2)) {
-                        const auto& msg = *reinterpret_cast<actor_address*>(
+                        const auto& msg = *static_cast<actor_address*>(
                             lua_touserdata(L, -3));
                         cur_value->emplace<actor_address>(msg);
                         lua_pop(L, 3);
@@ -440,7 +440,7 @@ static int chan_send(lua_State* L)
 #if BOOST_OS_UNIX
                     rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
                     if (lua_rawequal(L, -1, -4)) {
-                        auto msg = *reinterpret_cast<file_descriptor_handle*>(
+                        auto msg = *static_cast<file_descriptor_handle*>(
                             lua_touserdata(L, -5));
                         if (msg != -1) {
                             int newfd = dup(msg);
@@ -566,7 +566,7 @@ static int chan_send(lua_State* L)
             return lua_error(L);
         }
         if (lua_rawequal(L, -1, -2)) {
-            const auto& msg = *reinterpret_cast<const actor_address*>(
+            const auto& msg = *static_cast<const actor_address*>(
                 lua_touserdata(L, 2));
             sender.msg.emplace<actor_address>(msg);
             break;
@@ -579,7 +579,7 @@ static int chan_send(lua_State* L)
 #if BOOST_OS_UNIX
         rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
         if (lua_rawequal(L, -1, -3)) {
-            auto msg = *reinterpret_cast<file_descriptor_handle*>(
+            auto msg = *static_cast<file_descriptor_handle*>(
                 lua_touserdata(L, 2));
             if (msg == -1) {
                 push(L, std::errc::device_or_resource_busy);
@@ -608,9 +608,9 @@ static int chan_send(lua_State* L)
         L,
         [](lua_State* L) -> int {
             auto& vm_ctx = get_vm_context(L);
-            auto handle = reinterpret_cast<const actor_address*>(
+            auto handle = static_cast<const actor_address*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
-            auto current_fiber = reinterpret_cast<lua_State*>(
+            auto current_fiber = static_cast<lua_State*>(
                 lua_touserdata(L, lua_upvalueindex(2)));
 
             auto dest_vm_ctx = handle->dest.lock();
@@ -700,7 +700,7 @@ static int chan_send(lua_State* L)
 
 static int tx_chan_close(lua_State* L)
 {
-    auto handle = reinterpret_cast<actor_address*>(lua_touserdata(L, 1));
+    auto handle = static_cast<actor_address*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1029,7 +1029,7 @@ static int spawn_vm(lua_State* L)
             emilua::ContextType::worker);
 #endif
 
-        auto buf = reinterpret_cast<actor_address*>(
+        auto buf = static_cast<actor_address*>(
             lua_newuserdata(L, sizeof(actor_address))
         );
         rawgetp(L, LUA_REGISTRYINDEX, &tx_chan_mt_key);
@@ -1110,8 +1110,8 @@ static int tx_chan_mt_eq(lua_State* L)
         return !a.owner_before(b) && !b.owner_before(a);
     };
 
-    const auto& a = *reinterpret_cast<actor_address*>(lua_touserdata(L, 1));
-    const auto& b = *reinterpret_cast<actor_address*>(lua_touserdata(L, 2));
+    const auto& a = *static_cast<actor_address*>(lua_touserdata(L, 1));
+    const auto& b = *static_cast<actor_address*>(lua_touserdata(L, 2));
     lua_pushboolean(L, is_same(a.dest, b.dest) ? 1 : 0);
     return 1;
 }

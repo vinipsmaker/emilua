@@ -724,7 +724,7 @@ inline void rawgetp(lua_State* L, int pseudoindex, const void* p)
 template<class T>
 inline void finalize(lua_State* L, int index = 1)
 {
-    auto obj = reinterpret_cast<T*>(lua_touserdata(L, index));
+    auto obj = static_cast<T*>(lua_touserdata(L, index));
     assert(obj);
     obj->~T();
 }

@@ -343,7 +343,7 @@ void vm_context::fiber_epilogue(int resume_result)
             lua_rawseti(current_fiber_, -3, FiberDataIndex::STATUS);
 
             lua_rawgeti(current_fiber_, -2, FiberDataIndex::USER_HANDLE);
-            auto join_handle = reinterpret_cast<fiber_handle*>(
+            auto join_handle = static_cast<fiber_handle*>(
                 lua_touserdata(current_fiber_, -1));
 
             lua_pop(current_fiber_, 4);
@@ -441,7 +441,7 @@ void vm_context::notify_cleanup_error(lua_State* coro)
 vm_context& get_vm_context(lua_State* L)
 {
     rawgetp(L, LUA_REGISTRYINDEX, &detail::context_key);
-    auto ret = reinterpret_cast<vm_context*>(lua_touserdata(L, -1));
+    auto ret = static_cast<vm_context*>(lua_touserdata(L, -1));
     assert(ret);
     lua_pop(L, 1);
     return *ret;
@@ -462,7 +462,7 @@ void push(lua_State* L, const std::error_code& ec)
 
     lua_pushliteral(L, "category");
     {
-        *reinterpret_cast<const std::error_category**>(
+        *static_cast<const std::error_category**>(
             lua_newuserdata(L, sizeof(void*))) = &ec.category();
         rawgetp(L, LUA_REGISTRYINDEX, &detail::error_category_mt_key);
         setmetatable(L, -2);
@@ -502,7 +502,7 @@ std::variant<std::string_view, std::error_code> inspect_errobj(lua_State* L)
             lua_pop(L, 4);
             break;
         }
-        cat = *reinterpret_cast<std::error_category**>(lua_touserdata(L, -3));
+        cat = *static_cast<std::error_category**>(lua_touserdata(L, -3));
         ret = std::error_code{ev, *cat};
         lua_pop(L, 4);
         break;
@@ -581,7 +581,7 @@ set_default_interrupter(lua_State* L, vm_context& vm_ctx)
     }
 
     lua_rawgeti(L, -2, FiberDataIndex::ASIO_CANCELLATION_SIGNAL);
-    auto cancel_signal = reinterpret_cast<asio::cancellation_signal*>(
+    auto cancel_signal = static_cast<asio::cancellation_signal*>(
         lua_touserdata(L, -1));
     lua_rawgeti(L, -3, FiberDataIndex::DEFAULT_EMIT_SIGNAL_INTERRUPTER);
     lua_rawseti(L, -4, FiberDataIndex::INTERRUPTER);

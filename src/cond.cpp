@@ -23,8 +23,7 @@ struct cond_handle
 
 static int cond_wait(lua_State* L)
 {
-    auto cond_handle = reinterpret_cast<struct cond_handle*>(
-        lua_touserdata(L, 1));
+    auto cond_handle = static_cast<struct cond_handle*>(lua_touserdata(L, 1));
     if (!cond_handle || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -35,8 +34,7 @@ static int cond_wait(lua_State* L)
         return lua_error(L);
     }
 
-    auto mutex_handle = reinterpret_cast<struct mutex_handle*>(
-        lua_touserdata(L, 2));
+    auto mutex_handle = static_cast<struct mutex_handle*>(lua_touserdata(L, 2));
     if (!mutex_handle || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -60,9 +58,9 @@ static int cond_wait(lua_State* L)
         L,
         [](lua_State* L) -> int {
             auto vm_ctx = get_vm_context(L).shared_from_this();
-            auto handle = reinterpret_cast<struct cond_handle*>(
+            auto handle = static_cast<struct cond_handle*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
-            auto current_fiber = reinterpret_cast<lua_State*>(
+            auto current_fiber = static_cast<lua_State*>(
                 lua_touserdata(L, lua_upvalueindex(2)));
 
             auto it = std::find(handle->pending.begin(), handle->pending.end(),
@@ -111,7 +109,7 @@ static int cond_wait(lua_State* L)
 
 static int cond_notify_one(lua_State* L)
 {
-    auto handle = reinterpret_cast<cond_handle*>(lua_touserdata(L, 1));
+    auto handle = static_cast<cond_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -136,7 +134,7 @@ static int cond_notify_one(lua_State* L)
 
 static int cond_notify_all(lua_State* L)
 {
-    auto handle = reinterpret_cast<cond_handle*>(lua_touserdata(L, 1));
+    auto handle = static_cast<cond_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -194,7 +192,7 @@ static int cond_mt_index(lua_State* L)
 
 static int cond_new(lua_State* L)
 {
-    auto buf = reinterpret_cast<cond_handle*>(
+    auto buf = static_cast<cond_handle*>(
         lua_newuserdata(L, sizeof(cond_handle))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &cond_mt_key);

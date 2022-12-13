@@ -159,7 +159,7 @@ static int tls_context_new(lua_State* L)
     try {
         auto ctx = std::make_shared<asio::ssl::context>(*method);
 
-        auto c = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+        auto c = static_cast<std::shared_ptr<asio::ssl::context>*>(
             lua_newuserdata(L, sizeof(std::shared_ptr<asio::ssl::context>))
         );
         rawgetp(L, LUA_REGISTRYINDEX, &tls_context_mt_key);
@@ -174,7 +174,7 @@ static int tls_context_new(lua_State* L)
 
 static int context_add_certificate_authority(lua_State* L)
 {
-    auto ctx = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+    auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
     );
     if (!ctx || !lua_getmetatable(L, 1)) {
@@ -187,7 +187,7 @@ static int context_add_certificate_authority(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -212,7 +212,7 @@ static int context_add_verify_path(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto ctx = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+    auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
     );
     if (!ctx || !lua_getmetatable(L, 1)) {
@@ -238,7 +238,7 @@ static int context_clear_options(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TNUMBER);
 
-    auto ctx = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+    auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
     );
     if (!ctx || !lua_getmetatable(L, 1)) {
@@ -264,7 +264,7 @@ static int context_load_verify_file(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto ctx = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+    auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
     );
     if (!ctx || !lua_getmetatable(L, 1)) {
@@ -288,7 +288,7 @@ static int context_load_verify_file(lua_State* L)
 
 static int context_set_default_verify_paths(lua_State* L)
 {
-    auto ctx = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+    auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
     );
     if (!ctx || !lua_getmetatable(L, 1)) {
@@ -314,7 +314,7 @@ static int context_set_options(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TNUMBER);
 
-    auto ctx = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+    auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
     );
     if (!ctx || !lua_getmetatable(L, 1)) {
@@ -342,7 +342,7 @@ static int context_set_password_callback(lua_State* L)
 
     auto& vm_ctx = get_vm_context(L);
 
-    auto ctx = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+    auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
     );
     if (!ctx || !lua_getmetatable(L, 1)) {
@@ -372,7 +372,7 @@ static int context_set_verify_callback(lua_State* L)
     lua_settop(L, 3);
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto ctx = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+    auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
     );
     if (!ctx || !lua_getmetatable(L, 1)) {
@@ -416,7 +416,7 @@ static int context_set_verify_depth(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TNUMBER);
 
-    auto ctx = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+    auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
     );
     if (!ctx || !lua_getmetatable(L, 1)) {
@@ -442,7 +442,7 @@ static int context_set_verify_mode(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto ctx = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+    auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
     );
     if (!ctx || !lua_getmetatable(L, 1)) {
@@ -517,7 +517,7 @@ static int context_use_certificate(lua_State* L)
 {
     luaL_checktype(L, 3, LUA_TSTRING);
 
-    auto ctx = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+    auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
     );
     if (!ctx || !lua_getmetatable(L, 1)) {
@@ -530,7 +530,7 @@ static int context_use_certificate(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -563,7 +563,7 @@ static int context_use_certificate(lua_State* L)
 
 static int context_use_certificate_chain(lua_State* L)
 {
-    auto ctx = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+    auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
     );
     if (!ctx || !lua_getmetatable(L, 1)) {
@@ -576,7 +576,7 @@ static int context_use_certificate_chain(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -600,7 +600,7 @@ static int context_use_certificate_chain_file(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto ctx = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+    auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
     );
     if (!ctx || !lua_getmetatable(L, 1)) {
@@ -628,7 +628,7 @@ static int context_use_certificate_file(lua_State* L)
     luaL_checktype(L, 2, LUA_TSTRING);
     luaL_checktype(L, 3, LUA_TSTRING);
 
-    auto ctx = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+    auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
     );
     if (!ctx || !lua_getmetatable(L, 1)) {
@@ -666,7 +666,7 @@ static int context_use_private_key(lua_State* L)
 {
     luaL_checktype(L, 3, LUA_TSTRING);
 
-    auto ctx = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+    auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
     );
     if (!ctx || !lua_getmetatable(L, 1)) {
@@ -679,7 +679,7 @@ static int context_use_private_key(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -715,7 +715,7 @@ static int context_use_private_key_file(lua_State* L)
     luaL_checktype(L, 2, LUA_TSTRING);
     luaL_checktype(L, 3, LUA_TSTRING);
 
-    auto ctx = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+    auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
     );
     if (!ctx || !lua_getmetatable(L, 1)) {
@@ -753,7 +753,7 @@ static int context_use_rsa_private_key(lua_State* L)
 {
     luaL_checktype(L, 3, LUA_TSTRING);
 
-    auto ctx = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+    auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
     );
     if (!ctx || !lua_getmetatable(L, 1)) {
@@ -766,7 +766,7 @@ static int context_use_rsa_private_key(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -803,7 +803,7 @@ static int context_use_rsa_private_key_file(lua_State* L)
     luaL_checktype(L, 2, LUA_TSTRING);
     luaL_checktype(L, 3, LUA_TSTRING);
 
-    auto ctx = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+    auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
     );
     if (!ctx || !lua_getmetatable(L, 1)) {
@@ -839,7 +839,7 @@ static int context_use_rsa_private_key_file(lua_State* L)
 
 static int context_use_tmp_dh(lua_State* L)
 {
-    auto ctx = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+    auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
     );
     if (!ctx || !lua_getmetatable(L, 1)) {
@@ -852,7 +852,7 @@ static int context_use_tmp_dh(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -876,7 +876,7 @@ static int context_use_tmp_dh_file(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto ctx = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+    auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
     );
     if (!ctx || !lua_getmetatable(L, 1)) {
@@ -1056,7 +1056,7 @@ static int tls_socket_new(lua_State* L)
 {
     lua_settop(L, 2);
 
-    auto tcp_s = reinterpret_cast<asio::ip::tcp::socket*>(lua_touserdata(L, 1));
+    auto tcp_s = static_cast<asio::ip::tcp::socket*>(lua_touserdata(L, 1));
     if (!tcp_s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1067,7 +1067,7 @@ static int tls_socket_new(lua_State* L)
         return lua_error(L);
     }
 
-    auto c = reinterpret_cast<std::shared_ptr<asio::ssl::context>*>(
+    auto c = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 2)
     );
     if (!c || !lua_getmetatable(L, 2)) {
@@ -1080,9 +1080,7 @@ static int tls_socket_new(lua_State* L)
         return lua_error(L);
     }
 
-    auto s = reinterpret_cast<TlsSocket*>(
-        lua_newuserdata(L, sizeof(TlsSocket))
-    );
+    auto s = static_cast<TlsSocket*>(lua_newuserdata(L, sizeof(TlsSocket)));
     rawgetp(L, LUA_REGISTRYINDEX, &tls_socket_mt_key);
     setmetatable(L, -2);
     new (s) TlsSocket{*tcp_s, *c};
@@ -1101,7 +1099,7 @@ static int socket_handshake(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<TlsSocket*>(lua_touserdata(L, 1));
+    auto s = static_cast<TlsSocket*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1116,7 +1114,7 @@ static int socket_handshake(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto s = reinterpret_cast<TlsSocket*>(
+            auto s = static_cast<TlsSocket*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
             s->next_layer().cancel(ignored_ec);
@@ -1148,7 +1146,7 @@ static int tls_socket_read_some(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<TlsSocket*>(lua_touserdata(L, 1));
+    auto s = static_cast<TlsSocket*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1159,7 +1157,7 @@ static int tls_socket_read_some(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -1174,7 +1172,7 @@ static int tls_socket_read_some(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto s = reinterpret_cast<TlsSocket*>(
+            auto s = static_cast<TlsSocket*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
             s->next_layer().cancel(ignored_ec);
@@ -1214,7 +1212,7 @@ static int tls_socket_write_some(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<TlsSocket*>(lua_touserdata(L, 1));
+    auto s = static_cast<TlsSocket*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1225,7 +1223,7 @@ static int tls_socket_write_some(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -1240,7 +1238,7 @@ static int tls_socket_write_some(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto s = reinterpret_cast<TlsSocket*>(
+            auto s = static_cast<TlsSocket*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
             s->next_layer().cancel(ignored_ec);
@@ -1277,7 +1275,7 @@ static int tls_socket_set_server_name(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto s = reinterpret_cast<TlsSocket*>(lua_touserdata(L, 1));
+    auto s = static_cast<TlsSocket*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1305,7 +1303,7 @@ static int tls_socket_set_verify_callback(lua_State* L)
     lua_settop(L, 3);
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto s = reinterpret_cast<TlsSocket*>(lua_touserdata(L, 1));
+    auto s = static_cast<TlsSocket*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1347,7 +1345,7 @@ static int tls_socket_set_verify_depth(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TNUMBER);
 
-    auto s = reinterpret_cast<TlsSocket*>(lua_touserdata(L, 1));
+    auto s = static_cast<TlsSocket*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1371,7 +1369,7 @@ static int tls_socket_set_verify_mode(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto s = reinterpret_cast<TlsSocket*>(lua_touserdata(L, 1));
+    auto s = static_cast<TlsSocket*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);

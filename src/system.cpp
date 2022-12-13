@@ -160,7 +160,7 @@ static int system_out_write_some(lua_State* L)
     auto& vm_ctx = get_vm_context(L);
     EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -194,7 +194,7 @@ static int system_err_write_some(lua_State* L)
     auto& vm_ctx = get_vm_context(L);
     EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -261,7 +261,7 @@ static int system_signal_set_new(lua_State* L)
         }
     }
 
-    auto set = reinterpret_cast<asio::signal_set*>(
+    auto set = static_cast<asio::signal_set*>(
         lua_newuserdata(L, sizeof(asio::signal_set))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &system_signal_set_mt_key);
@@ -286,7 +286,7 @@ static int system_signal_set_wait(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto set = reinterpret_cast<asio::signal_set*>(lua_touserdata(L, 1));
+    auto set = static_cast<asio::signal_set*>(lua_touserdata(L, 1));
     if (!set || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -301,7 +301,7 @@ static int system_signal_set_wait(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto set = reinterpret_cast<asio::signal_set*>(
+            auto set = static_cast<asio::signal_set*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
             set->cancel(ignored_ec);
@@ -331,7 +331,7 @@ static int system_signal_set_add(lua_State* L)
 {
     lua_settop(L, 2);
 
-    auto set = reinterpret_cast<asio::signal_set*>(lua_touserdata(L, 1));
+    auto set = static_cast<asio::signal_set*>(lua_touserdata(L, 1));
     if (!set || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -359,7 +359,7 @@ static int system_signal_set_remove(lua_State* L)
 {
     lua_settop(L, 2);
 
-    auto set = reinterpret_cast<asio::signal_set*>(lua_touserdata(L, 1));
+    auto set = static_cast<asio::signal_set*>(lua_touserdata(L, 1));
     if (!set || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -385,7 +385,7 @@ static int system_signal_set_remove(lua_State* L)
 
 static int system_signal_set_clear(lua_State* L)
 {
-    auto set = reinterpret_cast<asio::signal_set*>(lua_touserdata(L, 1));
+    auto set = static_cast<asio::signal_set*>(lua_touserdata(L, 1));
     if (!set || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -407,7 +407,7 @@ static int system_signal_set_clear(lua_State* L)
 
 static int system_signal_set_cancel(lua_State* L)
 {
-    auto set = reinterpret_cast<asio::signal_set*>(lua_touserdata(L, 1));
+    auto set = static_cast<asio::signal_set*>(lua_touserdata(L, 1));
     if (!set || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -561,7 +561,7 @@ static int system_in_read_some(lua_State* L)
     auto& vm_ctx = get_vm_context(L);
     EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -608,9 +608,9 @@ static int system_in_read_some(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto service = reinterpret_cast<stdin_service*>(
+            auto service = static_cast<stdin_service*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
-            auto fiber = reinterpret_cast<lua_State*>(
+            auto fiber = static_cast<lua_State*>(
                 lua_touserdata(L, lua_upvalueindex(2)));
 
             auto vm_ctx = get_vm_context(L).shared_from_this();
@@ -664,7 +664,7 @@ static int system_in_read_some(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -723,7 +723,7 @@ static int system_out_write_some(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -782,7 +782,7 @@ static int system_err_write_some(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);

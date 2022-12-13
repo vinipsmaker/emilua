@@ -99,7 +99,7 @@ to_beast_request(const Request& src)
 
 static int websocket_is_websocket_upgrade(lua_State* L)
 {
-    auto m = reinterpret_cast<std::shared_ptr<Request>*>(lua_touserdata(L, 1));
+    auto m = static_cast<std::shared_ptr<Request>*>(lua_touserdata(L, 1));
     if (!m || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -140,7 +140,7 @@ inline int websocket_new_client(lua_State* L, int nargs)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto sock = reinterpret_cast<T*>(lua_touserdata(L, 1));
+    auto sock = static_cast<T*>(lua_touserdata(L, 1));
     auto host = tostringview(L, 2);
     auto request_target = tostringview(L, 3);
 
@@ -157,7 +157,7 @@ inline int websocket_new_client(lua_State* L, int nargs)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto op = reinterpret_cast<websocket_client_new_operation<T>*>(
+            auto op = static_cast<websocket_client_new_operation<T>*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             op->interrupted = true;
             try {
@@ -223,7 +223,7 @@ inline int websocket_new_client(lua_State* L, int nargs)
             [ws,pending_op,vm_ctx,current_fiber](boost::system::error_code ec) {
                 auto websocket_pusher = [&ws](lua_State* L) {
                     using U = websocket_stream<T>;
-                    auto s = reinterpret_cast<std::shared_ptr<U>*>(
+                    auto s = static_cast<std::shared_ptr<U>*>(
                         lua_newuserdata(L, sizeof(std::shared_ptr<U>)));
                     rawgetp(L, LUA_REGISTRYINDEX,
                             get_websocket_mt_key<T>::get());
@@ -310,9 +310,8 @@ inline int websocket_new_server(lua_State* L, int nargs)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto sock = reinterpret_cast<HttpSocket<T>*>(lua_touserdata(L, 1));
-    auto req = **reinterpret_cast<std::shared_ptr<Request>*>(
-        lua_touserdata(L, 2));
+    auto sock = static_cast<HttpSocket<T>*>(lua_touserdata(L, 1));
+    auto req = **static_cast<std::shared_ptr<Request>*>(lua_touserdata(L, 2));
 
     auto ws = std::make_shared<websocket_stream<T>>(
         std::move(sock->socket.next_layer()));
@@ -377,7 +376,7 @@ inline int websocket_new_server(lua_State* L, int nargs)
             [ws,vm_ctx,current_fiber](boost::system::error_code ec) {
                 auto websocket_pusher = [&ws](lua_State* L) {
                     using U = websocket_stream<T>;
-                    auto s = reinterpret_cast<std::shared_ptr<U>*>(
+                    auto s = static_cast<std::shared_ptr<U>*>(
                         lua_newuserdata(L, sizeof(std::shared_ptr<U>)));
                     rawgetp(L, LUA_REGISTRYINDEX,
                             get_websocket_mt_key<T>::get());
@@ -442,7 +441,7 @@ static int websocket_close(lua_State* L)
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
     using U = websocket_stream<T>;
-    auto s = reinterpret_cast<std::shared_ptr<U>*>(lua_touserdata(L, 1));
+    auto s = static_cast<std::shared_ptr<U>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -480,7 +479,7 @@ static int websocket_close(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto s = reinterpret_cast<std::shared_ptr<U>*>(
+            auto s = static_cast<std::shared_ptr<U>*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
             boost::beast::get_lowest_layer(**s).close(ignored_ec);
@@ -518,7 +517,7 @@ static int websocket_write(lua_State* L)
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
     using U = websocket_stream<T>;
-    auto s = reinterpret_cast<std::shared_ptr<U>*>(lua_touserdata(L, 1));
+    auto s = static_cast<std::shared_ptr<U>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -538,7 +537,7 @@ static int websocket_write(lua_State* L)
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     case LUA_TUSERDATA: {
-        auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+        auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
         if (!bs || !lua_getmetatable(L, 2)) {
             push(L, std::errc::invalid_argument, "arg", 2);
             return lua_error(L);
@@ -585,7 +584,7 @@ static int websocket_write(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto s = reinterpret_cast<std::shared_ptr<U>*>(
+            auto s = static_cast<std::shared_ptr<U>*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
             boost::beast::get_lowest_layer(**s).close(ignored_ec);
@@ -623,7 +622,7 @@ static int websocket_read_some(lua_State* L)
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
     using U = websocket_stream<T>;
-    auto s = reinterpret_cast<std::shared_ptr<U>*>(lua_touserdata(L, 1));
+    auto s = static_cast<std::shared_ptr<U>*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -639,7 +638,7 @@ static int websocket_read_some(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -654,7 +653,7 @@ static int websocket_read_some(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto s = reinterpret_cast<std::shared_ptr<U>*>(
+            auto s = static_cast<std::shared_ptr<U>*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
             boost::beast::get_lowest_layer(**s).close(ignored_ec);

@@ -34,7 +34,7 @@ static int fiber_join(lua_State* L)
     auto& vm_ctx = get_vm_context(L);
     EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
 
-    auto handle = reinterpret_cast<fiber_handle*>(lua_touserdata(L, 1));
+    auto handle = static_cast<fiber_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -80,9 +80,9 @@ static int fiber_join(lua_State* L)
             L,
             [](lua_State* L) -> int {
                 auto vm_ctx = get_vm_context(L).shared_from_this();
-                auto handle = reinterpret_cast<fiber_handle*>(
+                auto handle = static_cast<fiber_handle*>(
                     lua_touserdata(L, lua_upvalueindex(1)));
-                auto current_fiber = reinterpret_cast<lua_State*>(
+                auto current_fiber = static_cast<lua_State*>(
                     lua_touserdata(L, lua_upvalueindex(2)));
                 rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
                 lua_pushvalue(L, lua_upvalueindex(3));
@@ -165,7 +165,7 @@ static int fiber_join(lua_State* L)
 
 static int fiber_detach(lua_State* L)
 {
-    auto handle = reinterpret_cast<fiber_handle*>(lua_touserdata(L, 1));
+    auto handle = static_cast<fiber_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -218,7 +218,7 @@ static int fiber_detach(lua_State* L)
 static int fiber_interrupt(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
-    auto handle = reinterpret_cast<fiber_handle*>(lua_touserdata(L, 1));
+    auto handle = static_cast<fiber_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -257,7 +257,7 @@ static int fiber_interrupt(lua_State* L)
 
 inline int fiber_interruption_caught(lua_State* L)
 {
-    auto handle = reinterpret_cast<fiber_handle*>(lua_touserdata(L, 1));
+    auto handle = static_cast<fiber_handle*>(lua_touserdata(L, 1));
     assert(handle);
     if (!handle->interruption_caught) {
         push(L, std::errc::invalid_argument);
@@ -269,7 +269,7 @@ inline int fiber_interruption_caught(lua_State* L)
 
 inline int fiber_joinable(lua_State* L)
 {
-    auto handle = reinterpret_cast<fiber_handle*>(lua_touserdata(L, 1));
+    auto handle = static_cast<fiber_handle*>(lua_touserdata(L, 1));
     assert(handle);
     lua_pushboolean(L, handle->fiber != nullptr && !handle->join_in_progress);
     return 1;
@@ -318,7 +318,7 @@ static int fiber_mt_index(lua_State* L)
 static int fiber_mt_gc(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
-    auto handle = reinterpret_cast<fiber_handle*>(lua_touserdata(L, 1));
+    auto handle = static_cast<fiber_handle*>(lua_touserdata(L, 1));
     assert(handle);
 
     if (!handle->fiber)
@@ -384,7 +384,7 @@ static int spawn(lua_State* L)
         lua_rawseti(new_fiber, -2, FiberDataIndex::INTERRUPTION_DISABLED);
     }
     {
-        auto cancel_signal = reinterpret_cast<asio::cancellation_signal*>(
+        auto cancel_signal = static_cast<asio::cancellation_signal*>(
             lua_newuserdata(L, sizeof(asio::cancellation_signal)));
         rawgetp(L, LUA_REGISTRYINDEX, &asio_cancellation_signal_mt_key);
         setmetatable(L, -2);
@@ -394,9 +394,8 @@ static int spawn(lua_State* L)
         lua_pushcclosure(
             L,
             [](lua_State* L) -> int {
-                auto cancel_signal = reinterpret_cast<
-                    asio::cancellation_signal*
-                >(lua_touserdata(L, lua_upvalueindex(1)));
+                auto cancel_signal = static_cast<asio::cancellation_signal*>(
+                    lua_touserdata(L, lua_upvalueindex(1)));
                 assert(cancel_signal);
                 cancel_signal->emit(asio::cancellation_type::terminal);
                 return 0;
@@ -432,7 +431,7 @@ static int spawn(lua_State* L)
     }, std::allocator<void>{});
 
     {
-        auto buf = reinterpret_cast<fiber_handle*>(
+        auto buf = static_cast<fiber_handle*>(
             lua_newuserdata(L, sizeof(fiber_handle))
         );
         rawgetp(L, LUA_REGISTRYINDEX, &fiber_mt_key);

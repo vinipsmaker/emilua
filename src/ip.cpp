@@ -135,7 +135,7 @@ static int ip_host_name(lua_State* L)
 static int address_new(lua_State* L)
 {
     lua_settop(L, 1);
-    auto a = reinterpret_cast<asio::ip::address*>(
+    auto a = static_cast<asio::ip::address*>(
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -165,7 +165,7 @@ static int address_new(lua_State* L)
 
 static int address_any_v4(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(
+    auto a = static_cast<asio::ip::address*>(
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -176,7 +176,7 @@ static int address_any_v4(lua_State* L)
 
 static int address_any_v6(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(
+    auto a = static_cast<asio::ip::address*>(
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -187,7 +187,7 @@ static int address_any_v6(lua_State* L)
 
 static int address_loopback_v4(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(
+    auto a = static_cast<asio::ip::address*>(
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -198,7 +198,7 @@ static int address_loopback_v4(lua_State* L)
 
 static int address_loopback_v6(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(
+    auto a = static_cast<asio::ip::address*>(
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -209,7 +209,7 @@ static int address_loopback_v6(lua_State* L)
 
 static int address_broadcast_v4(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(
+    auto a = static_cast<asio::ip::address*>(
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -220,7 +220,7 @@ static int address_broadcast_v4(lua_State* L)
 
 static int address_to_v6(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -231,7 +231,7 @@ static int address_to_v6(lua_State* L)
         return lua_error(L);
     }
 
-    auto ret = reinterpret_cast<asio::ip::address*>(
+    auto ret = static_cast<asio::ip::address*>(
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -245,7 +245,7 @@ static int address_to_v6(lua_State* L)
 
 static int address_to_v4(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -256,7 +256,7 @@ static int address_to_v4(lua_State* L)
         return lua_error(L);
     }
 
-    auto ret = reinterpret_cast<asio::ip::address*>(
+    auto ret = static_cast<asio::ip::address*>(
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -276,42 +276,42 @@ static int address_to_v4(lua_State* L)
 
 inline int address_is_loopback(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
     lua_pushboolean(L, a->is_loopback());
     return 1;
 }
 
 inline int address_is_multicast(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
     lua_pushboolean(L, a->is_multicast());
     return 1;
 }
 
 inline int address_is_unspecified(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
     lua_pushboolean(L, a->is_unspecified());
     return 1;
 }
 
 inline int address_is_v4(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
     lua_pushboolean(L, a->is_v4());
     return 1;
 }
 
 inline int address_is_v6(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
     lua_pushboolean(L, a->is_v6());
     return 1;
 }
 
 inline int address_is_link_local(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a->is_v6()) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -323,7 +323,7 @@ inline int address_is_link_local(lua_State* L)
 
 inline int address_is_multicast_global(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a->is_v6()) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -335,7 +335,7 @@ inline int address_is_multicast_global(lua_State* L)
 
 inline int address_is_multicast_link_local(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a->is_v6()) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -347,7 +347,7 @@ inline int address_is_multicast_link_local(lua_State* L)
 
 inline int address_is_multicast_node_local(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a->is_v6()) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -359,7 +359,7 @@ inline int address_is_multicast_node_local(lua_State* L)
 
 inline int address_is_multicast_org_local(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a->is_v6()) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -371,7 +371,7 @@ inline int address_is_multicast_org_local(lua_State* L)
 
 inline int address_is_multicast_site_local(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a->is_v6()) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -383,7 +383,7 @@ inline int address_is_multicast_site_local(lua_State* L)
 
 inline int address_is_site_local(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a->is_v6()) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -395,7 +395,7 @@ inline int address_is_site_local(lua_State* L)
 
 inline int address_is_v4_mapped(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a->is_v6()) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -407,7 +407,7 @@ inline int address_is_v4_mapped(lua_State* L)
 
 inline int address_scope_id_get(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a->is_v6()) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -481,7 +481,7 @@ inline int address_scope_id_set(lua_State* L)
 {
     luaL_checktype(L, 3, LUA_TNUMBER);
 
-    auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a->is_v6()) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -510,7 +510,7 @@ static int address_mt_newindex(lua_State* L)
 
 static int address_mt_tostring(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
     auto ret = a->to_string();
     lua_pushlstring(L, ret.data(), ret.size());
     return 1;
@@ -518,24 +518,24 @@ static int address_mt_tostring(lua_State* L)
 
 static int address_mt_eq(lua_State* L)
 {
-    auto a1 = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
-    auto a2 = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 2));
+    auto a1 = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a2 = static_cast<asio::ip::address*>(lua_touserdata(L, 2));
     lua_pushboolean(L, *a1 == *a2);
     return 1;
 }
 
 static int address_mt_lt(lua_State* L)
 {
-    auto a1 = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
-    auto a2 = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 2));
+    auto a1 = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a2 = static_cast<asio::ip::address*>(lua_touserdata(L, 2));
     lua_pushboolean(L, *a1 < *a2);
     return 1;
 }
 
 static int address_mt_le(lua_State* L)
 {
-    auto a1 = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
-    auto a2 = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 2));
+    auto a1 = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a2 = static_cast<asio::ip::address*>(lua_touserdata(L, 2));
     lua_pushboolean(L, *a1 <= *a2);
     return 1;
 }
@@ -543,9 +543,7 @@ static int address_mt_le(lua_State* L)
 static int tcp_socket_new(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
-    auto a = reinterpret_cast<tcp_socket*>(
-        lua_newuserdata(L, sizeof(tcp_socket))
-    );
+    auto a = static_cast<tcp_socket*>(lua_newuserdata(L, sizeof(tcp_socket)));
     rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_socket_mt_key);
     setmetatable(L, -2);
     new (a) tcp_socket{vm_ctx.strand().context()};
@@ -555,7 +553,7 @@ static int tcp_socket_new(lua_State* L)
 static int tcp_socket_open(lua_State* L)
 {
     lua_settop(L, 2);
-    auto sock = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<tcp_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -571,7 +569,7 @@ static int tcp_socket_open(lua_State* L)
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     case LUA_TUSERDATA: {
-        auto addr = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 2));
+        auto addr = static_cast<asio::ip::address*>(lua_touserdata(L, 2));
         if (!addr || !lua_getmetatable(L, 2)) {
             push(L, std::errc::invalid_argument, "arg", 2);
             return lua_error(L);
@@ -630,7 +628,7 @@ static int tcp_socket_open(lua_State* L)
 static int tcp_socket_bind(lua_State* L)
 {
     luaL_checktype(L, 3, LUA_TNUMBER);
-    auto sock = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<tcp_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -646,7 +644,7 @@ static int tcp_socket_bind(lua_State* L)
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     case LUA_TUSERDATA: {
-        auto addr = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 2));
+        auto addr = static_cast<asio::ip::address*>(lua_touserdata(L, 2));
         if (!addr || !lua_getmetatable(L, 2)) {
             push(L, std::errc::invalid_argument, "arg", 2);
             return lua_error(L);
@@ -686,7 +684,7 @@ static int tcp_socket_bind(lua_State* L)
 
 static int tcp_socket_close(lua_State* L)
 {
-    auto sock = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<tcp_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -708,7 +706,7 @@ static int tcp_socket_close(lua_State* L)
 
 static int tcp_socket_cancel(lua_State* L)
 {
-    auto sock = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<tcp_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -732,8 +730,7 @@ static int tcp_socket_io_control(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto socket = reinterpret_cast<tcp_socket*>(
-        lua_touserdata(L, 1));
+    auto socket = static_cast<tcp_socket*>(lua_touserdata(L, 1));
     if (!socket || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -774,8 +771,7 @@ static int tcp_socket_shutdown(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto socket = reinterpret_cast<tcp_socket*>(
-        lua_touserdata(L, 1));
+    auto socket = static_cast<tcp_socket*>(lua_touserdata(L, 1));
     if (!socket || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -828,7 +824,7 @@ static int tcp_socket_connect(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    auto s = static_cast<tcp_socket*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -839,7 +835,7 @@ static int tcp_socket_connect(lua_State* L)
         return lua_error(L);
     }
 
-    auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 2));
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 2));
     if (!a || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -886,7 +882,7 @@ static int tcp_socket_read_some(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    auto s = static_cast<tcp_socket*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -897,7 +893,7 @@ static int tcp_socket_read_some(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -948,7 +944,7 @@ static int tcp_socket_write_some(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    auto s = static_cast<tcp_socket*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -959,7 +955,7 @@ static int tcp_socket_write_some(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -1010,7 +1006,7 @@ static int tcp_socket_receive(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    auto s = static_cast<tcp_socket*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1021,7 +1017,7 @@ static int tcp_socket_receive(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -1073,7 +1069,7 @@ static int tcp_socket_send(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    auto s = static_cast<tcp_socket*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1084,7 +1080,7 @@ static int tcp_socket_send(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -1141,7 +1137,7 @@ static int tcp_socket_send_file(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto sock = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<tcp_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1152,7 +1148,7 @@ static int tcp_socket_send_file(lua_State* L)
         return lua_error(L);
     }
 
-    auto file = reinterpret_cast<asio::random_access_file*>(
+    auto file = static_cast<asio::random_access_file*>(
         lua_touserdata(L, 2));
     if (!file || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
@@ -1168,7 +1164,7 @@ static int tcp_socket_send_file(lua_State* L)
     std::shared_ptr<unsigned char[]> buf1, buf2;
 
     if (lua_type(L, 6) != LUA_TNIL) {
-        auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 6));
+        auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 6));
         if (!bs || !lua_getmetatable(L, 6)) {
             push(L, std::errc::invalid_argument, "arg", 6);
             return lua_error(L);
@@ -1187,7 +1183,7 @@ static int tcp_socket_send_file(lua_State* L)
     }
 
     if (lua_type(L, 7) != LUA_TNIL) {
-        auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 7));
+        auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 7));
         if (!bs || !lua_getmetatable(L, 7)) {
             push(L, std::errc::invalid_argument, "arg", 7);
             return lua_error(L);
@@ -1235,12 +1231,12 @@ static int tcp_socket_send_file(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto sock = reinterpret_cast<tcp_socket*>(
+            auto sock = static_cast<tcp_socket*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             CancelIoEx(
                 reinterpret_cast<HANDLE>(
                     static_cast<SOCKET>(sock->socket.native_handle())),
-                reinterpret_cast<LPOVERLAPPED>(
+                static_cast<LPOVERLAPPED>(
                     lua_touserdata(L, lua_upvalueindex(2))));
             return 0;
         },
@@ -1281,7 +1277,7 @@ static int tcp_socket_wait(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto s = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    auto s = static_cast<tcp_socket*>(lua_touserdata(L, 1));
     if (!s || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1351,7 +1347,7 @@ static int tcp_socket_set_option(lua_State* L)
     lua_settop(L, 4);
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto socket = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    auto socket = static_cast<tcp_socket*>(lua_touserdata(L, 1));
     if (!socket || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1527,7 +1523,7 @@ static int tcp_socket_get_option(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto socket = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    auto socket = static_cast<tcp_socket*>(lua_touserdata(L, 1));
     if (!socket || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1696,21 +1692,21 @@ static int tcp_socket_get_option(lua_State* L)
 
 inline int tcp_socket_is_open(lua_State* L)
 {
-    auto sock = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<tcp_socket*>(lua_touserdata(L, 1));
     lua_pushboolean(L, sock->socket.is_open());
     return 1;
 }
 
 inline int tcp_socket_local_address(lua_State* L)
 {
-    auto sock = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<tcp_socket*>(lua_touserdata(L, 1));
     boost::system::error_code ec;
     auto ep = sock->socket.local_endpoint(ec);
     if (ec) {
         push(L, static_cast<std::error_code>(ec));
         return lua_error(L);
     }
-    auto addr = reinterpret_cast<asio::ip::address*>(
+    auto addr = static_cast<asio::ip::address*>(
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -1721,7 +1717,7 @@ inline int tcp_socket_local_address(lua_State* L)
 
 inline int tcp_socket_local_port(lua_State* L)
 {
-    auto sock = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<tcp_socket*>(lua_touserdata(L, 1));
     boost::system::error_code ec;
     auto ep = sock->socket.local_endpoint(ec);
     if (ec) {
@@ -1734,14 +1730,14 @@ inline int tcp_socket_local_port(lua_State* L)
 
 inline int tcp_socket_remote_address(lua_State* L)
 {
-    auto sock = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<tcp_socket*>(lua_touserdata(L, 1));
     boost::system::error_code ec;
     auto ep = sock->socket.remote_endpoint(ec);
     if (ec) {
         push(L, static_cast<std::error_code>(ec));
         return lua_error(L);
     }
-    auto addr = reinterpret_cast<asio::ip::address*>(
+    auto addr = static_cast<asio::ip::address*>(
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -1752,7 +1748,7 @@ inline int tcp_socket_remote_address(lua_State* L)
 
 inline int tcp_socket_remote_port(lua_State* L)
 {
-    auto sock = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<tcp_socket*>(lua_touserdata(L, 1));
     boost::system::error_code ec;
     auto ep = sock->socket.remote_endpoint(ec);
     if (ec) {
@@ -1765,7 +1761,7 @@ inline int tcp_socket_remote_port(lua_State* L)
 
 inline int tcp_socket_at_mark(lua_State* L)
 {
-    auto socket = reinterpret_cast<tcp_socket*>(lua_touserdata(L, 1));
+    auto socket = static_cast<tcp_socket*>(lua_touserdata(L, 1));
     boost::system::error_code ec;
     bool ret = socket->socket.at_mark(ec);
     if (ec) {
@@ -1910,7 +1906,7 @@ static int tcp_socket_mt_index(lua_State* L)
 static int tcp_acceptor_new(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
-    auto a = reinterpret_cast<asio::ip::tcp::acceptor*>(
+    auto a = static_cast<asio::ip::tcp::acceptor*>(
         lua_newuserdata(L, sizeof(asio::ip::tcp::acceptor))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_acceptor_mt_key);
@@ -1925,8 +1921,7 @@ static int tcp_acceptor_accept(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
-        lua_touserdata(L, 1));
+    auto acceptor = static_cast<asio::ip::tcp::acceptor*>(lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -1956,7 +1951,7 @@ static int tcp_acceptor_accept(lua_State* L)
                                     if (ec) {
                                         lua_pushnil(fiber);
                                     } else {
-                                        auto s = reinterpret_cast<tcp_socket*>(
+                                        auto s = static_cast<tcp_socket*>(
                                             lua_newuserdata(
                                                 fiber, sizeof(tcp_socket)));
                                         rawgetp(fiber, LUA_REGISTRYINDEX,
@@ -1976,8 +1971,7 @@ static int tcp_acceptor_accept(lua_State* L)
 static int tcp_acceptor_listen(lua_State* L)
 {
     lua_settop(L, 2);
-    auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
-        lua_touserdata(L, 1));
+    auto acceptor = static_cast<asio::ip::tcp::acceptor*>(lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -2016,8 +2010,7 @@ static int tcp_acceptor_listen(lua_State* L)
 static int tcp_acceptor_bind(lua_State* L)
 {
     luaL_checktype(L, 3, LUA_TNUMBER);
-    auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
-        lua_touserdata(L, 1));
+    auto acceptor = static_cast<asio::ip::tcp::acceptor*>(lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -2033,7 +2026,7 @@ static int tcp_acceptor_bind(lua_State* L)
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     case LUA_TUSERDATA: {
-        auto addr = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 2));
+        auto addr = static_cast<asio::ip::address*>(lua_touserdata(L, 2));
         if (!addr || !lua_getmetatable(L, 2)) {
             push(L, std::errc::invalid_argument, "arg", 2);
             return lua_error(L);
@@ -2072,8 +2065,7 @@ static int tcp_acceptor_bind(lua_State* L)
 static int tcp_acceptor_open(lua_State* L)
 {
     lua_settop(L, 2);
-    auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
-        lua_touserdata(L, 1));
+    auto acceptor = static_cast<asio::ip::tcp::acceptor*>(lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -2089,7 +2081,7 @@ static int tcp_acceptor_open(lua_State* L)
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     case LUA_TUSERDATA: {
-        auto addr = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 2));
+        auto addr = static_cast<asio::ip::address*>(lua_touserdata(L, 2));
         if (!addr || !lua_getmetatable(L, 2)) {
             push(L, std::errc::invalid_argument, "arg", 2);
             return lua_error(L);
@@ -2147,8 +2139,7 @@ static int tcp_acceptor_open(lua_State* L)
 
 static int tcp_acceptor_close(lua_State* L)
 {
-    auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
-        lua_touserdata(L, 1));
+    auto acceptor = static_cast<asio::ip::tcp::acceptor*>(lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -2173,8 +2164,7 @@ static int tcp_acceptor_set_option(lua_State* L)
     lua_settop(L, 3);
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
-        lua_touserdata(L, 1));
+    auto acceptor = static_cast<asio::ip::tcp::acceptor*>(lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -2255,8 +2245,7 @@ static int tcp_acceptor_get_option(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
-        lua_touserdata(L, 1));
+    auto acceptor = static_cast<asio::ip::tcp::acceptor*>(lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -2333,8 +2322,7 @@ static int tcp_acceptor_get_option(lua_State* L)
 
 static int tcp_acceptor_cancel(lua_State* L)
 {
-    auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
-        lua_touserdata(L, 1));
+    auto acceptor = static_cast<asio::ip::tcp::acceptor*>(lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -2356,22 +2344,21 @@ static int tcp_acceptor_cancel(lua_State* L)
 
 inline int tcp_acceptor_is_open(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::tcp::acceptor*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::tcp::acceptor*>(lua_touserdata(L, 1));
     lua_pushboolean(L, a->is_open());
     return 1;
 }
 
 inline int tcp_acceptor_local_address(lua_State* L)
 {
-    auto acceptor = reinterpret_cast<asio::ip::tcp::acceptor*>(
-        lua_touserdata(L, 1));
+    auto acceptor = static_cast<asio::ip::tcp::acceptor*>(lua_touserdata(L, 1));
     boost::system::error_code ec;
     auto ep = acceptor->local_endpoint(ec);
     if (ec) {
         push(L, static_cast<std::error_code>(ec));
         return lua_error(L);
     }
-    auto addr = reinterpret_cast<asio::ip::address*>(
+    auto addr = static_cast<asio::ip::address*>(
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -2382,7 +2369,7 @@ inline int tcp_acceptor_local_address(lua_State* L)
 
 inline int tcp_acceptor_local_port(lua_State* L)
 {
-    auto a = reinterpret_cast<asio::ip::tcp::acceptor*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::tcp::acceptor*>(lua_touserdata(L, 1));
     boost::system::error_code ec;
     auto ep = a->local_endpoint(ec);
     if (ec) {
@@ -2508,7 +2495,7 @@ static int tcp_get_address_info(lua_State* L)
             push(L, std::errc::invalid_argument, "arg", 1);
             return lua_error(L);
         }
-        auto& a = *reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+        auto& a = *static_cast<asio::ip::address*>(lua_touserdata(L, 1));
         host = a.to_string();
         flags |= asio::ip::resolver_base::numeric_host;
     }
@@ -2582,7 +2569,7 @@ static int tcp_get_address_info(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto query_ctx = reinterpret_cast<get_address_info_context_t*>(
+            auto query_ctx = static_cast<get_address_info_context_t*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             GetAddrInfoExCancel(&query_ctx->hCancel);
             return 0;
@@ -2661,7 +2648,7 @@ static int tcp_get_address_info(lua_State* L)
                         std::memcpy(ep.data(), it->ai_addr, ep.size());
 
                         lua_pushvalue(L, -1 -6);
-                        auto a = reinterpret_cast<asio::ip::address*>(
+                        auto a = static_cast<asio::ip::address*>(
                             lua_newuserdata(L, sizeof(asio::ip::address))
                         );
                         rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -2712,7 +2699,7 @@ static int tcp_get_address_info(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto service = reinterpret_cast<resolver_service*>(
+            auto service = static_cast<resolver_service*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             try {
                 service->tcp_resolver.cancel();
@@ -2748,7 +2735,7 @@ static int tcp_get_address_info(lua_State* L)
                             lua_createtable(fib, /*narr=*/0, /*nrec=*/4);
 
                             lua_pushvalue(fib, -1 -4);
-                            auto a = reinterpret_cast<asio::ip::address*>(
+                            auto a = static_cast<asio::ip::address*>(
                                 lua_newuserdata(fib, sizeof(asio::ip::address))
                             );
                             rawgetp(fib, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -2829,7 +2816,7 @@ static int tcp_get_address_v4_info(lua_State* L)
             push(L, std::errc::invalid_argument, "arg", 1);
             return lua_error(L);
         }
-        auto& a = *reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+        auto& a = *static_cast<asio::ip::address*>(lua_touserdata(L, 1));
         host = a.to_string();
         flags |= asio::ip::resolver_base::numeric_host;
     }
@@ -2903,7 +2890,7 @@ static int tcp_get_address_v4_info(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto query_ctx = reinterpret_cast<get_address_info_context_t*>(
+            auto query_ctx = static_cast<get_address_info_context_t*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             GetAddrInfoExCancel(&query_ctx->hCancel);
             return 0;
@@ -2982,7 +2969,7 @@ static int tcp_get_address_v4_info(lua_State* L)
                         std::memcpy(ep.data(), it->ai_addr, ep.size());
 
                         lua_pushvalue(L, -1 -6);
-                        auto a = reinterpret_cast<asio::ip::address*>(
+                        auto a = static_cast<asio::ip::address*>(
                             lua_newuserdata(L, sizeof(asio::ip::address))
                         );
                         rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -3033,7 +3020,7 @@ static int tcp_get_address_v4_info(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto service = reinterpret_cast<resolver_service*>(
+            auto service = static_cast<resolver_service*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             try {
                 service->tcp_resolver.cancel();
@@ -3070,7 +3057,7 @@ static int tcp_get_address_v4_info(lua_State* L)
                             lua_createtable(fib, /*narr=*/0, /*nrec=*/4);
 
                             lua_pushvalue(fib, -1 -4);
-                            auto a = reinterpret_cast<asio::ip::address*>(
+                            auto a = static_cast<asio::ip::address*>(
                                 lua_newuserdata(fib, sizeof(asio::ip::address))
                             );
                             rawgetp(fib, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -3151,7 +3138,7 @@ static int tcp_get_address_v6_info(lua_State* L)
             push(L, std::errc::invalid_argument, "arg", 1);
             return lua_error(L);
         }
-        auto& a = *reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+        auto& a = *static_cast<asio::ip::address*>(lua_touserdata(L, 1));
         host = a.to_string();
         flags |= asio::ip::resolver_base::numeric_host;
     }
@@ -3226,7 +3213,7 @@ static int tcp_get_address_v6_info(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto query_ctx = reinterpret_cast<get_address_info_context_t*>(
+            auto query_ctx = static_cast<get_address_info_context_t*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             GetAddrInfoExCancel(&query_ctx->hCancel);
             return 0;
@@ -3305,7 +3292,7 @@ static int tcp_get_address_v6_info(lua_State* L)
                         std::memcpy(ep.data(), it->ai_addr, ep.size());
 
                         lua_pushvalue(L, -1 -6);
-                        auto a = reinterpret_cast<asio::ip::address*>(
+                        auto a = static_cast<asio::ip::address*>(
                             lua_newuserdata(L, sizeof(asio::ip::address))
                         );
                         rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -3356,7 +3343,7 @@ static int tcp_get_address_v6_info(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto service = reinterpret_cast<resolver_service*>(
+            auto service = static_cast<resolver_service*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             try {
                 service->tcp_resolver.cancel();
@@ -3393,7 +3380,7 @@ static int tcp_get_address_v6_info(lua_State* L)
                             lua_createtable(fib, /*narr=*/0, /*nrec=*/4);
 
                             lua_pushvalue(fib, -1 -4);
-                            auto a = reinterpret_cast<asio::ip::address*>(
+                            auto a = static_cast<asio::ip::address*>(
                                 lua_newuserdata(fib, sizeof(asio::ip::address))
                             );
                             rawgetp(fib, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -3443,7 +3430,7 @@ static int tcp_get_name_info(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -3471,7 +3458,7 @@ static int tcp_get_name_info(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto service = reinterpret_cast<resolver_service*>(
+            auto service = static_cast<resolver_service*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             try {
                 service->tcp_resolver.cancel();
@@ -3505,7 +3492,7 @@ static int tcp_get_name_info(lua_State* L)
                             lua_createtable(fib, /*narr=*/0, /*nrec=*/4);
 
                             lua_pushvalue(fib, -1 -4);
-                            auto a = reinterpret_cast<asio::ip::address*>(
+                            auto a = static_cast<asio::ip::address*>(
                                 lua_newuserdata(fib, sizeof(asio::ip::address))
                             );
                             rawgetp(fib, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -3549,9 +3536,7 @@ static int tcp_get_name_info(lua_State* L)
 static int udp_socket_new(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
-    auto a = reinterpret_cast<udp_socket*>(
-        lua_newuserdata(L, sizeof(udp_socket))
-    );
+    auto a = static_cast<udp_socket*>(lua_newuserdata(L, sizeof(udp_socket)));
     rawgetp(L, LUA_REGISTRYINDEX, &ip_udp_socket_mt_key);
     setmetatable(L, -2);
     new (a) tcp_socket{vm_ctx.strand().context()};
@@ -3561,7 +3546,7 @@ static int udp_socket_new(lua_State* L)
 static int udp_socket_open(lua_State* L)
 {
     lua_settop(L, 2);
-    auto sock = reinterpret_cast<udp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<udp_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -3577,7 +3562,7 @@ static int udp_socket_open(lua_State* L)
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     case LUA_TUSERDATA: {
-        auto addr = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 2));
+        auto addr = static_cast<asio::ip::address*>(lua_touserdata(L, 2));
         if (!addr || !lua_getmetatable(L, 2)) {
             push(L, std::errc::invalid_argument, "arg", 2);
             return lua_error(L);
@@ -3636,7 +3621,7 @@ static int udp_socket_open(lua_State* L)
 static int udp_socket_bind(lua_State* L)
 {
     luaL_checktype(L, 3, LUA_TNUMBER);
-    auto sock = reinterpret_cast<udp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<udp_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -3652,7 +3637,7 @@ static int udp_socket_bind(lua_State* L)
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
     case LUA_TUSERDATA: {
-        auto addr = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 2));
+        auto addr = static_cast<asio::ip::address*>(lua_touserdata(L, 2));
         if (!addr || !lua_getmetatable(L, 2)) {
             push(L, std::errc::invalid_argument, "arg", 2);
             return lua_error(L);
@@ -3694,7 +3679,7 @@ static int udp_socket_shutdown(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto sock = reinterpret_cast<udp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<udp_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -3743,7 +3728,7 @@ static int udp_socket_shutdown(lua_State* L)
 static int udp_socket_connect(lua_State* L)
 {
     luaL_checktype(L, 3, LUA_TNUMBER);
-    auto sock = reinterpret_cast<udp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<udp_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -3754,7 +3739,7 @@ static int udp_socket_connect(lua_State* L)
         return lua_error(L);
     }
 
-    auto addr = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 2));
+    auto addr = static_cast<asio::ip::address*>(lua_touserdata(L, 2));
     if (!addr || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -3777,7 +3762,7 @@ static int udp_socket_connect(lua_State* L)
 
 static int udp_socket_close(lua_State* L)
 {
-    auto sock = reinterpret_cast<udp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<udp_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -3799,7 +3784,7 @@ static int udp_socket_close(lua_State* L)
 
 static int udp_socket_cancel(lua_State* L)
 {
-    auto sock = reinterpret_cast<udp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<udp_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -3824,8 +3809,7 @@ static int udp_socket_set_option(lua_State* L)
     lua_settop(L, 3);
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto socket = reinterpret_cast<udp_socket*>(
-        lua_touserdata(L, 1));
+    auto socket = static_cast<udp_socket*>(lua_touserdata(L, 1));
     if (!socket || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -3947,7 +3931,7 @@ static int udp_socket_set_option(lua_State* L)
             hana::make_pair(
                 BOOST_HANA_STRING("join_multicast_group"),
                 [&]() -> int {
-                    auto addr = reinterpret_cast<asio::ip::address*>(
+                    auto addr = static_cast<asio::ip::address*>(
                         lua_touserdata(L, 3));
                     if (!addr || !lua_getmetatable(L, 3)) {
                         push(L, std::errc::invalid_argument, "arg", 3);
@@ -3970,7 +3954,7 @@ static int udp_socket_set_option(lua_State* L)
             hana::make_pair(
                 BOOST_HANA_STRING("leave_multicast_group"),
                 [&]() -> int {
-                    auto addr = reinterpret_cast<asio::ip::address*>(
+                    auto addr = static_cast<asio::ip::address*>(
                         lua_touserdata(L, 3));
                     if (!addr || !lua_getmetatable(L, 3)) {
                         push(L, std::errc::invalid_argument, "arg", 3);
@@ -3993,7 +3977,7 @@ static int udp_socket_set_option(lua_State* L)
             hana::make_pair(
                 BOOST_HANA_STRING("multicast_interface"),
                 [&]() -> int {
-                    auto addr = reinterpret_cast<asio::ip::address*>(
+                    auto addr = static_cast<asio::ip::address*>(
                         lua_touserdata(L, 3));
                     if (!addr || !lua_getmetatable(L, 3)) {
                         push(L, std::errc::invalid_argument, "arg", 3);
@@ -4057,8 +4041,7 @@ static int udp_socket_get_option(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto socket = reinterpret_cast<udp_socket*>(
-        lua_touserdata(L, 1));
+    auto socket = static_cast<udp_socket*>(lua_touserdata(L, 1));
     if (!socket || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -4219,7 +4202,7 @@ static int udp_socket_receive(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto sock = reinterpret_cast<udp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<udp_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -4230,7 +4213,7 @@ static int udp_socket_receive(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -4294,7 +4277,7 @@ static int udp_socket_receive_from(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto sock = reinterpret_cast<udp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<udp_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -4305,7 +4288,7 @@ static int udp_socket_receive_from(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -4351,7 +4334,7 @@ static int udp_socket_receive_from(lua_State* L)
                 --sock->nbusy;
 
                 auto addr_pusher = [&remote_sender](lua_State* L) {
-                    auto a = reinterpret_cast<asio::ip::address*>(
+                    auto a = static_cast<asio::ip::address*>(
                         lua_newuserdata(L, sizeof(asio::ip::address))
                     );
                     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -4384,7 +4367,7 @@ static int udp_socket_send(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto sock = reinterpret_cast<udp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<udp_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -4395,7 +4378,7 @@ static int udp_socket_send(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -4459,7 +4442,7 @@ static int udp_socket_send_to(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto sock = reinterpret_cast<udp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<udp_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -4470,7 +4453,7 @@ static int udp_socket_send_to(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -4481,7 +4464,7 @@ static int udp_socket_send_to(lua_State* L)
         return lua_error(L);
     }
 
-    auto addr = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 3));
+    auto addr = static_cast<asio::ip::address*>(lua_touserdata(L, 3));
     if (!addr || !lua_getmetatable(L, 3)) {
         push(L, std::errc::invalid_argument, "arg", 3);
         return lua_error(L);
@@ -4549,8 +4532,7 @@ static int udp_socket_io_control(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto socket = reinterpret_cast<udp_socket*>(
-        lua_touserdata(L, 1));
+    auto socket = static_cast<udp_socket*>(lua_touserdata(L, 1));
     if (!socket || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -4589,21 +4571,21 @@ static int udp_socket_io_control(lua_State* L)
 
 inline int udp_socket_is_open(lua_State* L)
 {
-    auto sock = reinterpret_cast<udp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<udp_socket*>(lua_touserdata(L, 1));
     lua_pushboolean(L, sock->socket.is_open());
     return 1;
 }
 
 inline int udp_socket_local_address(lua_State* L)
 {
-    auto sock = reinterpret_cast<udp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<udp_socket*>(lua_touserdata(L, 1));
     boost::system::error_code ec;
     auto ep = sock->socket.local_endpoint(ec);
     if (ec) {
         push(L, static_cast<std::error_code>(ec));
         return lua_error(L);
     }
-    auto addr = reinterpret_cast<asio::ip::address*>(
+    auto addr = static_cast<asio::ip::address*>(
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -4614,7 +4596,7 @@ inline int udp_socket_local_address(lua_State* L)
 
 inline int udp_socket_local_port(lua_State* L)
 {
-    auto sock = reinterpret_cast<udp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<udp_socket*>(lua_touserdata(L, 1));
     boost::system::error_code ec;
     auto ep = sock->socket.local_endpoint(ec);
     if (ec) {
@@ -4627,14 +4609,14 @@ inline int udp_socket_local_port(lua_State* L)
 
 inline int udp_socket_remote_address(lua_State* L)
 {
-    auto sock = reinterpret_cast<udp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<udp_socket*>(lua_touserdata(L, 1));
     boost::system::error_code ec;
     auto ep = sock->socket.remote_endpoint(ec);
     if (ec) {
         push(L, static_cast<std::error_code>(ec));
         return lua_error(L);
     }
-    auto addr = reinterpret_cast<asio::ip::address*>(
+    auto addr = static_cast<asio::ip::address*>(
         lua_newuserdata(L, sizeof(asio::ip::address))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -4645,7 +4627,7 @@ inline int udp_socket_remote_address(lua_State* L)
 
 inline int udp_socket_remote_port(lua_State* L)
 {
-    auto sock = reinterpret_cast<udp_socket*>(lua_touserdata(L, 1));
+    auto sock = static_cast<udp_socket*>(lua_touserdata(L, 1));
     boost::system::error_code ec;
     auto ep = sock->socket.remote_endpoint(ec);
     if (ec) {
@@ -4810,7 +4792,7 @@ static int udp_get_address_info(lua_State* L)
             push(L, std::errc::invalid_argument, "arg", 1);
             return lua_error(L);
         }
-        auto& a = *reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+        auto& a = *static_cast<asio::ip::address*>(lua_touserdata(L, 1));
         host = a.to_string();
         flags |= asio::ip::resolver_base::numeric_host;
     }
@@ -4884,7 +4866,7 @@ static int udp_get_address_info(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto query_ctx = reinterpret_cast<get_address_info_context_t*>(
+            auto query_ctx = static_cast<get_address_info_context_t*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             GetAddrInfoExCancel(&query_ctx->hCancel);
             return 0;
@@ -4963,7 +4945,7 @@ static int udp_get_address_info(lua_State* L)
                         std::memcpy(ep.data(), it->ai_addr, ep.size());
 
                         lua_pushvalue(L, -1 -6);
-                        auto a = reinterpret_cast<asio::ip::address*>(
+                        auto a = static_cast<asio::ip::address*>(
                             lua_newuserdata(L, sizeof(asio::ip::address))
                         );
                         rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -5014,7 +4996,7 @@ static int udp_get_address_info(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto service = reinterpret_cast<resolver_service*>(
+            auto service = static_cast<resolver_service*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             try {
                 service->udp_resolver.cancel();
@@ -5050,7 +5032,7 @@ static int udp_get_address_info(lua_State* L)
                             lua_createtable(fib, /*narr=*/0, /*nrec=*/4);
 
                             lua_pushvalue(fib, -1 -4);
-                            auto a = reinterpret_cast<asio::ip::address*>(
+                            auto a = static_cast<asio::ip::address*>(
                                 lua_newuserdata(fib, sizeof(asio::ip::address))
                             );
                             rawgetp(fib, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -5131,7 +5113,7 @@ static int udp_get_address_v4_info(lua_State* L)
             push(L, std::errc::invalid_argument, "arg", 1);
             return lua_error(L);
         }
-        auto& a = *reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+        auto& a = *static_cast<asio::ip::address*>(lua_touserdata(L, 1));
         host = a.to_string();
         flags |= asio::ip::resolver_base::numeric_host;
     }
@@ -5205,7 +5187,7 @@ static int udp_get_address_v4_info(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto query_ctx = reinterpret_cast<get_address_info_context_t*>(
+            auto query_ctx = static_cast<get_address_info_context_t*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             GetAddrInfoExCancel(&query_ctx->hCancel);
             return 0;
@@ -5284,7 +5266,7 @@ static int udp_get_address_v4_info(lua_State* L)
                         std::memcpy(ep.data(), it->ai_addr, ep.size());
 
                         lua_pushvalue(L, -1 -6);
-                        auto a = reinterpret_cast<asio::ip::address*>(
+                        auto a = static_cast<asio::ip::address*>(
                             lua_newuserdata(L, sizeof(asio::ip::address))
                         );
                         rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -5335,7 +5317,7 @@ static int udp_get_address_v4_info(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto service = reinterpret_cast<resolver_service*>(
+            auto service = static_cast<resolver_service*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             try {
                 service->udp_resolver.cancel();
@@ -5372,7 +5354,7 @@ static int udp_get_address_v4_info(lua_State* L)
                             lua_createtable(fib, /*narr=*/0, /*nrec=*/4);
 
                             lua_pushvalue(fib, -1 -4);
-                            auto a = reinterpret_cast<asio::ip::address*>(
+                            auto a = static_cast<asio::ip::address*>(
                                 lua_newuserdata(fib, sizeof(asio::ip::address))
                             );
                             rawgetp(fib, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -5453,7 +5435,7 @@ static int udp_get_address_v6_info(lua_State* L)
             push(L, std::errc::invalid_argument, "arg", 1);
             return lua_error(L);
         }
-        auto& a = *reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+        auto& a = *static_cast<asio::ip::address*>(lua_touserdata(L, 1));
         host = a.to_string();
         flags |= asio::ip::resolver_base::numeric_host;
     }
@@ -5527,7 +5509,7 @@ static int udp_get_address_v6_info(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto query_ctx = reinterpret_cast<get_address_info_context_t*>(
+            auto query_ctx = static_cast<get_address_info_context_t*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             GetAddrInfoExCancel(&query_ctx->hCancel);
             return 0;
@@ -5606,7 +5588,7 @@ static int udp_get_address_v6_info(lua_State* L)
                         std::memcpy(ep.data(), it->ai_addr, ep.size());
 
                         lua_pushvalue(L, -1 -6);
-                        auto a = reinterpret_cast<asio::ip::address*>(
+                        auto a = static_cast<asio::ip::address*>(
                             lua_newuserdata(L, sizeof(asio::ip::address))
                         );
                         rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -5657,7 +5639,7 @@ static int udp_get_address_v6_info(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto service = reinterpret_cast<resolver_service*>(
+            auto service = static_cast<resolver_service*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             try {
                 service->udp_resolver.cancel();
@@ -5694,7 +5676,7 @@ static int udp_get_address_v6_info(lua_State* L)
                             lua_createtable(fib, /*narr=*/0, /*nrec=*/4);
 
                             lua_pushvalue(fib, -1 -4);
-                            auto a = reinterpret_cast<asio::ip::address*>(
+                            auto a = static_cast<asio::ip::address*>(
                                 lua_newuserdata(fib, sizeof(asio::ip::address))
                             );
                             rawgetp(fib, LUA_REGISTRYINDEX, &ip_address_mt_key);
@@ -5744,7 +5726,7 @@ static int udp_get_name_info(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto a = reinterpret_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
     if (!a || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -5772,7 +5754,7 @@ static int udp_get_name_info(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto service = reinterpret_cast<resolver_service*>(
+            auto service = static_cast<resolver_service*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             try {
                 service->udp_resolver.cancel();
@@ -5806,7 +5788,7 @@ static int udp_get_name_info(lua_State* L)
                             lua_createtable(fib, /*narr=*/0, /*nrec=*/4);
 
                             lua_pushvalue(fib, -1 -4);
-                            auto a = reinterpret_cast<asio::ip::address*>(
+                            auto a = static_cast<asio::ip::address*>(
                                 lua_newuserdata(fib, sizeof(asio::ip::address))
                             );
                             rawgetp(fib, LUA_REGISTRYINDEX, &ip_address_mt_key);

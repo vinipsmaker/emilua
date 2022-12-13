@@ -25,7 +25,7 @@ static char writable_pipe_write_some_key;
 
 static int readable_pipe_close(lua_State* L)
 {
-    auto pipe = reinterpret_cast<asio::readable_pipe*>(lua_touserdata(L, 1));
+    auto pipe = static_cast<asio::readable_pipe*>(lua_touserdata(L, 1));
     if (!pipe || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -47,7 +47,7 @@ static int readable_pipe_close(lua_State* L)
 
 static int readable_pipe_cancel(lua_State* L)
 {
-    auto pipe = reinterpret_cast<asio::readable_pipe*>(lua_touserdata(L, 1));
+    auto pipe = static_cast<asio::readable_pipe*>(lua_touserdata(L, 1));
     if (!pipe || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -70,7 +70,7 @@ static int readable_pipe_cancel(lua_State* L)
 #if BOOST_OS_UNIX
 static int readable_pipe_release(lua_State* L)
 {
-    auto pipe = reinterpret_cast<asio::readable_pipe*>(lua_touserdata(L, 1));
+    auto pipe = static_cast<asio::readable_pipe*>(lua_touserdata(L, 1));
     if (!pipe || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -102,7 +102,7 @@ static int readable_pipe_release(lua_State* L)
     boost::system::error_code ignored_ec;
     pipe->close(ignored_ec);
 
-    auto fdhandle = reinterpret_cast<file_descriptor_handle*>(
+    auto fdhandle = static_cast<file_descriptor_handle*>(
         lua_newuserdata(L, sizeof(file_descriptor_handle))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
@@ -122,7 +122,7 @@ static int readable_pipe_read_some(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto pipe = reinterpret_cast<asio::readable_pipe*>(lua_touserdata(L, 1));
+    auto pipe = static_cast<asio::readable_pipe*>(lua_touserdata(L, 1));
     if (!pipe || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -133,7 +133,7 @@ static int readable_pipe_read_some(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -148,7 +148,7 @@ static int readable_pipe_read_some(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto pipe = reinterpret_cast<asio::readable_pipe*>(
+            auto pipe = static_cast<asio::readable_pipe*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
             pipe->cancel(ignored_ec);
@@ -183,7 +183,7 @@ static int readable_pipe_read_some(lua_State* L)
 
 inline int readable_pipe_is_open(lua_State* L)
 {
-    auto pipe = reinterpret_cast<asio::readable_pipe*>(lua_touserdata(L, 1));
+    auto pipe = static_cast<asio::readable_pipe*>(lua_touserdata(L, 1));
     lua_pushboolean(L, pipe->is_open());
     return 1;
 }
@@ -235,7 +235,7 @@ static int readable_pipe_mt_index(lua_State* L)
 
 static int writable_pipe_close(lua_State* L)
 {
-    auto pipe = reinterpret_cast<asio::writable_pipe*>(lua_touserdata(L, 1));
+    auto pipe = static_cast<asio::writable_pipe*>(lua_touserdata(L, 1));
     if (!pipe || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -257,7 +257,7 @@ static int writable_pipe_close(lua_State* L)
 
 static int writable_pipe_cancel(lua_State* L)
 {
-    auto pipe = reinterpret_cast<asio::writable_pipe*>(lua_touserdata(L, 1));
+    auto pipe = static_cast<asio::writable_pipe*>(lua_touserdata(L, 1));
     if (!pipe || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -280,7 +280,7 @@ static int writable_pipe_cancel(lua_State* L)
 #if BOOST_OS_UNIX
 static int writable_pipe_release(lua_State* L)
 {
-    auto pipe = reinterpret_cast<asio::writable_pipe*>(lua_touserdata(L, 1));
+    auto pipe = static_cast<asio::writable_pipe*>(lua_touserdata(L, 1));
     if (!pipe || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -312,7 +312,7 @@ static int writable_pipe_release(lua_State* L)
     boost::system::error_code ignored_ec;
     pipe->close(ignored_ec);
 
-    auto fdhandle = reinterpret_cast<file_descriptor_handle*>(
+    auto fdhandle = static_cast<file_descriptor_handle*>(
         lua_newuserdata(L, sizeof(file_descriptor_handle))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
@@ -332,7 +332,7 @@ static int writable_pipe_write_some(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto pipe = reinterpret_cast<asio::writable_pipe*>(lua_touserdata(L, 1));
+    auto pipe = static_cast<asio::writable_pipe*>(lua_touserdata(L, 1));
     if (!pipe || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -343,7 +343,7 @@ static int writable_pipe_write_some(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -358,7 +358,7 @@ static int writable_pipe_write_some(lua_State* L)
     lua_pushcclosure(
         L,
         [](lua_State* L) -> int {
-            auto pipe = reinterpret_cast<asio::writable_pipe*>(
+            auto pipe = static_cast<asio::writable_pipe*>(
                 lua_touserdata(L, lua_upvalueindex(1)));
             boost::system::error_code ignored_ec;
             pipe->cancel(ignored_ec);
@@ -393,7 +393,7 @@ static int writable_pipe_write_some(lua_State* L)
 
 inline int writable_pipe_is_open(lua_State* L)
 {
-    auto pipe = reinterpret_cast<asio::writable_pipe*>(lua_touserdata(L, 1));
+    auto pipe = static_cast<asio::writable_pipe*>(lua_touserdata(L, 1));
     lua_pushboolean(L, pipe->is_open());
     return 1;
 }
@@ -448,14 +448,14 @@ static int pair(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
 
-    auto read_end = reinterpret_cast<asio::readable_pipe*>(
+    auto read_end = static_cast<asio::readable_pipe*>(
         lua_newuserdata(L, sizeof(asio::readable_pipe))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &readable_pipe_mt_key);
     setmetatable(L, -2);
     new (read_end) asio::readable_pipe{vm_ctx.strand().context()};
 
-    auto write_end = reinterpret_cast<asio::writable_pipe*>(
+    auto write_end = static_cast<asio::writable_pipe*>(
         lua_newuserdata(L, sizeof(asio::writable_pipe))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &writable_pipe_mt_key);
@@ -473,8 +473,7 @@ static int pair(lua_State* L)
 
 static int readable_from_fd(lua_State* L)
 {
-    auto handle = reinterpret_cast<file_descriptor_handle*>(
-        lua_touserdata(L, 1));
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -492,7 +491,7 @@ static int readable_from_fd(lua_State* L)
 
     auto& vm_ctx = get_vm_context(L);
 
-    auto pipe = reinterpret_cast<asio::readable_pipe*>(
+    auto pipe = static_cast<asio::readable_pipe*>(
         lua_newuserdata(L, sizeof(asio::readable_pipe))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &readable_pipe_mt_key);
@@ -511,8 +510,7 @@ static int readable_from_fd(lua_State* L)
 
 static int writable_from_fd(lua_State* L)
 {
-    auto handle = reinterpret_cast<file_descriptor_handle*>(
-        lua_touserdata(L, 1));
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -530,7 +528,7 @@ static int writable_from_fd(lua_State* L)
 
     auto& vm_ctx = get_vm_context(L);
 
-    auto pipe = reinterpret_cast<asio::writable_pipe*>(
+    auto pipe = static_cast<asio::writable_pipe*>(
         lua_newuserdata(L, sizeof(asio::writable_pipe))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &writable_pipe_mt_key);

@@ -79,7 +79,7 @@ int regex_new(lua_State* L)
         return lua_error(L);
     }
 
-    auto regex = reinterpret_cast<std::regex*>(
+    auto regex = static_cast<std::regex*>(
         lua_newuserdata(L, sizeof(std::regex))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &regex_mt_key);
@@ -114,7 +114,7 @@ static int regex_match(lua_State* L)
     rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
     constexpr int byte_span_mt_idx = 4;
 
-    auto regex = reinterpret_cast<std::regex*>(lua_touserdata(L, 1));
+    auto regex = static_cast<std::regex*>(lua_touserdata(L, 1));
     if (!regex || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -141,7 +141,7 @@ static int regex_match(lua_State* L)
             push(L, std::errc::invalid_argument, "arg", 2);
             return lua_error(L);
         }
-        src_bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+        src_bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
         str = std::string_view(
             reinterpret_cast<char*>(src_bs->data.get()), src_bs->size);
     }
@@ -190,7 +190,7 @@ static int regex_match(lua_State* L)
 
     if (src_bs) {
         for (std::cmatch::size_type i = 1 ; i != results.size() ; ++i) {
-            auto new_bs = reinterpret_cast<byte_span_handle*>(
+            auto new_bs = static_cast<byte_span_handle*>(
                 lua_newuserdata(L, sizeof(byte_span_handle))
             );
             lua_pushvalue(L, byte_span_mt_idx);
@@ -227,7 +227,7 @@ int regex_search(lua_State* L)
 {
     lua_settop(L, 3);
 
-    auto regex = reinterpret_cast<std::regex*>(lua_touserdata(L, 1));
+    auto regex = static_cast<std::regex*>(lua_touserdata(L, 1));
     if (!regex || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -252,7 +252,7 @@ int regex_search(lua_State* L)
             push(L, std::errc::invalid_argument, "arg", 2);
             return lua_error(L);
         }
-        auto src_bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+        auto src_bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
         str = std::string_view(
             reinterpret_cast<char*>(src_bs->data.get()), src_bs->size);
     }
@@ -314,7 +314,7 @@ int regex_split(lua_State* L)
     rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
     constexpr int byte_span_mt_idx = 3;
 
-    auto regex = reinterpret_cast<std::regex*>(lua_touserdata(L, 1));
+    auto regex = static_cast<std::regex*>(lua_touserdata(L, 1));
     if (!regex || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -341,7 +341,7 @@ int regex_split(lua_State* L)
             push(L, std::errc::invalid_argument, "arg", 2);
             return lua_error(L);
         }
-        src_bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+        src_bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
         str = std::string_view(
             reinterpret_cast<char*>(src_bs->data.get()), src_bs->size);
     }
@@ -356,7 +356,7 @@ int regex_split(lua_State* L)
     if (/*dont_include_separators=*/regex->mark_count() == 0) {
         if (src_bs) {
             for (; it != end ; ++it) {
-                auto new_bs = reinterpret_cast<byte_span_handle*>(
+                auto new_bs = static_cast<byte_span_handle*>(
                     lua_newuserdata(L, sizeof(byte_span_handle))
                 );
                 lua_pushvalue(L, -1);
@@ -398,7 +398,7 @@ int regex_patsplit(lua_State* L)
     rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
     constexpr int byte_span_mt_idx = 3;
 
-    auto regex = reinterpret_cast<std::regex*>(lua_touserdata(L, 1));
+    auto regex = static_cast<std::regex*>(lua_touserdata(L, 1));
     if (!regex || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -425,7 +425,7 @@ int regex_patsplit(lua_State* L)
             push(L, std::errc::invalid_argument, "arg", 2);
             return lua_error(L);
         }
-        src_bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+        src_bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
         str = std::string_view(
             reinterpret_cast<char*>(src_bs->data.get()), src_bs->size);
     }
@@ -441,7 +441,7 @@ int regex_patsplit(lua_State* L)
     if (/*dont_include_separators=*/regex->mark_count() == 0) {
         if (src_bs) {
             while (matched) {
-                auto new_bs = reinterpret_cast<byte_span_handle*>(
+                auto new_bs = static_cast<byte_span_handle*>(
                     lua_newuserdata(L, sizeof(byte_span_handle))
                 );
                 lua_pushvalue(L, -1);
@@ -516,14 +516,14 @@ int regex_patsplit(lua_State* L)
 
 inline int regex_mark_count(lua_State* L)
 {
-    auto regex = reinterpret_cast<std::regex*>(lua_touserdata(L, 1));
+    auto regex = static_cast<std::regex*>(lua_touserdata(L, 1));
     lua_pushinteger(L, regex->mark_count());
     return 1;
 }
 
 inline int regex_grammar(lua_State* L)
 {
-    auto flags = reinterpret_cast<std::regex*>(lua_touserdata(L, 1))->flags();
+    auto flags = static_cast<std::regex*>(lua_touserdata(L, 1))->flags();
     if (flags & std::regex_constants::ECMAScript) {
         lua_pushliteral(L, "ecma");
     } else if (flags & std::regex_constants::basic) {
@@ -537,21 +537,21 @@ inline int regex_grammar(lua_State* L)
 
 inline int regex_ignore_case(lua_State* L)
 {
-    auto flags = reinterpret_cast<std::regex*>(lua_touserdata(L, 1))->flags();
+    auto flags = static_cast<std::regex*>(lua_touserdata(L, 1))->flags();
     lua_pushboolean(L, (flags & std::regex_constants::icase) ? 1 : 0);
     return 1;
 }
 
 inline int regex_nosubs(lua_State* L)
 {
-    auto flags = reinterpret_cast<std::regex*>(lua_touserdata(L, 1))->flags();
+    auto flags = static_cast<std::regex*>(lua_touserdata(L, 1))->flags();
     lua_pushboolean(L, (flags & std::regex_constants::nosubs) ? 1 : 0);
     return 1;
 }
 
 inline int regex_optimized(lua_State* L)
 {
-    auto flags = reinterpret_cast<std::regex*>(lua_touserdata(L, 1))->flags();
+    auto flags = static_cast<std::regex*>(lua_touserdata(L, 1))->flags();
     lua_pushboolean(L, (flags & std::regex_constants::optimize) ? 1 : 0);
     return 1;
 }

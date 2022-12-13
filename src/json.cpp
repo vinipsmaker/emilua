@@ -366,7 +366,7 @@ static int get_tojson(lua_State* L)
 static int writer_value(lua_State* L)
 {
     lua_settop(L, 2);
-    auto jw = reinterpret_cast<json_writer*>(lua_touserdata(L, 1));
+    auto jw = static_cast<json_writer*>(lua_touserdata(L, 1));
     if (!jw || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -424,7 +424,7 @@ static int writer_value(lua_State* L)
 template<class T>
 static int writer_token(lua_State* L)
 {
-    auto jw = reinterpret_cast<json_writer*>(lua_touserdata(L, 1));
+    auto jw = static_cast<json_writer*>(lua_touserdata(L, 1));
     if (!jw || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -451,7 +451,7 @@ static int writer_token(lua_State* L)
 static int writer_literal(lua_State* L)
 {
     lua_settop(L, 2);
-    auto jw = reinterpret_cast<json_writer*>(lua_touserdata(L, 1));
+    auto jw = static_cast<json_writer*>(lua_touserdata(L, 1));
     if (!jw || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -482,7 +482,7 @@ static int writer_literal(lua_State* L)
 
 static int writer_generate(lua_State* L)
 {
-    auto jw = reinterpret_cast<json_writer*>(lua_touserdata(L, 1));
+    auto jw = static_cast<json_writer*>(lua_touserdata(L, 1));
     if (!jw || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -502,7 +502,7 @@ static int writer_generate(lua_State* L)
 
 inline int writer_level(lua_State* L)
 {
-    auto jw = reinterpret_cast<json_writer*>(lua_touserdata(L, 1));
+    auto jw = static_cast<json_writer*>(lua_touserdata(L, 1));
     assert(jw);
     lua_pushnumber(L, jw->writer.level());
     return 1;
@@ -578,7 +578,7 @@ static int writer_mt_index(lua_State* L)
 
 static int writer_new(lua_State* L)
 {
-    auto jw = reinterpret_cast<json_writer*>(
+    auto jw = static_cast<json_writer*>(
         lua_newuserdata(L, sizeof(json_writer))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &writer_mt_key);
@@ -599,7 +599,7 @@ void init_json_module(lua_State* L)
 
         lua_pushliteral(L, "lexer_ecat");
         {
-            *reinterpret_cast<const std::error_category**>(
+            *static_cast<const std::error_category**>(
                 lua_newuserdata(L, sizeof(void*))) = &json::error_category();
             rawgetp(L, LUA_REGISTRYINDEX, &detail::error_category_mt_key);
             setmetatable(L, -2);
@@ -608,7 +608,7 @@ void init_json_module(lua_State* L)
 
         lua_pushliteral(L, "dom_ecat");
         {
-            *reinterpret_cast<const std::error_category**>(
+            *static_cast<const std::error_category**>(
                 lua_newuserdata(L, sizeof(void*))) = &json_category();
             rawgetp(L, LUA_REGISTRYINDEX, &detail::error_category_mt_key);
             setmetatable(L, -2);

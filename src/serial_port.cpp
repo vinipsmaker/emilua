@@ -22,7 +22,7 @@ static int serial_port_open(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
 
-    auto port = reinterpret_cast<asio::serial_port*>(lua_touserdata(L, 1));
+    auto port = static_cast<asio::serial_port*>(lua_touserdata(L, 1));
     if (!port || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -44,7 +44,7 @@ static int serial_port_open(lua_State* L)
 
 static int serial_port_close(lua_State* L)
 {
-    auto port = reinterpret_cast<asio::serial_port*>(lua_touserdata(L, 1));
+    auto port = static_cast<asio::serial_port*>(lua_touserdata(L, 1));
     if (!port || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -66,7 +66,7 @@ static int serial_port_close(lua_State* L)
 
 static int serial_port_cancel(lua_State* L)
 {
-    auto port = reinterpret_cast<asio::serial_port*>(lua_touserdata(L, 1));
+    auto port = static_cast<asio::serial_port*>(lua_touserdata(L, 1));
     if (!port || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -88,7 +88,7 @@ static int serial_port_cancel(lua_State* L)
 
 static int serial_port_send_break(lua_State* L)
 {
-    auto port = reinterpret_cast<asio::serial_port*>(lua_touserdata(L, 1));
+    auto port = static_cast<asio::serial_port*>(lua_touserdata(L, 1));
     if (!port || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -116,7 +116,7 @@ static int serial_port_read_some(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto port = reinterpret_cast<asio::serial_port*>(lua_touserdata(L, 1));
+    auto port = static_cast<asio::serial_port*>(lua_touserdata(L, 1));
     if (!port || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -127,7 +127,7 @@ static int serial_port_read_some(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -172,7 +172,7 @@ static int serial_port_write_some(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto port = reinterpret_cast<asio::serial_port*>(lua_touserdata(L, 1));
+    auto port = static_cast<asio::serial_port*>(lua_touserdata(L, 1));
     if (!port || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -183,7 +183,7 @@ static int serial_port_write_some(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -222,14 +222,14 @@ static int serial_port_write_some(lua_State* L)
 
 inline int serial_port_is_open(lua_State* L)
 {
-    auto port = reinterpret_cast<asio::serial_port*>(lua_touserdata(L, 1));
+    auto port = static_cast<asio::serial_port*>(lua_touserdata(L, 1));
     lua_pushboolean(L, port->is_open());
     return 1;
 }
 
 static int serial_port_mt_newindex(lua_State* L)
 {
-    auto port = reinterpret_cast<asio::serial_port*>(lua_touserdata(L, 1));
+    auto port = static_cast<asio::serial_port*>(lua_touserdata(L, 1));
     boost::system::error_code ec;
     return dispatch_table::dispatch(
         hana::make_tuple(
@@ -453,7 +453,7 @@ static int serial_port_mt_newindex(lua_State* L)
 
 static int serial_port_mt_index(lua_State* L)
 {
-    auto port = reinterpret_cast<asio::serial_port*>(lua_touserdata(L, 1));
+    auto port = static_cast<asio::serial_port*>(lua_touserdata(L, 1));
     boost::system::error_code ec;
     return dispatch_table::dispatch(
         hana::make_tuple(
@@ -605,7 +605,7 @@ static int serial_port_mt_index(lua_State* L)
 static int serial_port_new(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
-    auto sock = reinterpret_cast<asio::serial_port*>(
+    auto sock = static_cast<asio::serial_port*>(
         lua_newuserdata(L, sizeof(asio::serial_port))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &serial_port_mt_key);

@@ -34,7 +34,7 @@ static int stream_open(lua_State* L)
     luaL_checktype(L, 2, LUA_TSTRING);
     luaL_checktype(L, 3, LUA_TNUMBER);
 
-    auto file = reinterpret_cast<asio::stream_file*>(lua_touserdata(L, 1));
+    auto file = static_cast<asio::stream_file*>(lua_touserdata(L, 1));
     if (!file || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -58,7 +58,7 @@ static int stream_open(lua_State* L)
 
 static int stream_close(lua_State* L)
 {
-    auto file = reinterpret_cast<asio::stream_file*>(lua_touserdata(L, 1));
+    auto file = static_cast<asio::stream_file*>(lua_touserdata(L, 1));
     if (!file || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -80,7 +80,7 @@ static int stream_close(lua_State* L)
 
 static int stream_cancel(lua_State* L)
 {
-    auto file = reinterpret_cast<asio::stream_file*>(lua_touserdata(L, 1));
+    auto file = static_cast<asio::stream_file*>(lua_touserdata(L, 1));
     if (!file || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -104,7 +104,7 @@ static int stream_resize(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TNUMBER);
 
-    auto file = reinterpret_cast<asio::stream_file*>(lua_touserdata(L, 1));
+    auto file = static_cast<asio::stream_file*>(lua_touserdata(L, 1));
     if (!file || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -129,7 +129,7 @@ static int stream_seek(lua_State* L)
     luaL_checktype(L, 2, LUA_TNUMBER);
     luaL_checktype(L, 3, LUA_TSTRING);
 
-    auto file = reinterpret_cast<asio::stream_file*>(lua_touserdata(L, 1));
+    auto file = static_cast<asio::stream_file*>(lua_touserdata(L, 1));
     if (!file || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -169,7 +169,7 @@ static int stream_read_some(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto file = reinterpret_cast<asio::stream_file*>(lua_touserdata(L, 1));
+    auto file = static_cast<asio::stream_file*>(lua_touserdata(L, 1));
     if (!file || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -180,7 +180,7 @@ static int stream_read_some(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -223,7 +223,7 @@ static int stream_write_some(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto file = reinterpret_cast<asio::stream_file*>(lua_touserdata(L, 1));
+    auto file = static_cast<asio::stream_file*>(lua_touserdata(L, 1));
     if (!file || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -234,7 +234,7 @@ static int stream_write_some(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 2));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 2));
     if (!bs || !lua_getmetatable(L, 2)) {
         push(L, std::errc::invalid_argument, "arg", 2);
         return lua_error(L);
@@ -273,14 +273,14 @@ static int stream_write_some(lua_State* L)
 
 inline int stream_is_open(lua_State* L)
 {
-    auto file = reinterpret_cast<asio::stream_file*>(lua_touserdata(L, 1));
+    auto file = static_cast<asio::stream_file*>(lua_touserdata(L, 1));
     lua_pushboolean(L, file->is_open());
     return 1;
 }
 
 inline int stream_size(lua_State* L)
 {
-    auto file = reinterpret_cast<asio::stream_file*>(lua_touserdata(L, 1));
+    auto file = static_cast<asio::stream_file*>(lua_touserdata(L, 1));
     boost::system::error_code ec;
     auto ret = file->size(ec);
     if (ec) {
@@ -359,7 +359,7 @@ static int stream_mt_index(lua_State* L)
 static int stream_new(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
-    auto file = reinterpret_cast<asio::stream_file*>(
+    auto file = static_cast<asio::stream_file*>(
         lua_newuserdata(L, sizeof(asio::stream_file))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &file_stream_mt_key);
@@ -373,8 +373,7 @@ static int random_access_open(lua_State* L)
     luaL_checktype(L, 2, LUA_TSTRING);
     luaL_checktype(L, 3, LUA_TNUMBER);
 
-    auto file = reinterpret_cast<asio::random_access_file*>(
-        lua_touserdata(L, 1));
+    auto file = static_cast<asio::random_access_file*>(lua_touserdata(L, 1));
     if (!file || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -398,8 +397,7 @@ static int random_access_open(lua_State* L)
 
 static int random_access_close(lua_State* L)
 {
-    auto file = reinterpret_cast<asio::random_access_file*>(
-        lua_touserdata(L, 1));
+    auto file = static_cast<asio::random_access_file*>(lua_touserdata(L, 1));
     if (!file || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -421,8 +419,7 @@ static int random_access_close(lua_State* L)
 
 static int random_access_cancel(lua_State* L)
 {
-    auto file = reinterpret_cast<asio::random_access_file*>(
-        lua_touserdata(L, 1));
+    auto file = static_cast<asio::random_access_file*>(lua_touserdata(L, 1));
     if (!file || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -446,8 +443,7 @@ static int random_access_resize(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TNUMBER);
 
-    auto file = reinterpret_cast<asio::random_access_file*>(
-        lua_touserdata(L, 1));
+    auto file = static_cast<asio::random_access_file*>(lua_touserdata(L, 1));
     if (!file || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -475,8 +471,7 @@ static int random_access_read_some_at(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto file = reinterpret_cast<asio::random_access_file*>(
-        lua_touserdata(L, 1));
+    auto file = static_cast<asio::random_access_file*>(lua_touserdata(L, 1));
     if (!file || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -487,7 +482,7 @@ static int random_access_read_some_at(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 3));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 3));
     if (!bs || !lua_getmetatable(L, 3)) {
         push(L, std::errc::invalid_argument, "arg", 3);
         return lua_error(L);
@@ -533,8 +528,7 @@ static int random_access_write_some_at(lua_State* L)
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
 
-    auto file = reinterpret_cast<asio::random_access_file*>(
-        lua_touserdata(L, 1));
+    auto file = static_cast<asio::random_access_file*>(lua_touserdata(L, 1));
     if (!file || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -545,7 +539,7 @@ static int random_access_write_some_at(lua_State* L)
         return lua_error(L);
     }
 
-    auto bs = reinterpret_cast<byte_span_handle*>(lua_touserdata(L, 3));
+    auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 3));
     if (!bs || !lua_getmetatable(L, 3)) {
         push(L, std::errc::invalid_argument, "arg", 3);
         return lua_error(L);
@@ -585,16 +579,14 @@ static int random_access_write_some_at(lua_State* L)
 
 inline int random_access_is_open(lua_State* L)
 {
-    auto file = reinterpret_cast<asio::random_access_file*>(
-        lua_touserdata(L, 1));
+    auto file = static_cast<asio::random_access_file*>(lua_touserdata(L, 1));
     lua_pushboolean(L, file->is_open());
     return 1;
 }
 
 inline int random_access_size(lua_State* L)
 {
-    auto file = reinterpret_cast<asio::random_access_file*>(
-        lua_touserdata(L, 1));
+    auto file = static_cast<asio::random_access_file*>(lua_touserdata(L, 1));
     boost::system::error_code ec;
     auto ret = file->size(ec);
     if (ec) {
@@ -670,7 +662,7 @@ static int random_access_mt_index(lua_State* L)
 static int random_access_new(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
-    auto file = reinterpret_cast<asio::random_access_file*>(
+    auto file = static_cast<asio::random_access_file*>(
         lua_newuserdata(L, sizeof(asio::random_access_file))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &file_random_access_mt_key);

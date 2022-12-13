@@ -11,8 +11,7 @@ char file_descriptor_mt_key;
 
 static int file_descriptor_close(lua_State* L)
 {
-    auto handle = reinterpret_cast<file_descriptor_handle*>(
-        lua_touserdata(L, 1));
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -50,8 +49,7 @@ static int file_descriptor_mt_index(lua_State* L)
 
 static int file_descriptor_mt_gc(lua_State* L)
 {
-    auto& handle = *reinterpret_cast<file_descriptor_handle*>(
-        lua_touserdata(L, 1));
+    auto& handle = *static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
     if (handle == INVALID_FILE_DESCRIPTOR)
         return 0;
 

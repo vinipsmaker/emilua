@@ -988,10 +988,10 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
         lua_pushcfunction(
             L,
             [](lua_State* L) -> int {
-                auto cat1 = reinterpret_cast<std::error_category**>(
+                auto cat1 = static_cast<std::error_category**>(
                     lua_touserdata(L, 1));
                 assert(cat1);
-                auto cat2 = reinterpret_cast<std::error_category**>(
+                auto cat2 = static_cast<std::error_category**>(
                     lua_touserdata(L, 1));
                 assert(cat2);
                 return *cat1 == *cat2;
@@ -1003,7 +1003,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
         lua_pushcfunction(
             L,
             [](lua_State* L) -> int {
-                auto cat = reinterpret_cast<std::error_category**>(
+                auto cat = static_cast<std::error_category**>(
                     lua_touserdata(L, 1));
                 assert(cat);
                 lua_pushstring(L, (*cat)->name());
@@ -1016,7 +1016,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
         lua_pushcfunction(
             L,
             [](lua_State* L) -> int {
-                auto cat = reinterpret_cast<std::error_category**>(
+                auto cat = static_cast<std::error_category**>(
                     lua_touserdata(L, 1));
                 assert(cat);
                 auto key = tostringview(L, 2);
@@ -1026,7 +1026,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
                         L,
                         [](lua_State* L) -> int {
                             luaL_checktype(L, 1, LUA_TNUMBER);
-                            auto cat = reinterpret_cast<std::error_category*>(
+                            auto cat = static_cast<std::error_category*>(
                                 lua_touserdata(L, lua_upvalueindex(1)));
                             push(L, cat->message(lua_tonumber(L, 1)));
                             return 1;
@@ -1098,7 +1098,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
                     push(L, std::errc::invalid_argument);
                     return lua_error(L);
                 }
-                auto cat = reinterpret_cast<std::error_category**>(
+                auto cat = static_cast<std::error_category**>(
                     lua_touserdata(L, -3));
                 assert(cat);
                 push(L, (*cat)->message(val));
