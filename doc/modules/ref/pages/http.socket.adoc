@@ -169,8 +169,28 @@ when the operation returns).
 
 ==== Member constants (incoming request)
 
-.Incoming request
-image::read_request_state.png[]
+[plantuml,read_request_state,title="Incoming request"]
+----
+@startuml
+state empty
+state message_ready
+state body_ready
+state finished
+
+[*] --> empty
+finished --> [*]
+
+empty --> message_ready : read_request
+empty --> body_ready : read_request
+empty --> finished : read_request
+
+message_ready --> message_ready : read_some
+message_ready --> body_ready : read_some
+message_ready --> finished : read_some
+
+body_ready --> finished : read_some
+@enduml
+----
 
 `"empty"`::
 This is the initial state. It means that the request object wasn't read yet.
@@ -209,8 +229,29 @@ this state is reached.
 
 ==== Member constants (incoming response)
 
-.Incoming response
-image::read_response_state.png[]
+[plantuml,read_response_state,title="Incoming response"]
+----
+@startuml
+state empty
+state message_ready
+state body_ready
+state finished
+
+note right of finished : unused
+
+[*] --> empty
+
+empty --> message_ready : read_response
+empty --> body_ready : read_response
+empty --> empty : read_response
+
+message_ready --> message_ready : read_some
+message_ready --> body_ready : read_some
+message_ready --> empty : read_some
+
+body_ready --> empty : read_some
+@enduml
+----
 
 `"empty"`::
 This is the initial state.
@@ -253,8 +294,30 @@ The current state in the HTTP outgoing response or HTTP outgoing request.
 
 ==== Member constants (outgoing response)
 
-.Outgoing response
-image::write_response_state.png[]
+[plantuml,write_response_state,title="Outgoing response"]
+----
+@startuml
+state " " as empty {
+  state "empty" as iempty
+  state continue_issued
+
+  [*] --> iempty
+
+  iempty --> continue_issued : write_response_continue
+}
+state metadata_issued
+state finished
+
+[*] --> empty
+finished --> [*]
+
+empty --> finished : write_response
+empty --> metadata_issued : write_response_metadata
+
+metadata_issued --> metadata_issued : write
+metadata_issued --> finished : write_trailers,write_end_of_message
+@enduml
+----
 
 `"empty"`::
 This is the initial state.
@@ -290,8 +353,26 @@ occurs. This event is usually a new request.
 
 ==== Member constants (outgoing request)
 
-.Outgoing request
-image::write_request_state.png[]
+[plantuml,write_request_state,title="Outgoing request"]
+----
+@startuml
+state empty
+state continue_issued
+state metadata_issued
+state finished
+
+note right of continue_issued : unused
+note right of finished : unused
+
+[*] --> empty
+
+empty --> empty : write_request
+empty --> metadata_issued : write_request_metadata
+
+metadata_issued --> metadata_issued : write
+metadata_issued --> empty : write_trailers,write_end_of_message
+@enduml
+----
 
 `"empty"`::
 This is the initial state.
