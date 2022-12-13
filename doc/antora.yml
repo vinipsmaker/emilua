@@ -1,7 +1,7 @@
 name: emilua-docs
 title: Emilua docs
 version: 0.4
-start_page: tutorial:fiber.adoc
+start_page: home:index.adoc
 asciidoc:
   attributes:
     source-language: asciidoc@

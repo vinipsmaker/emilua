@@ -1,0 +1,4 @@
+= Home
+
+Welcome to Emilua's reference documentation. Choose one topic from the
+navigation menu to start reading.
