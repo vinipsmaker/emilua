@@ -98,10 +98,9 @@ It's encouraged that you build luajit with `-DLUAJIT_ENABLE_LUA52COMPAT`.
 * C/{cpp} source code under Boost Software License.
 * Lua code (including snippets scattered through the documentation) distributed
   in this repo is released as public domain.
+* Documentation (except for the source code samples contained within) is
+  licensed under the Creative Commons Attribution 4.0 International License.
 * Submodules and dependencies have their own licensing terms.
-* I haven't decided on the license for the documentation yet and I'll require
-  copyright attribution (so I can change the license to my choosing) on any
-  contribution here until I decide a good license.
 
 == Documentation
 
