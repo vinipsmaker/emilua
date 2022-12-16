@@ -1,7 +1,6 @@
 name: api
 title: Emilua docs
 version: 0.4
-start_page: home:index.adoc
 asciidoc:
   attributes:
     source-language: asciidoc@
