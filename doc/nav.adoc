@@ -67,5 +67,7 @@
 *** xref:ref:unix.message_flag.adoc[]
 *** xref:ref:unix.stream_acceptor.adoc[]
 *** xref:ref:unix.stream_socket.adoc[]
+*** xref:ref:unix.seqpacket_acceptor.adoc[]
+*** xref:ref:unix.seqpacket_socket.adoc[]
 ** xref:ref:websocket.adoc[]
 ** xref:ref:file_descriptor.adoc[]

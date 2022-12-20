@@ -53,6 +53,8 @@ src3 = [
     'modules/ref/pages/unix.message_flag.adoc',
     'modules/ref/pages/unix.stream_acceptor.adoc',
     'modules/ref/pages/unix.stream_socket.adoc',
+    'modules/ref/pages/unix.seqpacket_acceptor.adoc',
+    'modules/ref/pages/unix.seqpacket_socket.adoc',
     'modules/ref/pages/websocket.adoc',
 ]
 

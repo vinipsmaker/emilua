@@ -1,0 +1,218 @@
+= unix.seqpacket_socket
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+== Synopsis
+
+endif::[]
+
+[source,lua]
+----
+local sock = unix.seqpacket_socket.new()
+sock.open()
+sock.bind('/tmp/9Lq7BNBnBycd6nxy.socket')
+
+local buf = byte_span.new(1024)
+local nread = sock:receive(buf)
+print(buf:slice(1, nread))
+----
+
+== A note on 0-sized packets
+
+`AF_UNIX`+`SOCK_SEQPACKET` sockets behave just the same on Linux and BSD
+systems. It's safe to use them as IPC primitives in your system. However there
+are a few caveats related to the idea of what `SOCK_SEQPACKET` were supposed to
+mean originally.
+
+[quote,Arseny Krasnov,'https://lore.kernel.org/netdev/8bd80d3f-3e00-5e31-42a1-300ff29100ae@kaspersky.com/']
+seems SEQPACKET is too exotic thing that everyone implements it in own manner,
+because i've tested SCTP seqpacket implementation, and found [...]
+
+The API for general `SOCK_SEQPACKET` sockets exposes a few incompatible
+mechanisms to tell EOF apart from 0-sized messages. These mechanisms are not
+found in `AF_UNIX` sockets.
+
+As for `AF_UNIX`+`SOCK_SEQPACKET`,
+https://stackoverflow.com/questions/18217299/detecting-connection-close-on-af-unix-sock-seqpacket-socket-without-using-poll[0-sized
+payloads are valid and indistinguishable from the end of the stream].
+
+https://stackoverflow.com/questions/3595684/why-do-i-not-see-msg-eor-for-sock-seqpacket-on-linux/6088616#6088616[According
+to POSIX the behaviour for Linux and BSD is wrong], but pointing to POSIX or
+changing the behaviour of current systems is useless (even harmful) at this
+point.
+
+Emilua will just report EOF whenever a 0-sized read occurs.
+
+If you control both sides of the communication channel, just avoid sending any
+0-sized datagram and you're safe.
+
+If you don't control the sending side, you might receive 0-sized datagrams that
+are in reality an attack to the system. If your program is the only receiver
+there's hardly any harm. However if you need to make sure the connection is
+closed when your program deems it as so, just call `shutdown("receive")` or
+`shutdown("both")` to make sure the connection is closed to every associated
+handle.
+
+However don't let this small note scare you. `AF_UNIX`+`SOCK_SEQPACKET` sockets
+are a powerful IPC primitive that will save you from way worse concerns if your
+application needs a socket that is connection-oriented, preserves message
+boundaries, and delivers messages in the order that they were
+sent. `SOCK_STREAM` and `SOCK_DGRAM` will have their own caveats.
+
+== Functions
+
+=== `new() -> unix.seqpacket_socket`
+
+Constructor.
+
+=== `pair() -> unix.seqpacket_socket, unix.seqpacket_socket`
+
+Create a pair of connected sockets.
+
+=== `open(self)`
+
+Open the socket.
+
+=== `bind(self, pathname: string)`
+
+Bind the socket to the given local endpoint.
+
+=== `close(self)`
+
+Close the socket.
+
+Forward the call to
+https://www.boost.org/doc/libs/1_81_0/doc/html/boost_asio/reference/basic_seq_packet_socket/close/overload2.html[the
+function with same name in Boost.Asio]:
+
+[quote]
+____
+Any asynchronous send, receive or connect operations will be cancelled
+immediately, and will complete with the `boost::asio::error::operation_aborted`
+error.
+____
+
+=== `cancel(self)`
+
+Cancel all asynchronous operations associated with the socket.
+
+Forward the call to
+https://www.boost.org/doc/libs/1_81_0/doc/html/boost_asio/reference/basic_seq_packet_socket/cancel/overload2.html[the
+function with same name in Boost.Asio]:
+
+[quote]
+____
+This function causes all outstanding asynchronous connect, send and receive
+operations to finish immediately, and the handlers for cancelled operations will
+be passed the `boost::asio::error::operation_aborted` error.
+____
+
+=== `shutdown(self, what: string)`
+
+Disable sends or receives on the socket.
+
+`what` can be one of the following:
+
+`"receive"`:: Shutdown the receive side of the socket.
+`"send"`:: Shutdown the send side of the socket.
+`"both"`:: Shutdown both send and receive on the socket.
+
+=== `connect(self, pathname: string)`
+
+Initiate a connect operation and blocks current fiber until it completes or
+errs.
+
+=== `receive(self, buffer: byte_span[, flags: number]) -> number`
+
+Receive a datagram and blocks current fiber until it completes or errs.
+
+Returns the number of bytes read.
+
+`flags` is `0` or an or-combination of values from
+xref:unix.message_flag.adoc[unix.message_flag(3em)].
+
+=== `send(self, buffer: byte_span[, flags: number]) -> number`
+
+Send data on the seqpacket socket and blocks current fiber until it completes or
+errs.
+
+Returns the number of bytes written.
+
+`flags` is `0` or an or-combination of values from
+xref:unix.message_flag.adoc[unix.message_flag(3em)].
+
+=== `receive_with_fds(self, buffer: byte_span, maxfds: number) -> number, table`
+
+Receive a datagram and blocks current fiber until it completes or errs.
+
+Returns the number of bytes read plus the table containing the `fds` read.
+
+=== `send_with_fds(self, buffer: byte_span, fds: table) -> number`
+
+Send data on the seqpacket socket and blocks current fiber until it completes or
+errs.
+
+Returns the number of bytes written.
+
+=== `set_option(self, opt: string, val)`
+
+Set an option on the socket.
+
+Currently available options are:
+
+`"debug"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/debug.html[Check
+Boost.Asio documentation].
+
+`"send_buffer_size"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/send_buffer_size.html[Check
+Boost.Asio documentation].
+
+`"receive_buffer_size"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/receive_buffer_size.html[Check
+Boost.Asio documentation].
+
+=== `get_option(self, opt: string) -> value`
+
+Get an option from the socket.
+
+Currently available options are:
+
+`"debug"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/debug.html[Check
+Boost.Asio documentation].
+
+`"send_buffer_size"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/send_buffer_size.html[Check
+Boost.Asio documentation].
+
+`"receive_buffer_size"`::
+https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/receive_buffer_size.html[Check
+Boost.Asio documentation].
+
+=== `io_control(self, command: string[, ...])`
+
+Perform an IO control command on the socket.
+
+Currently available commands are:
+
+`"bytes_readable"`:: Expects no arguments. Get the amount of data that can be
+read without blocking. Implements the `FIONREAD` IO control command.
+
+== Properties
+
+=== `is_open: boolean`
+
+Whether the socket is open.
+
+=== `local_path: string`
+
+The local address endpoint of the socket.
+
+=== `remote_path: string`
+
+The remote address endpoint of the socket.
