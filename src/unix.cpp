@@ -148,11 +148,12 @@ struct receive_with_fds_op
                 continue;
             }
 
-            int* in = (int*)CMSG_DATA(cmsg);
+            char* in = (char*)CMSG_DATA(cmsg);
             auto nfds = (cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int);
             for (std::size_t i = 0 ; i != nfds ; ++i) {
                 int fd;
-                std::memcpy(&fd, in++, sizeof(int));
+                std::memcpy(&fd, in, sizeof(int));
+                in += sizeof(int);
                 if (fd != -1)
                     fds.emplace_back(fd);
             }
@@ -346,9 +347,10 @@ struct send_with_fds_op
         cmsg->cmsg_type = SCM_RIGHTS;
         cmsg->cmsg_len = CMSG_LEN(sizeof(int) * fds.size());
         {
-            int* out = (int*)CMSG_DATA(cmsg);
+            char* out = (char*)CMSG_DATA(cmsg);
             for (auto& fdlock: fds) {
-                std::memcpy(out++, &fdlock.value, sizeof(int));
+                std::memcpy(out, &fdlock.value, sizeof(int));
+                out += sizeof(int);
             }
         }
 
