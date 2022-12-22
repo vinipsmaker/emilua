@@ -3,7 +3,6 @@ title: Emilua docs
 version: 0.4
 asciidoc:
   attributes:
-    source-language: asciidoc@
     table-caption: false
 nav:
 - nav.adoc
