@@ -1,4 +1,4 @@
-= readable_pipe
+= pipe.read_stream
 
 ifeval::["{doctype}" == "manpage"]
 

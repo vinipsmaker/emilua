@@ -570,7 +570,7 @@ void init_pipe(lua_State* L)
         lua_createtable(L, /*narr=*/0, /*nrec=*/3);
 
         lua_pushliteral(L, "__metatable");
-        lua_pushliteral(L, "readable_pipe");
+        lua_pushliteral(L, "pipe.read_stream");
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__index");
@@ -588,7 +588,7 @@ void init_pipe(lua_State* L)
         lua_createtable(L, /*narr=*/0, /*nrec=*/3);
 
         lua_pushliteral(L, "__metatable");
-        lua_pushliteral(L, "writable_pipe");
+        lua_pushliteral(L, "pipe.write_stream");
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__index");

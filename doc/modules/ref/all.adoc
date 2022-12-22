@@ -50,9 +50,9 @@ include::pages/json.writer.adoc[]
 
 include::pages/mutex.adoc[]
 
-include::pages/readable_pipe.adoc[]
+include::pages/pipe.read_stream.adoc[]
 
-include::pages/writable_pipe.adoc[]
+include::pages/pipe.write_stream.adoc[]
 
 include::pages/pipe.pair.adoc[]
 

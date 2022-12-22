@@ -1,4 +1,4 @@
-= writable_pipe
+= pipe.write_stream
 
 ifeval::["{doctype}" == "manpage"]
 

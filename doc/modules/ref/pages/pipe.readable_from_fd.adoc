@@ -13,7 +13,7 @@ endif::[]
 [source,lua]
 ----
 local pipe = require "pipe"
-pipe.readable_from_fd(fd: file_descriptor) -> readable_pipe
+pipe.readable_from_fd(fd: file_descriptor) -> pipe.read_stream
 ----
 
 == Description

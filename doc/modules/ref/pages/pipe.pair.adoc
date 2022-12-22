@@ -13,7 +13,7 @@ endif::[]
 [source,lua]
 ----
 local pipe = require "pipe"
-pipe.pair() -> readable_pipe, writable_pipe
+pipe.pair() -> pipe.read_stream, pipe.write_stream
 ----
 
 == Description
