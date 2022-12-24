@@ -36,8 +36,6 @@
 *** xref:ref:pipe.read_stream.adoc[]
 *** xref:ref:pipe.write_stream.adoc[]
 *** xref:ref:pipe.pair.adoc[]
-*** xref:ref:pipe.readable_from_fd.adoc[]
-*** xref:ref:pipe.writable_from_fd.adoc[]
 ** xref:ref:regex.adoc[]
 ** xref:ref:serial_port.adoc[]
 ** xref:ref:steady_timer.adoc[]

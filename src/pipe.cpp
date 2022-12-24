@@ -68,6 +68,45 @@ static int readable_pipe_cancel(lua_State* L)
 }
 
 #if BOOST_OS_UNIX
+static int readable_pipe_assign(lua_State* L)
+{
+    auto pipe = static_cast<asio::readable_pipe*>(lua_touserdata(L, 1));
+    if (!pipe || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &readable_pipe_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 2));
+    if (!handle || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    lua_pushnil(L);
+    setmetatable(L, 2);
+
+    boost::system::error_code ec;
+    pipe->assign(*handle, ec);
+    assert(!ec); boost::ignore_unused(ec);
+
+    return 0;
+}
+
 static int readable_pipe_release(lua_State* L)
 {
     auto pipe = static_cast<asio::readable_pipe*>(lua_touserdata(L, 1));
@@ -208,6 +247,13 @@ static int readable_pipe_mt_index(lua_State* L)
             ),
 #if BOOST_OS_UNIX
             hana::make_pair(
+                BOOST_HANA_STRING("assign"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, readable_pipe_assign);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
                 BOOST_HANA_STRING("release"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, readable_pipe_release);
@@ -231,6 +277,54 @@ static int readable_pipe_mt_index(lua_State* L)
         tostringview(L, 2),
         L
     );
+}
+
+static int readable_pipe_new(lua_State* L)
+{
+    int nargs = lua_gettop(L);
+    auto& vm_ctx = get_vm_context(L);
+
+    if (nargs == 0) {
+        auto pipe = static_cast<asio::readable_pipe*>(
+            lua_newuserdata(L, sizeof(asio::readable_pipe))
+        );
+        rawgetp(L, LUA_REGISTRYINDEX, &readable_pipe_mt_key);
+        setmetatable(L, -2);
+        new (pipe) asio::readable_pipe{vm_ctx.strand().context()};
+        return 1;
+    }
+
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
+    if (!handle || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    auto pipe = static_cast<asio::readable_pipe*>(
+        lua_newuserdata(L, sizeof(asio::readable_pipe))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &readable_pipe_mt_key);
+    setmetatable(L, -2);
+    new (pipe) asio::readable_pipe{vm_ctx.strand().context()};
+
+    lua_pushnil(L);
+    setmetatable(L, 1);
+
+    boost::system::error_code ec;
+    pipe->assign(*handle, ec);
+    assert(!ec); boost::ignore_unused(ec);
+
+    return 1;
 }
 
 static int writable_pipe_close(lua_State* L)
@@ -278,6 +372,45 @@ static int writable_pipe_cancel(lua_State* L)
 }
 
 #if BOOST_OS_UNIX
+static int writable_pipe_assign(lua_State* L)
+{
+    auto pipe = static_cast<asio::writable_pipe*>(lua_touserdata(L, 1));
+    if (!pipe || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &writable_pipe_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 2));
+    if (!handle || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    lua_pushnil(L);
+    setmetatable(L, 2);
+
+    boost::system::error_code ec;
+    pipe->assign(*handle, ec);
+    assert(!ec); boost::ignore_unused(ec);
+
+    return 0;
+}
+
 static int writable_pipe_release(lua_State* L)
 {
     auto pipe = static_cast<asio::writable_pipe*>(lua_touserdata(L, 1));
@@ -418,6 +551,13 @@ static int writable_pipe_mt_index(lua_State* L)
             ),
 #if BOOST_OS_UNIX
             hana::make_pair(
+                BOOST_HANA_STRING("assign"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, writable_pipe_assign);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
                 BOOST_HANA_STRING("release"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, writable_pipe_release);
@@ -442,6 +582,54 @@ static int writable_pipe_mt_index(lua_State* L)
         tostringview(L, 2),
         L
     );
+}
+
+static int writable_pipe_new(lua_State* L)
+{
+    int nargs = lua_gettop(L);
+    auto& vm_ctx = get_vm_context(L);
+
+    if (nargs == 0) {
+        auto pipe = static_cast<asio::writable_pipe*>(
+            lua_newuserdata(L, sizeof(asio::writable_pipe))
+        );
+        rawgetp(L, LUA_REGISTRYINDEX, &writable_pipe_mt_key);
+        setmetatable(L, -2);
+        new (pipe) asio::writable_pipe{vm_ctx.strand().context()};
+        return 1;
+    }
+
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
+    if (!handle || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    auto pipe = static_cast<asio::writable_pipe*>(
+        lua_newuserdata(L, sizeof(asio::writable_pipe))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &writable_pipe_mt_key);
+    setmetatable(L, -2);
+    new (pipe) asio::writable_pipe{vm_ctx.strand().context()};
+
+    lua_pushnil(L);
+    setmetatable(L, 1);
+
+    boost::system::error_code ec;
+    pipe->assign(*handle, ec);
+    assert(!ec); boost::ignore_unused(ec);
+
+    return 1;
 }
 
 static int pair(lua_State* L)
@@ -471,80 +659,6 @@ static int pair(lua_State* L)
     return 2;
 }
 
-static int readable_from_fd(lua_State* L)
-{
-    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
-    if (!handle || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument, "arg", 1);
-        return lua_error(L);
-    }
-    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
-    if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument, "arg", 1);
-        return lua_error(L);
-    }
-
-    if (*handle == INVALID_FILE_DESCRIPTOR) {
-        push(L, std::errc::device_or_resource_busy);
-        return lua_error(L);
-    }
-
-    auto& vm_ctx = get_vm_context(L);
-
-    auto pipe = static_cast<asio::readable_pipe*>(
-        lua_newuserdata(L, sizeof(asio::readable_pipe))
-    );
-    rawgetp(L, LUA_REGISTRYINDEX, &readable_pipe_mt_key);
-    setmetatable(L, -2);
-    new (pipe) asio::readable_pipe{vm_ctx.strand().context()};
-
-    lua_pushnil(L);
-    setmetatable(L, 1);
-
-    boost::system::error_code ec;
-    pipe->assign(*handle, ec);
-    assert(!ec); boost::ignore_unused(ec);
-
-    return 1;
-}
-
-static int writable_from_fd(lua_State* L)
-{
-    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
-    if (!handle || !lua_getmetatable(L, 1)) {
-        push(L, std::errc::invalid_argument, "arg", 1);
-        return lua_error(L);
-    }
-    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
-    if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument, "arg", 1);
-        return lua_error(L);
-    }
-
-    if (*handle == INVALID_FILE_DESCRIPTOR) {
-        push(L, std::errc::device_or_resource_busy);
-        return lua_error(L);
-    }
-
-    auto& vm_ctx = get_vm_context(L);
-
-    auto pipe = static_cast<asio::writable_pipe*>(
-        lua_newuserdata(L, sizeof(asio::writable_pipe))
-    );
-    rawgetp(L, LUA_REGISTRYINDEX, &writable_pipe_mt_key);
-    setmetatable(L, -2);
-    new (pipe) asio::writable_pipe{vm_ctx.strand().context()};
-
-    lua_pushnil(L);
-    setmetatable(L, 1);
-
-    boost::system::error_code ec;
-    pipe->assign(*handle, ec);
-    assert(!ec); boost::ignore_unused(ec);
-
-    return 1;
-}
-
 void init_pipe(lua_State* L)
 {
     lua_pushlightuserdata(L, &pipe_key);
@@ -555,12 +669,24 @@ void init_pipe(lua_State* L)
         lua_pushcfunction(L, pair);
         lua_rawset(L, -3);
 
-        lua_pushliteral(L, "readable_from_fd");
-        lua_pushcfunction(L, readable_from_fd);
+        lua_pushliteral(L, "read_stream");
+        {
+            lua_createtable(L, /*narr=*/0, /*nrec=*/1);
+
+            lua_pushliteral(L, "new");
+            lua_pushcfunction(L, readable_pipe_new);
+            lua_rawset(L, -3);
+        }
         lua_rawset(L, -3);
 
-        lua_pushliteral(L, "writable_from_fd");
-        lua_pushcfunction(L, writable_from_fd);
+        lua_pushliteral(L, "write_stream");
+        {
+            lua_createtable(L, /*narr=*/0, /*nrec=*/1);
+
+            lua_pushliteral(L, "new");
+            lua_pushcfunction(L, writable_pipe_new);
+            lua_rawset(L, -3);
+        }
         lua_rawset(L, -3);
     }
     lua_rawset(L, LUA_REGISTRYINDEX);

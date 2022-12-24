@@ -56,10 +56,6 @@ include::pages/pipe.write_stream.adoc[]
 
 include::pages/pipe.pair.adoc[]
 
-include::pages/pipe.readable_from_fd.adoc[]
-
-include::pages/pipe.writable_from_fd.adoc[]
-
 include::pages/regex.adoc[]
 
 include::pages/serial_port.adoc[]
