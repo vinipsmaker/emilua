@@ -12,7 +12,13 @@ endif::[]
 
 === `new() -> file.stream`
 
-Constructor.
+[source,lua]
+----
+new()                    -- <1>
+new(fd: file_descriptor) -- <2>
+----
+<1> Default constructor.
+<2> Converts a file descriptor into a `file.stream` object.
 
 === `open(self, path: string, flags: number)`
 
@@ -48,6 +54,26 @@ ____
 This function causes all outstanding asynchronous read and write operations to
 finish immediately, and the handlers for cancelled operations will be passed the
 `boost::asio::error::operation_aborted` error.
+____
+
+=== `assign(self, fd: file_descriptor)`
+
+Assign an existing native file to `self`.
+
+=== `release(self) -> file_descriptor`
+
+Release ownership of the native descriptor implementation.
+
+Forward the call to
+https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/basic_stream_file/release/overload2.html[the
+function with same name in Boost.Asio]:
+
+[quote]
+____
+This function causes all outstanding asynchronous read and write operations to
+finish immediately, and the handlers for cancelled operations will be passed the
+`boost::asio::error::operation_aborted` error. Ownership of the native file is
+then transferred to the caller.
 ____
 
 === `resize(self, n: number)`

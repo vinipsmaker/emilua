@@ -10,7 +10,9 @@
 #include <boost/asio/ip/v6_only.hpp>
 #include <boost/predef/os/windows.h>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/scope_exit.hpp>
 
+#include <emilua/file_descriptor.hpp>
 #include <emilua/dispatch_table.hpp>
 #include <emilua/async_base.hpp>
 #include <emilua/byte_span.hpp>
@@ -725,6 +727,140 @@ static int tcp_socket_cancel(lua_State* L)
     }
     return 0;
 }
+
+#if BOOST_OS_UNIX
+static int tcp_socket_assign(lua_State* L)
+{
+    auto sock = static_cast<tcp_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 3));
+    if (!handle || !lua_getmetatable(L, 3)) {
+        push(L, std::errc::invalid_argument, "arg", 3);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 3);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    switch (lua_type(L, 2)) {
+    default:
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    case LUA_TUSERDATA: {
+        auto addr = static_cast<asio::ip::address*>(lua_touserdata(L, 2));
+        if (!addr || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        lua_pushnil(L);
+        setmetatable(L, 3);
+
+        boost::system::error_code ec;
+        sock->socket.assign(
+            asio::ip::tcp::endpoint{*addr, 0}.protocol(), *handle, ec);
+        assert(!ec); boost::ignore_unused(ec);
+
+        return 0;
+    }
+    case LUA_TSTRING:
+        return dispatch_table::dispatch(
+            hana::make_tuple(
+                hana::make_pair(
+                    BOOST_HANA_STRING("v4"),
+                    [&]() -> int {
+                        lua_pushnil(L);
+                        setmetatable(L, 3);
+
+                        boost::system::error_code ec;
+                        sock->socket.assign(asio::ip::tcp::v4(), *handle, ec);
+                        assert(!ec); boost::ignore_unused(ec);
+
+                        return 0;
+                    }
+                ),
+                hana::make_pair(
+                    BOOST_HANA_STRING("v6"),
+                    [&]() -> int {
+                        lua_pushnil(L);
+                        setmetatable(L, 3);
+
+                        boost::system::error_code ec;
+                        sock->socket.assign(asio::ip::tcp::v6(), *handle, ec);
+                        assert(!ec); boost::ignore_unused(ec);
+
+                        return 0;
+                    }
+                )
+            ),
+            [&](std::string_view /*key*/) -> int {
+                push(L, std::errc::invalid_argument, "arg", 2);
+                return lua_error(L);
+            },
+            tostringview(L, 2)
+        );
+    }
+}
+
+static int tcp_socket_release(lua_State* L)
+{
+    auto sock = static_cast<tcp_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    boost::system::error_code ec;
+    int rawfd = sock->socket.release(ec);
+    BOOST_SCOPE_EXIT_ALL(&) {
+        if (rawfd != INVALID_FILE_DESCRIPTOR) {
+            int res = close(rawfd);
+            boost::ignore_unused(res);
+        }
+    };
+
+    if (ec) {
+        push(L, ec);
+        return lua_error(L);
+    }
+
+    auto fdhandle = static_cast<file_descriptor_handle*>(
+        lua_newuserdata(L, sizeof(file_descriptor_handle))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    setmetatable(L, -2);
+
+    *fdhandle = rawfd;
+    rawfd = INVALID_FILE_DESCRIPTOR;
+    return 1;
+}
+#endif // BOOST_OS_UNIX
 
 static int tcp_socket_io_control(lua_State* L)
 {
@@ -1804,6 +1940,22 @@ static int tcp_socket_mt_index(lua_State* L)
                     return 1;
                 }
             ),
+#if BOOST_OS_UNIX
+            hana::make_pair(
+                BOOST_HANA_STRING("assign"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, tcp_socket_assign);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("release"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, tcp_socket_release);
+                    return 1;
+                }
+            ),
+#endif // BOOST_OS_UNIX
             hana::make_pair(
                 BOOST_HANA_STRING("io_control"),
                 [](lua_State* L) -> int {
@@ -2342,6 +2494,145 @@ static int tcp_acceptor_cancel(lua_State* L)
     return 0;
 }
 
+#if BOOST_OS_UNIX
+static int tcp_acceptor_assign(lua_State* L)
+{
+    auto acceptor = static_cast<asio::ip::tcp::acceptor*>(lua_touserdata(L, 1));
+    if (!acceptor || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_acceptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 3));
+    if (!handle || !lua_getmetatable(L, 3)) {
+        push(L, std::errc::invalid_argument, "arg", 3);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 3);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    switch (lua_type(L, 2)) {
+    default:
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    case LUA_TUSERDATA: {
+        auto addr = static_cast<asio::ip::address*>(lua_touserdata(L, 2));
+        if (!addr || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        lua_pushnil(L);
+        setmetatable(L, 3);
+
+        boost::system::error_code ec;
+        acceptor->assign(
+            asio::ip::tcp::endpoint{*addr, 0}.protocol(), *handle, ec);
+        assert(!ec); boost::ignore_unused(ec);
+
+        return 0;
+    }
+    case LUA_TSTRING:
+        return dispatch_table::dispatch(
+            hana::make_tuple(
+                hana::make_pair(
+                    BOOST_HANA_STRING("v4"),
+                    [&]() -> int {
+                        lua_pushnil(L);
+                        setmetatable(L, 3);
+
+                        boost::system::error_code ec;
+                        acceptor->assign(asio::ip::tcp::v4(), *handle, ec);
+                        assert(!ec); boost::ignore_unused(ec);
+
+                        return 0;
+                    }
+                ),
+                hana::make_pair(
+                    BOOST_HANA_STRING("v6"),
+                    [&]() -> int {
+                        lua_pushnil(L);
+                        setmetatable(L, 3);
+
+                        boost::system::error_code ec;
+                        acceptor->assign(asio::ip::tcp::v6(), *handle, ec);
+                        assert(!ec); boost::ignore_unused(ec);
+
+                        return 0;
+                    }
+                )
+            ),
+            [&](std::string_view /*key*/) -> int {
+                push(L, std::errc::invalid_argument, "arg", 2);
+                return lua_error(L);
+            },
+            tostringview(L, 2)
+        );
+    }
+}
+
+static int tcp_acceptor_release(lua_State* L)
+{
+    auto acceptor = static_cast<asio::ip::tcp::acceptor*>(lua_touserdata(L, 1));
+    if (!acceptor || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_acceptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (acceptor->native_handle() == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::bad_file_descriptor);
+        return lua_error(L);
+    }
+
+    boost::system::error_code ec;
+    int rawfd = acceptor->release(ec);
+    BOOST_SCOPE_EXIT_ALL(&) {
+        if (rawfd != INVALID_FILE_DESCRIPTOR) {
+            int res = close(rawfd);
+            boost::ignore_unused(res);
+        }
+    };
+
+    if (ec) {
+        push(L, ec);
+        return lua_error(L);
+    }
+
+    auto fdhandle = static_cast<file_descriptor_handle*>(
+        lua_newuserdata(L, sizeof(file_descriptor_handle))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    setmetatable(L, -2);
+
+    *fdhandle = rawfd;
+    rawfd = INVALID_FILE_DESCRIPTOR;
+    return 1;
+}
+#endif // BOOST_OS_UNIX
+
 inline int tcp_acceptor_is_open(lua_State* L)
 {
     auto a = static_cast<asio::ip::tcp::acceptor*>(lua_touserdata(L, 1));
@@ -2440,6 +2731,22 @@ static int tcp_acceptor_mt_index(lua_State* L)
                     return 1;
                 }
             ),
+#if BOOST_OS_UNIX
+            hana::make_pair(
+                BOOST_HANA_STRING("assign"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, tcp_acceptor_assign);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("release"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, tcp_acceptor_release);
+                    return 1;
+                }
+            ),
+#endif // BOOST_OS_UNIX
             hana::make_pair(BOOST_HANA_STRING("is_open"), tcp_acceptor_is_open),
             hana::make_pair(
                 BOOST_HANA_STRING("local_address"), tcp_acceptor_local_address),
@@ -3804,6 +4111,140 @@ static int udp_socket_cancel(lua_State* L)
     return 0;
 }
 
+#if BOOST_OS_UNIX
+static int udp_socket_assign(lua_State* L)
+{
+    auto sock = static_cast<udp_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_udp_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 3));
+    if (!handle || !lua_getmetatable(L, 3)) {
+        push(L, std::errc::invalid_argument, "arg", 3);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 3);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    switch (lua_type(L, 2)) {
+    default:
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    case LUA_TUSERDATA: {
+        auto addr = static_cast<asio::ip::address*>(lua_touserdata(L, 2));
+        if (!addr || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        lua_pushnil(L);
+        setmetatable(L, 3);
+
+        boost::system::error_code ec;
+        sock->socket.assign(
+            asio::ip::udp::endpoint{*addr, 0}.protocol(), *handle, ec);
+        assert(!ec); boost::ignore_unused(ec);
+
+        return 0;
+    }
+    case LUA_TSTRING:
+        return dispatch_table::dispatch(
+            hana::make_tuple(
+                hana::make_pair(
+                    BOOST_HANA_STRING("v4"),
+                    [&]() -> int {
+                        lua_pushnil(L);
+                        setmetatable(L, 3);
+
+                        boost::system::error_code ec;
+                        sock->socket.assign(asio::ip::udp::v4(), *handle, ec);
+                        assert(!ec); boost::ignore_unused(ec);
+
+                        return 0;
+                    }
+                ),
+                hana::make_pair(
+                    BOOST_HANA_STRING("v6"),
+                    [&]() -> int {
+                        lua_pushnil(L);
+                        setmetatable(L, 3);
+
+                        boost::system::error_code ec;
+                        sock->socket.assign(asio::ip::udp::v6(), *handle, ec);
+                        assert(!ec); boost::ignore_unused(ec);
+
+                        return 0;
+                    }
+                )
+            ),
+            [&](std::string_view /*key*/) -> int {
+                push(L, std::errc::invalid_argument, "arg", 2);
+                return lua_error(L);
+            },
+            tostringview(L, 2)
+        );
+    }
+}
+
+static int udp_socket_release(lua_State* L)
+{
+    auto sock = static_cast<udp_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_udp_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    boost::system::error_code ec;
+    int rawfd = sock->socket.release(ec);
+    BOOST_SCOPE_EXIT_ALL(&) {
+        if (rawfd != INVALID_FILE_DESCRIPTOR) {
+            int res = close(rawfd);
+            boost::ignore_unused(res);
+        }
+    };
+
+    if (ec) {
+        push(L, ec);
+        return lua_error(L);
+    }
+
+    auto fdhandle = static_cast<file_descriptor_handle*>(
+        lua_newuserdata(L, sizeof(file_descriptor_handle))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    setmetatable(L, -2);
+
+    *fdhandle = rawfd;
+    rawfd = INVALID_FILE_DESCRIPTOR;
+    return 1;
+}
+#endif // BOOST_OS_UNIX
+
 static int udp_socket_set_option(lua_State* L)
 {
     lua_settop(L, 3);
@@ -4684,6 +5125,22 @@ static int udp_socket_mt_index(lua_State* L)
                     return 1;
                 }
             ),
+#if BOOST_OS_UNIX
+            hana::make_pair(
+                BOOST_HANA_STRING("assign"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, udp_socket_assign);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("release"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, udp_socket_release);
+                    return 1;
+                }
+            ),
+#endif // BOOST_OS_UNIX
             hana::make_pair(
                 BOOST_HANA_STRING("set_option"),
                 [](lua_State* L) -> int {

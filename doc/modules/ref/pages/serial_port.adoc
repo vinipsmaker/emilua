@@ -20,7 +20,13 @@ port:open(name)
 
 === `new() -> serial_port`
 
-Constructor.
+[source,lua]
+----
+new()                    -- <1>
+new(fd: file_descriptor) -- <2>
+----
+<1> Default constructor.
+<2> Converts a file descriptor into a `serial_port` object.
 
 === `open(self, device: string)`
 
@@ -57,6 +63,14 @@ This function causes all outstanding asynchronous read or write operations to
 finish immediately, and the handlers for cancelled operations will be passed the
 `boost::asio::error::operation_aborted` error.
 ____
+
+=== `assign(self, fd: file_descriptor)`
+
+Assign an existing native port to `self`.
+
+=== `release(self) -> file_descriptor`
+
+Release ownership of the native descriptor implementation.
 
 === `send_break(self)`
 

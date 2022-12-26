@@ -67,7 +67,13 @@ sent. `SOCK_STREAM` and `SOCK_DGRAM` will have their own caveats.
 
 === `new() -> unix.seqpacket_socket`
 
-Constructor.
+[source,lua]
+----
+new()                    -- <1>
+new(fd: file_descriptor) -- <2>
+----
+<1> Default constructor.
+<2> Converts a file descriptor into an `unix.seqpacket_socket` object.
 
 === `pair() -> unix.seqpacket_socket, unix.seqpacket_socket`
 
@@ -109,6 +115,26 @@ ____
 This function causes all outstanding asynchronous connect, send and receive
 operations to finish immediately, and the handlers for cancelled operations will
 be passed the `boost::asio::error::operation_aborted` error.
+____
+
+=== `assign(self, fd: file_descriptor)`
+
+Assign an existing native socket to `self`.
+
+=== `release(self) -> file_descriptor`
+
+Release ownership of the native descriptor implementation.
+
+Forward the call to
+https://www.boost.org/doc/libs/1_81_0/doc/html/boost_asio/reference/basic_seq_packet_socket/release/overload2.html[the
+function with same name in Boost.Asio]:
+
+[quote]
+____
+This function causes all outstanding asynchronous connect, send and receive
+operations to finish immediately, and the handlers for cancelled operations will
+be passed the `boost::asio::error::operation_aborted` error. Ownership of the
+native socket is then transferred to the caller.
 ____
 
 === `shutdown(self, what: string)`

@@ -5,7 +5,9 @@
 
 #include <boost/asio/random_access_file.hpp>
 #include <boost/asio/stream_file.hpp>
+#include <boost/scope_exit.hpp>
 
+#include <emilua/file_descriptor.hpp>
 #include <emilua/dispatch_table.hpp>
 #include <emilua/async_base.hpp>
 #include <emilua/byte_span.hpp>
@@ -99,6 +101,90 @@ static int stream_cancel(lua_State* L)
     }
     return 0;
 }
+
+#if BOOST_OS_UNIX
+static int stream_assign(lua_State* L)
+{
+    auto file = static_cast<asio::stream_file*>(lua_touserdata(L, 1));
+    if (!file || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_stream_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 2));
+    if (!handle || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    lua_pushnil(L);
+    setmetatable(L, 2);
+
+    boost::system::error_code ec;
+    file->assign(*handle, ec);
+    assert(!ec); boost::ignore_unused(ec);
+
+    return 0;
+}
+
+static int stream_release(lua_State* L)
+{
+    auto file = static_cast<asio::stream_file*>(lua_touserdata(L, 1));
+    if (!file || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_stream_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (file->native_handle() == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::bad_file_descriptor);
+        return lua_error(L);
+    }
+
+    boost::system::error_code ec;
+    int rawfd = file->release(ec);
+    BOOST_SCOPE_EXIT_ALL(&) {
+        if (rawfd != INVALID_FILE_DESCRIPTOR) {
+            int res = close(rawfd);
+            boost::ignore_unused(res);
+        }
+    };
+
+    if (ec) {
+        push(L, ec);
+        return lua_error(L);
+    }
+
+    auto fdhandle = static_cast<file_descriptor_handle*>(
+        lua_newuserdata(L, sizeof(file_descriptor_handle))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    setmetatable(L, -2);
+
+    *fdhandle = rawfd;
+    rawfd = INVALID_FILE_DESCRIPTOR;
+    return 1;
+}
+#endif // BOOST_OS_UNIX
 
 static int stream_resize(lua_State* L)
 {
@@ -316,6 +402,22 @@ static int stream_mt_index(lua_State* L)
                     return 1;
                 }
             ),
+#if BOOST_OS_UNIX
+            hana::make_pair(
+                BOOST_HANA_STRING("assign"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, stream_assign);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("release"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, stream_release);
+                    return 1;
+                }
+            ),
+#endif // BOOST_OS_UNIX
             hana::make_pair(
                 BOOST_HANA_STRING("resize"),
                 [](lua_State* L) -> int {
@@ -358,14 +460,55 @@ static int stream_mt_index(lua_State* L)
 
 static int stream_new(lua_State* L)
 {
+    int nargs = lua_gettop(L);
     auto& vm_ctx = get_vm_context(L);
+
+    if (nargs == 0) {
+        auto file = static_cast<asio::stream_file*>(
+            lua_newuserdata(L, sizeof(asio::stream_file))
+        );
+        rawgetp(L, LUA_REGISTRYINDEX, &file_stream_mt_key);
+        setmetatable(L, -2);
+        new (file) asio::stream_file{vm_ctx.strand().context()};
+        return 1;
+    }
+
+#if BOOST_OS_UNIX
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
+    if (!handle || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
     auto file = static_cast<asio::stream_file*>(
         lua_newuserdata(L, sizeof(asio::stream_file))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &file_stream_mt_key);
     setmetatable(L, -2);
     new (file) asio::stream_file{vm_ctx.strand().context()};
+
+    lua_pushnil(L);
+    setmetatable(L, 1);
+
+    boost::system::error_code ec;
+    file->assign(*handle, ec);
+    assert(!ec); boost::ignore_unused(ec);
+
     return 1;
+#else // BOOST_OS_UNIX
+    push(L, std::errc::invalid_argument, "arg", 1);
+    return lua_error(L);
+#endif // BOOST_OS_UNIX
 }
 
 static int random_access_open(lua_State* L)
@@ -438,6 +581,90 @@ static int random_access_cancel(lua_State* L)
     }
     return 0;
 }
+
+#if BOOST_OS_UNIX
+static int random_access_assign(lua_State* L)
+{
+    auto file = static_cast<asio::random_access_file*>(lua_touserdata(L, 1));
+    if (!file || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_random_access_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 2));
+    if (!handle || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    lua_pushnil(L);
+    setmetatable(L, 2);
+
+    boost::system::error_code ec;
+    file->assign(*handle, ec);
+    assert(!ec); boost::ignore_unused(ec);
+
+    return 0;
+}
+
+static int random_access_release(lua_State* L)
+{
+    auto file = static_cast<asio::random_access_file*>(lua_touserdata(L, 1));
+    if (!file || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_random_access_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (file->native_handle() == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::bad_file_descriptor);
+        return lua_error(L);
+    }
+
+    boost::system::error_code ec;
+    int rawfd = file->release(ec);
+    BOOST_SCOPE_EXIT_ALL(&) {
+        if (rawfd != INVALID_FILE_DESCRIPTOR) {
+            int res = close(rawfd);
+            boost::ignore_unused(res);
+        }
+    };
+
+    if (ec) {
+        push(L, ec);
+        return lua_error(L);
+    }
+
+    auto fdhandle = static_cast<file_descriptor_handle*>(
+        lua_newuserdata(L, sizeof(file_descriptor_handle))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    setmetatable(L, -2);
+
+    *fdhandle = rawfd;
+    rawfd = INVALID_FILE_DESCRIPTOR;
+    return 1;
+}
+#endif // BOOST_OS_UNIX
 
 static int random_access_resize(lua_State* L)
 {
@@ -622,6 +849,22 @@ static int random_access_mt_index(lua_State* L)
                     return 1;
                 }
             ),
+#if BOOST_OS_UNIX
+            hana::make_pair(
+                BOOST_HANA_STRING("assign"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, random_access_assign);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("release"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, random_access_release);
+                    return 1;
+                }
+            ),
+#endif // BOOST_OS_UNIX
             hana::make_pair(
                 BOOST_HANA_STRING("resize"),
                 [](lua_State* L) -> int {
@@ -661,14 +904,55 @@ static int random_access_mt_index(lua_State* L)
 
 static int random_access_new(lua_State* L)
 {
+    int nargs = lua_gettop(L);
     auto& vm_ctx = get_vm_context(L);
+
+    if (nargs == 0) {
+        auto file = static_cast<asio::random_access_file*>(
+            lua_newuserdata(L, sizeof(asio::random_access_file))
+        );
+        rawgetp(L, LUA_REGISTRYINDEX, &file_random_access_mt_key);
+        setmetatable(L, -2);
+        new (file) asio::random_access_file{vm_ctx.strand().context()};
+        return 1;
+    }
+
+#if BOOST_OS_UNIX
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
+    if (!handle || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
     auto file = static_cast<asio::random_access_file*>(
         lua_newuserdata(L, sizeof(asio::random_access_file))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &file_random_access_mt_key);
     setmetatable(L, -2);
     new (file) asio::random_access_file{vm_ctx.strand().context()};
+
+    lua_pushnil(L);
+    setmetatable(L, 1);
+
+    boost::system::error_code ec;
+    file->assign(*handle, ec);
+    assert(!ec); boost::ignore_unused(ec);
+
     return 1;
+#else // BOOST_OS_UNIX
+    push(L, std::errc::invalid_argument, "arg", 1);
+    return lua_error(L);
+#endif // BOOST_OS_UNIX
 }
 
 void init_file(lua_State* L)

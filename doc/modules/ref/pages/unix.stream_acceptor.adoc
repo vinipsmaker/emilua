@@ -29,7 +29,13 @@ end
 
 === `new() -> unix.stream_acceptor`
 
-Constructor.
+[source,lua]
+----
+new()                    -- <1>
+new(fd: file_descriptor) -- <2>
+----
+<1> Default constructor.
+<2> Converts a file descriptor into an `unix.stream_acceptor` object.
 
 === `open(self)`
 
@@ -108,6 +114,26 @@ ____
 This function causes all outstanding asynchronous connect, send and receive
 operations to finish immediately, and the handlers for cancelled operations will
 be passed the `boost::asio::error::operation_aborted` error.
+____
+
+=== `assign(self, fd: file_descriptor)`
+
+Assign an existing native acceptor to `self`.
+
+=== `release(self) -> file_descriptor`
+
+Release ownership of the native descriptor implementation.
+
+Forward the call to
+https://www.boost.org/doc/libs/1_81_0/doc/html/boost_asio/reference/basic_socket_acceptor/release/overload2.html[the
+function with same name in Boost.Asio]:
+
+[quote]
+____
+This function causes all outstanding asynchronous accept operations to finish
+immediately, and the handlers for cancelled operations will be passed the
+`boost::asio::error::operation_aborted` error. Ownership of the native acceptor
+is then transferred to the caller.
 ____
 
 == Properties

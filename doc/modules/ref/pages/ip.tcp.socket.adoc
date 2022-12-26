@@ -73,6 +73,29 @@ operations to finish immediately, and the handlers for cancelled operations will
 be passed the `boost::asio::error::operation_aborted` error.
 ____
 
+=== `assign(self, address_family: string|ip.address, fd: file_descriptor)`
+
+Assign an existing native socket to `self`.
+
+`address_family` can be either `"v4"` or `"v6"`. If you provide an `ip.address`
+object, the appropriate value will be inferred.
+
+=== `release(self) -> file_descriptor`
+
+Release ownership of the native descriptor implementation.
+
+Forward the call to
+https://www.boost.org/doc/libs/1_81_0/doc/html/boost_asio/reference/basic_stream_socket/release/overload2.html[the
+function with same name in Boost.Asio]:
+
+[quote]
+____
+This function causes all outstanding asynchronous connect, send and receive
+operations to finish immediately, and the handlers for cancelled operations will
+be passed the `boost::asio::error::operation_aborted` error. Ownership of the
+native socket is then transferred to the caller.
+____
+
 === `io_control(self, command: string[, ...])`
 
 Perform an IO control command on the socket.

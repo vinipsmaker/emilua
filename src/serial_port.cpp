@@ -4,7 +4,9 @@
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
 #include <boost/asio/serial_port.hpp>
+#include <boost/scope_exit.hpp>
 
+#include <emilua/file_descriptor.hpp>
 #include <emilua/dispatch_table.hpp>
 #include <emilua/serial_port.hpp>
 #include <emilua/async_base.hpp>
@@ -85,6 +87,92 @@ static int serial_port_cancel(lua_State* L)
     }
     return 0;
 }
+
+#if BOOST_OS_UNIX
+static int serial_port_assign(lua_State* L)
+{
+    auto port = static_cast<asio::serial_port*>(lua_touserdata(L, 1));
+    if (!port || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &serial_port_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 2));
+    if (!handle || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    lua_pushnil(L);
+    setmetatable(L, 2);
+
+    boost::system::error_code ec;
+    port->assign(*handle, ec);
+    assert(!ec); boost::ignore_unused(ec);
+
+    return 0;
+}
+
+static int serial_port_release(lua_State* L)
+{
+    auto port = static_cast<asio::serial_port*>(lua_touserdata(L, 1));
+    if (!port || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &serial_port_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (port->native_handle() == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::bad_file_descriptor);
+        return lua_error(L);
+    }
+
+    // https://github.com/chriskohlhoff/asio/issues/1182
+    int newfd = dup(port->native_handle());
+    BOOST_SCOPE_EXIT_ALL(&) {
+        if (newfd != -1) {
+            int res = close(newfd);
+            boost::ignore_unused(res);
+        }
+    };
+    if (newfd == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+
+    boost::system::error_code ignored_ec;
+    port->close(ignored_ec);
+
+    auto fdhandle = static_cast<file_descriptor_handle*>(
+        lua_newuserdata(L, sizeof(file_descriptor_handle))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    setmetatable(L, -2);
+
+    *fdhandle = newfd;
+    newfd = -1;
+    return 1;
+}
+#endif // BOOST_OS_UNIX
 
 static int serial_port_send_break(lua_State* L)
 {
@@ -478,6 +566,22 @@ static int serial_port_mt_index(lua_State* L)
                     return 1;
                 }
             ),
+#if BOOST_OS_UNIX
+            hana::make_pair(
+                BOOST_HANA_STRING("assign"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, serial_port_assign);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("release"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, serial_port_release);
+                    return 1;
+                }
+            ),
+#endif // BOOST_OS_UNIX
             hana::make_pair(
                 BOOST_HANA_STRING("send_break"),
                 [](lua_State* L) -> int {
@@ -604,14 +708,55 @@ static int serial_port_mt_index(lua_State* L)
 
 static int serial_port_new(lua_State* L)
 {
+    int nargs = lua_gettop(L);
     auto& vm_ctx = get_vm_context(L);
-    auto sock = static_cast<asio::serial_port*>(
+
+    if (nargs == 0) {
+        auto port = static_cast<asio::serial_port*>(
+            lua_newuserdata(L, sizeof(asio::serial_port))
+        );
+        rawgetp(L, LUA_REGISTRYINDEX, &serial_port_mt_key);
+        setmetatable(L, -2);
+        new (port) asio::serial_port{vm_ctx.strand().context()};
+        return 1;
+    }
+
+#if BOOST_OS_UNIX
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
+    if (!handle || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    auto port = static_cast<asio::serial_port*>(
         lua_newuserdata(L, sizeof(asio::serial_port))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &serial_port_mt_key);
     setmetatable(L, -2);
-    new (sock) asio::serial_port{vm_ctx.strand().context()};
+    new (port) asio::serial_port{vm_ctx.strand().context()};
+
+    lua_pushnil(L);
+    setmetatable(L, 1);
+
+    boost::system::error_code ec;
+    port->assign(*handle, ec);
+    assert(!ec); boost::ignore_unused(ec);
+
     return 1;
+#else // BOOST_OS_UNIX
+    push(L, std::errc::invalid_argument, "arg", 1);
+    return lua_error(L);
+#endif // BOOST_OS_UNIX
 }
 
 void init_serial_port(lua_State* L)

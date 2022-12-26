@@ -510,6 +510,88 @@ static int unix_datagram_socket_cancel(lua_State* L)
     return 0;
 }
 
+static int unix_datagram_socket_assign(lua_State* L)
+{
+    auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &unix_datagram_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 2));
+    if (!handle || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    lua_pushnil(L);
+    setmetatable(L, 2);
+
+    boost::system::error_code ec;
+    sock->socket.assign(asio::local::datagram_protocol{}, *handle, ec);
+    assert(!ec); boost::ignore_unused(ec);
+
+    return 0;
+}
+
+static int unix_datagram_socket_release(lua_State* L)
+{
+    auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &unix_datagram_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (sock->socket.native_handle() == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::bad_file_descriptor);
+        return lua_error(L);
+    }
+
+    boost::system::error_code ec;
+    int rawfd = sock->socket.release(ec);
+    BOOST_SCOPE_EXIT_ALL(&) {
+        if (rawfd != INVALID_FILE_DESCRIPTOR) {
+            int res = close(rawfd);
+            boost::ignore_unused(res);
+        }
+    };
+
+    if (ec) {
+        push(L, ec);
+        return lua_error(L);
+    }
+
+    auto fdhandle = static_cast<file_descriptor_handle*>(
+        lua_newuserdata(L, sizeof(file_descriptor_handle))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    setmetatable(L, -2);
+
+    *fdhandle = rawfd;
+    rawfd = INVALID_FILE_DESCRIPTOR;
+    return 1;
+}
+
 static int unix_datagram_socket_set_option(lua_State* L)
 {
     lua_settop(L, 3);
@@ -1350,6 +1432,20 @@ static int unix_datagram_socket_mt_index(lua_State* L)
                 }
             ),
             hana::make_pair(
+                BOOST_HANA_STRING("assign"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, unix_datagram_socket_assign);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("release"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, unix_datagram_socket_release);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
                 BOOST_HANA_STRING("set_option"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, unix_datagram_socket_set_option);
@@ -1454,13 +1550,49 @@ static int unix_datagram_socket_mt_index(lua_State* L)
 
 static int unix_datagram_socket_new(lua_State* L)
 {
+    int nargs = lua_gettop(L);
     auto& vm_ctx = get_vm_context(L);
+
+    if (nargs == 0) {
+        auto sock = static_cast<unix_datagram_socket*>(
+            lua_newuserdata(L, sizeof(unix_datagram_socket))
+        );
+        rawgetp(L, LUA_REGISTRYINDEX, &unix_datagram_socket_mt_key);
+        setmetatable(L, -2);
+        new (sock) unix_datagram_socket{vm_ctx.strand().context()};
+        return 1;
+    }
+
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
+    if (!handle || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
     auto sock = static_cast<unix_datagram_socket*>(
         lua_newuserdata(L, sizeof(unix_datagram_socket))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &unix_datagram_socket_mt_key);
     setmetatable(L, -2);
     new (sock) unix_datagram_socket{vm_ctx.strand().context()};
+
+    lua_pushnil(L);
+    setmetatable(L, 1);
+
+    boost::system::error_code ec;
+    sock->socket.assign(asio::local::datagram_protocol{}, *handle, ec);
+    assert(!ec); boost::ignore_unused(ec);
+
     return 1;
 }
 
@@ -1578,6 +1710,88 @@ static int unix_stream_socket_cancel(lua_State* L)
         return lua_error(L);
     }
     return 0;
+}
+
+static int unix_stream_socket_assign(lua_State* L)
+{
+    auto sock = static_cast<unix_stream_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &unix_stream_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 2));
+    if (!handle || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    lua_pushnil(L);
+    setmetatable(L, 2);
+
+    boost::system::error_code ec;
+    sock->socket.assign(asio::local::stream_protocol{}, *handle, ec);
+    assert(!ec); boost::ignore_unused(ec);
+
+    return 0;
+}
+
+static int unix_stream_socket_release(lua_State* L)
+{
+    auto sock = static_cast<unix_stream_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &unix_stream_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (sock->socket.native_handle() == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::bad_file_descriptor);
+        return lua_error(L);
+    }
+
+    boost::system::error_code ec;
+    int rawfd = sock->socket.release(ec);
+    BOOST_SCOPE_EXIT_ALL(&) {
+        if (rawfd != INVALID_FILE_DESCRIPTOR) {
+            int res = close(rawfd);
+            boost::ignore_unused(res);
+        }
+    };
+
+    if (ec) {
+        push(L, ec);
+        return lua_error(L);
+    }
+
+    auto fdhandle = static_cast<file_descriptor_handle*>(
+        lua_newuserdata(L, sizeof(file_descriptor_handle))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    setmetatable(L, -2);
+
+    *fdhandle = rawfd;
+    rawfd = INVALID_FILE_DESCRIPTOR;
+    return 1;
 }
 
 static int unix_stream_socket_io_control(lua_State* L)
@@ -2242,6 +2456,20 @@ static int unix_stream_socket_mt_index(lua_State* L)
                 }
             ),
             hana::make_pair(
+                BOOST_HANA_STRING("assign"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, unix_stream_socket_assign);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("release"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, unix_stream_socket_release);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
                 BOOST_HANA_STRING("io_control"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, unix_stream_socket_io_control);
@@ -2328,13 +2556,49 @@ static int unix_stream_socket_mt_index(lua_State* L)
 
 static int unix_stream_socket_new(lua_State* L)
 {
+    int nargs = lua_gettop(L);
     auto& vm_ctx = get_vm_context(L);
+
+    if (nargs == 0) {
+        auto sock = static_cast<unix_stream_socket*>(
+            lua_newuserdata(L, sizeof(unix_stream_socket))
+        );
+        rawgetp(L, LUA_REGISTRYINDEX, &unix_stream_socket_mt_key);
+        setmetatable(L, -2);
+        new (sock) unix_stream_socket{vm_ctx.strand().context()};
+        return 1;
+    }
+
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
+    if (!handle || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
     auto sock = static_cast<unix_stream_socket*>(
         lua_newuserdata(L, sizeof(unix_stream_socket))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &unix_stream_socket_mt_key);
     setmetatable(L, -2);
     new (sock) unix_stream_socket{vm_ctx.strand().context()};
+
+    lua_pushnil(L);
+    setmetatable(L, 1);
+
+    boost::system::error_code ec;
+    sock->socket.assign(asio::local::stream_protocol{}, *handle, ec);
+    assert(!ec); boost::ignore_unused(ec);
+
     return 1;
 }
 
@@ -2550,6 +2814,90 @@ static int unix_stream_acceptor_cancel(lua_State* L)
     return 0;
 }
 
+static int unix_stream_acceptor_assign(lua_State* L)
+{
+    auto acceptor = static_cast<asio::local::stream_protocol::acceptor*>(
+        lua_touserdata(L, 1));
+    if (!acceptor || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &unix_stream_acceptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 2));
+    if (!handle || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    lua_pushnil(L);
+    setmetatable(L, 2);
+
+    boost::system::error_code ec;
+    acceptor->assign(asio::local::stream_protocol{}, *handle, ec);
+    assert(!ec); boost::ignore_unused(ec);
+
+    return 0;
+}
+
+static int unix_stream_acceptor_release(lua_State* L)
+{
+    auto acceptor = static_cast<asio::local::stream_protocol::acceptor*>(
+        lua_touserdata(L, 1));
+    if (!acceptor || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &unix_stream_acceptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (acceptor->native_handle() == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::bad_file_descriptor);
+        return lua_error(L);
+    }
+
+    boost::system::error_code ec;
+    int rawfd = acceptor->release(ec);
+    BOOST_SCOPE_EXIT_ALL(&) {
+        if (rawfd != INVALID_FILE_DESCRIPTOR) {
+            int res = close(rawfd);
+            boost::ignore_unused(res);
+        }
+    };
+
+    if (ec) {
+        push(L, ec);
+        return lua_error(L);
+    }
+
+    auto fdhandle = static_cast<file_descriptor_handle*>(
+        lua_newuserdata(L, sizeof(file_descriptor_handle))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    setmetatable(L, -2);
+
+    *fdhandle = rawfd;
+    rawfd = INVALID_FILE_DESCRIPTOR;
+    return 1;
+}
+
 static int unix_stream_acceptor_set_option(lua_State* L)
 {
     auto acceptor = static_cast<asio::local::stream_protocol::acceptor*>(
@@ -2726,6 +3074,20 @@ static int unix_stream_acceptor_mt_index(lua_State* L)
                 }
             ),
             hana::make_pair(
+                BOOST_HANA_STRING("assign"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, unix_stream_acceptor_assign);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("release"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, unix_stream_acceptor_release);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
                 BOOST_HANA_STRING("set_option"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, unix_stream_acceptor_set_option);
@@ -2756,13 +3118,50 @@ static int unix_stream_acceptor_mt_index(lua_State* L)
 
 static int unix_stream_acceptor_new(lua_State* L)
 {
+    int nargs = lua_gettop(L);
     auto& vm_ctx = get_vm_context(L);
-    auto s = static_cast<asio::local::stream_protocol::acceptor*>(
+
+    if (nargs == 0) {
+        auto a = static_cast<asio::local::stream_protocol::acceptor*>(
+            lua_newuserdata(L, sizeof(asio::local::stream_protocol::acceptor))
+        );
+        rawgetp(L, LUA_REGISTRYINDEX, &unix_stream_acceptor_mt_key);
+        setmetatable(L, -2);
+        new (a) asio::local::stream_protocol::acceptor{
+            vm_ctx.strand().context()};
+        return 1;
+    }
+
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
+    if (!handle || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    auto a = static_cast<asio::local::stream_protocol::acceptor*>(
         lua_newuserdata(L, sizeof(asio::local::stream_protocol::acceptor))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &unix_stream_acceptor_mt_key);
     setmetatable(L, -2);
-    new (s) asio::local::stream_protocol::acceptor{vm_ctx.strand().context()};
+    new (a) asio::local::stream_protocol::acceptor{vm_ctx.strand().context()};
+
+    lua_pushnil(L);
+    setmetatable(L, 1);
+
+    boost::system::error_code ec;
+    a->assign(asio::local::stream_protocol{}, *handle, ec);
+    assert(!ec); boost::ignore_unused(ec);
+
     return 1;
 }
 
@@ -2853,6 +3252,88 @@ static int unix_seqpacket_socket_cancel(lua_State* L)
         return lua_error(L);
     }
     return 0;
+}
+
+static int unix_seqpacket_socket_assign(lua_State* L)
+{
+    auto sock = static_cast<unix_seqpacket_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &unix_seqpacket_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 2));
+    if (!handle || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    lua_pushnil(L);
+    setmetatable(L, 2);
+
+    boost::system::error_code ec;
+    sock->socket.assign(seqpacket_protocol{}, *handle, ec);
+    assert(!ec); boost::ignore_unused(ec);
+
+    return 0;
+}
+
+static int unix_seqpacket_socket_release(lua_State* L)
+{
+    auto sock = static_cast<unix_seqpacket_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &unix_seqpacket_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (sock->socket.native_handle() == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::bad_file_descriptor);
+        return lua_error(L);
+    }
+
+    boost::system::error_code ec;
+    int rawfd = sock->socket.release(ec);
+    BOOST_SCOPE_EXIT_ALL(&) {
+        if (rawfd != INVALID_FILE_DESCRIPTOR) {
+            int res = close(rawfd);
+            boost::ignore_unused(res);
+        }
+    };
+
+    if (ec) {
+        push(L, ec);
+        return lua_error(L);
+    }
+
+    auto fdhandle = static_cast<file_descriptor_handle*>(
+        lua_newuserdata(L, sizeof(file_descriptor_handle))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    setmetatable(L, -2);
+
+    *fdhandle = rawfd;
+    rawfd = INVALID_FILE_DESCRIPTOR;
+    return 1;
 }
 
 static int unix_seqpacket_socket_shutdown(lua_State* L)
@@ -3492,6 +3973,20 @@ static int unix_seqpacket_socket_mt_index(lua_State* L)
                 }
             ),
             hana::make_pair(
+                BOOST_HANA_STRING("assign"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, unix_seqpacket_socket_assign);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("release"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, unix_seqpacket_socket_release);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
                 BOOST_HANA_STRING("shutdown"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, unix_seqpacket_socket_shutdown);
@@ -3579,13 +4074,49 @@ static int unix_seqpacket_socket_mt_index(lua_State* L)
 
 static int unix_seqpacket_socket_new(lua_State* L)
 {
+    int nargs = lua_gettop(L);
     auto& vm_ctx = get_vm_context(L);
+
+    if (nargs == 0) {
+        auto sock = static_cast<unix_seqpacket_socket*>(
+            lua_newuserdata(L, sizeof(unix_seqpacket_socket))
+        );
+        rawgetp(L, LUA_REGISTRYINDEX, &unix_seqpacket_socket_mt_key);
+        setmetatable(L, -2);
+        new (sock) unix_seqpacket_socket{vm_ctx.strand().context()};
+        return 1;
+    }
+
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
+    if (!handle || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
     auto sock = static_cast<unix_seqpacket_socket*>(
         lua_newuserdata(L, sizeof(unix_seqpacket_socket))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &unix_seqpacket_socket_mt_key);
     setmetatable(L, -2);
     new (sock) unix_seqpacket_socket{vm_ctx.strand().context()};
+
+    lua_pushnil(L);
+    setmetatable(L, 1);
+
+    boost::system::error_code ec;
+    sock->socket.assign(seqpacket_protocol{}, *handle, ec);
+    assert(!ec); boost::ignore_unused(ec);
+
     return 1;
 }
 
@@ -3802,6 +4333,90 @@ static int unix_seqpacket_acceptor_cancel(lua_State* L)
     return 0;
 }
 
+static int unix_seqpacket_acceptor_assign(lua_State* L)
+{
+    auto acceptor = static_cast<seqpacket_protocol::acceptor*>(
+        lua_touserdata(L, 1));
+    if (!acceptor || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &unix_seqpacket_acceptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 2));
+    if (!handle || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    lua_pushnil(L);
+    setmetatable(L, 2);
+
+    boost::system::error_code ec;
+    acceptor->assign(seqpacket_protocol{}, *handle, ec);
+    assert(!ec); boost::ignore_unused(ec);
+
+    return 0;
+}
+
+static int unix_seqpacket_acceptor_release(lua_State* L)
+{
+    auto acceptor = static_cast<seqpacket_protocol::acceptor*>(
+        lua_touserdata(L, 1));
+    if (!acceptor || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &unix_seqpacket_acceptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (acceptor->native_handle() == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::bad_file_descriptor);
+        return lua_error(L);
+    }
+
+    boost::system::error_code ec;
+    int rawfd = acceptor->release(ec);
+    BOOST_SCOPE_EXIT_ALL(&) {
+        if (rawfd != INVALID_FILE_DESCRIPTOR) {
+            int res = close(rawfd);
+            boost::ignore_unused(res);
+        }
+    };
+
+    if (ec) {
+        push(L, ec);
+        return lua_error(L);
+    }
+
+    auto fdhandle = static_cast<file_descriptor_handle*>(
+        lua_newuserdata(L, sizeof(file_descriptor_handle))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    setmetatable(L, -2);
+
+    *fdhandle = rawfd;
+    rawfd = INVALID_FILE_DESCRIPTOR;
+    return 1;
+}
+
 static int unix_seqpacket_acceptor_set_option(lua_State* L)
 {
     auto acceptor = static_cast<seqpacket_protocol::acceptor*>(
@@ -3978,6 +4593,20 @@ static int unix_seqpacket_acceptor_mt_index(lua_State* L)
                 }
             ),
             hana::make_pair(
+                BOOST_HANA_STRING("assign"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, unix_seqpacket_acceptor_assign);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("release"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, unix_seqpacket_acceptor_release);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
                 BOOST_HANA_STRING("set_option"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, unix_seqpacket_acceptor_set_option);
@@ -4008,13 +4637,49 @@ static int unix_seqpacket_acceptor_mt_index(lua_State* L)
 
 static int unix_seqpacket_acceptor_new(lua_State* L)
 {
+    int nargs = lua_gettop(L);
     auto& vm_ctx = get_vm_context(L);
+
+    if (nargs == 0) {
+        auto a = static_cast<seqpacket_protocol::acceptor*>(
+            lua_newuserdata(L, sizeof(seqpacket_protocol::acceptor))
+        );
+        rawgetp(L, LUA_REGISTRYINDEX, &unix_seqpacket_acceptor_mt_key);
+        setmetatable(L, -2);
+        new (a) seqpacket_protocol::acceptor{vm_ctx.strand().context()};
+        return 1;
+    }
+
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
+    if (!handle || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
     auto a = static_cast<seqpacket_protocol::acceptor*>(
         lua_newuserdata(L, sizeof(seqpacket_protocol::acceptor))
     );
     rawgetp(L, LUA_REGISTRYINDEX, &unix_seqpacket_acceptor_mt_key);
     setmetatable(L, -2);
     new (a) seqpacket_protocol::acceptor{vm_ctx.strand().context()};
+
+    lua_pushnil(L);
+    setmetatable(L, 1);
+
+    boost::system::error_code ec;
+    a->assign(seqpacket_protocol{}, *handle, ec);
+    assert(!ec); boost::ignore_unused(ec);
+
     return 1;
 }
 
