@@ -5,6 +5,8 @@
 
 #include <emilua/file_descriptor.hpp>
 
+#include <boost/scope_exit.hpp>
+
 namespace emilua {
 
 char file_descriptor_mt_key;
@@ -36,15 +38,60 @@ static int file_descriptor_close(lua_State* L)
     return 0;
 }
 
-static int file_descriptor_mt_index(lua_State* L)
+static int file_descriptor_dup(lua_State* L)
 {
-    if (tostringview(L, 2) != "close") {
-        push(L, errc::bad_index, "index", 2);
+    auto oldhandle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
+    if (!oldhandle || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
 
-    lua_pushcfunction(L, file_descriptor_close);
+    if (*oldhandle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    int newfd = dup(*oldhandle);
+    BOOST_SCOPE_EXIT_ALL(&) {
+        if (newfd != -1) {
+            int res = close(newfd);
+            boost::ignore_unused(res);
+        }
+    };
+    if (newfd == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+
+    auto newhandle = static_cast<file_descriptor_handle*>(
+        lua_newuserdata(L, sizeof(file_descriptor_handle))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    setmetatable(L, -2);
+
+    *newhandle = newfd;
+    newfd = -1;
     return 1;
+}
+
+static int file_descriptor_mt_index(lua_State* L)
+{
+    auto key = tostringview(L, 2);
+    if (key == "close") {
+        lua_pushcfunction(L, file_descriptor_close);
+        return 1;
+    } else if (key == "dup") {
+        lua_pushcfunction(L, file_descriptor_dup);
+        return 1;
+    } else {
+        push(L, errc::bad_index, "index", 2);
+        return lua_error(L);
+    }
 }
 
 static int file_descriptor_mt_tostring(lua_State* L)

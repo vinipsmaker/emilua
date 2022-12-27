@@ -23,3 +23,7 @@ NOTE: This type is not available on Windows.
 Closes the file descriptor w/o waiting for the GC.
 
 NOTE: It can only be called once.
+
+=== `dup(self) -> file_descriptor`
+
+Creates a new file descriptor that refers to the same open file description.
