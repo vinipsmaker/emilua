@@ -47,6 +47,13 @@ static int file_descriptor_mt_index(lua_State* L)
     return 1;
 }
 
+static int file_descriptor_mt_tostring(lua_State* L)
+{
+    auto& handle = *static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
+    lua_pushfstring(L, "file_descriptor:%i", handle);
+    return 1;
+}
+
 static int file_descriptor_mt_gc(lua_State* L)
 {
     auto& handle = *static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
@@ -62,7 +69,7 @@ void init_file_descriptor(lua_State* L)
 {
     lua_pushlightuserdata(L, &file_descriptor_mt_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/3);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/4);
 
         lua_pushliteral(L, "__metatable");
         lua_pushliteral(L, "file_descriptor");
@@ -70,6 +77,10 @@ void init_file_descriptor(lua_State* L)
 
         lua_pushliteral(L, "__index");
         lua_pushcfunction(L, file_descriptor_mt_index);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__tostring");
+        lua_pushcfunction(L, file_descriptor_mt_tostring);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__gc");
