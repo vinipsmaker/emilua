@@ -65,6 +65,16 @@ immediately, and will complete with the `boost::asio::error::operation_aborted`
 error.
 ____
 
+=== `shutdown(self, what: string)`
+
+Disable sends or receives on the socket.
+
+`what` can be one of the following:
+
+`"receive"`:: Shutdown the receive side of the socket.
+`"send"`:: Shutdown the send side of the socket.
+`"both"`:: Shutdown both send and receive on the socket.
+
 === `cancel(self)`
 
 Cancel all asynchronous operations associated with the acceptor.

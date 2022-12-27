@@ -511,6 +511,63 @@ static int unix_datagram_socket_close(lua_State* L)
     return 0;
 }
 
+static int unix_datagram_socket_shutdown(lua_State* L)
+{
+    auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &unix_datagram_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    std::error_code ec;
+    asio::local::datagram_protocol::socket::shutdown_type what;
+    dispatch_table::dispatch(
+        hana::make_tuple(
+            hana::make_pair(
+                BOOST_HANA_STRING("receive"),
+                [&]() {
+                    what = asio::local::datagram_protocol::socket::
+                        shutdown_receive;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("send"),
+                [&]() {
+                    what = asio::local::datagram_protocol::socket::
+                        shutdown_send;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("both"),
+                [&]() {
+                    what = asio::local::datagram_protocol::socket::
+                        shutdown_both;
+                }
+            )
+        ),
+        [&](std::string_view /*key*/) {
+            ec = make_error_code(std::errc::invalid_argument);
+        },
+        tostringview(L, 2)
+    );
+    if (ec) {
+        push(L, ec);
+        return lua_error(L);
+    }
+    boost::system::error_code ec2;
+    sock->socket.shutdown(what, ec2);
+    if (ec2) {
+        push(L, static_cast<std::error_code>(ec2));
+        return lua_error(L);
+    }
+    return 0;
+}
+
 static int unix_datagram_socket_cancel(lua_State* L)
 {
     auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
@@ -1445,6 +1502,13 @@ static int unix_datagram_socket_mt_index(lua_State* L)
                 BOOST_HANA_STRING("close"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, unix_datagram_socket_close);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("shutdown"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, unix_datagram_socket_shutdown);
                     return 1;
                 }
             ),
