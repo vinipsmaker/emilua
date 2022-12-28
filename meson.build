@@ -18,7 +18,7 @@ endif
 luajit = dependency('luajit', version : '>=2.0.5')
 boost = dependency(
     'boost',
-    version : '>=1.79',
+    version : '>=1.80',
     modules : [
         'nowide',
     ],

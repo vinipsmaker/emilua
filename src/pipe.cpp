@@ -125,21 +125,19 @@ static int readable_pipe_release(lua_State* L)
         return lua_error(L);
     }
 
-    // https://github.com/chriskohlhoff/asio/issues/1043
-    int newfd = dup(pipe->native_handle());
+    boost::system::error_code ec;
+    int rawfd = pipe->release(ec);
     BOOST_SCOPE_EXIT_ALL(&) {
-        if (newfd != -1) {
-            int res = close(newfd);
+        if (rawfd != INVALID_FILE_DESCRIPTOR) {
+            int res = close(rawfd);
             boost::ignore_unused(res);
         }
     };
-    if (newfd == -1) {
-        push(L, std::error_code{errno, std::system_category()});
+
+    if (ec) {
+        push(L, ec);
         return lua_error(L);
     }
-
-    boost::system::error_code ignored_ec;
-    pipe->close(ignored_ec);
 
     auto fdhandle = static_cast<file_descriptor_handle*>(
         lua_newuserdata(L, sizeof(file_descriptor_handle))
@@ -147,8 +145,8 @@ static int readable_pipe_release(lua_State* L)
     rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
     setmetatable(L, -2);
 
-    *fdhandle = newfd;
-    newfd = -1;
+    *fdhandle = rawfd;
+    rawfd = INVALID_FILE_DESCRIPTOR;
     return 1;
 }
 #endif // BOOST_OS_UNIX
@@ -429,21 +427,19 @@ static int writable_pipe_release(lua_State* L)
         return lua_error(L);
     }
 
-    // https://github.com/chriskohlhoff/asio/issues/1043
-    int newfd = dup(pipe->native_handle());
+    boost::system::error_code ec;
+    int rawfd = pipe->release(ec);
     BOOST_SCOPE_EXIT_ALL(&) {
-        if (newfd != -1) {
-            int res = close(newfd);
+        if (rawfd != INVALID_FILE_DESCRIPTOR) {
+            int res = close(rawfd);
             boost::ignore_unused(res);
         }
     };
-    if (newfd == -1) {
-        push(L, std::error_code{errno, std::system_category()});
+
+    if (ec) {
+        push(L, ec);
         return lua_error(L);
     }
-
-    boost::system::error_code ignored_ec;
-    pipe->close(ignored_ec);
 
     auto fdhandle = static_cast<file_descriptor_handle*>(
         lua_newuserdata(L, sizeof(file_descriptor_handle))
@@ -451,8 +447,8 @@ static int writable_pipe_release(lua_State* L)
     rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
     setmetatable(L, -2);
 
-    *fdhandle = newfd;
-    newfd = -1;
+    *fdhandle = rawfd;
+    rawfd = INVALID_FILE_DESCRIPTOR;
     return 1;
 }
 #endif // BOOST_OS_UNIX
