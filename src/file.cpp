@@ -967,7 +967,7 @@ void init_file(lua_State* L)
 
         lua_pushliteral(L, "open_flag");
         {
-            lua_createtable(L, /*narr=*/0, /*nrec=*/7);
+            lua_createtable(L, /*narr=*/0, /*nrec=*/8);
 
             lua_pushliteral(L, "append");
             lua_pushinteger(L, asio::file_base::append);
@@ -987,6 +987,10 @@ void init_file(lua_State* L)
 
             lua_pushliteral(L, "read_write");
             lua_pushinteger(L, asio::file_base::read_write);
+            lua_rawset(L, -3);
+
+            lua_pushliteral(L, "sync_all_on_write");
+            lua_pushinteger(L, asio::file_base::sync_all_on_write);
             lua_rawset(L, -3);
 
             lua_pushliteral(L, "truncate");

@@ -32,6 +32,11 @@ Open the file for reading.
 
 Open the file for reading and writing.
 
+== `sync_all_on_write`
+
+Open the file so that write operations automatically synchronise the file data
+and metadata to disk (`FILE_FLAG_WRITE_THROUGH`/`O_SYNC`).
+
 == `truncate`
 
 Open the file with any existing contents truncated.
