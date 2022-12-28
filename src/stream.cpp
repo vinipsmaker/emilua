@@ -11,8 +11,12 @@ namespace emilua {
 
 extern unsigned char write_all_bytecode[];
 extern std::size_t write_all_bytecode_size;
+extern unsigned char write_at_least_bytecode[];
+extern std::size_t write_at_least_bytecode_size;
 extern unsigned char read_all_bytecode[];
 extern std::size_t read_all_bytecode_size;
+extern unsigned char read_at_least_bytecode[];
+extern std::size_t read_at_least_bytecode_size;
 extern unsigned char get_line_bytecode[];
 extern std::size_t get_line_bytecode_size;
 extern unsigned char scanner_buffer_bytecode[];
@@ -84,9 +88,23 @@ void init_stream(lua_State* L)
         }
         lua_rawset(L, -3);
 
+        lua_pushliteral(L, "write_at_least");
+        res = luaL_loadbuffer(
+            L, reinterpret_cast<char*>(write_at_least_bytecode),
+            write_at_least_bytecode_size, nullptr);
+        assert(res == 0); boost::ignore_unused(res);
+        lua_rawset(L, -3);
+
         lua_pushliteral(L, "read_all");
         res = luaL_loadbuffer(L, reinterpret_cast<char*>(read_all_bytecode),
                               read_all_bytecode_size, nullptr);
+        assert(res == 0); boost::ignore_unused(res);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "read_at_least");
+        res = luaL_loadbuffer(
+            L, reinterpret_cast<char*>(read_at_least_bytecode),
+            read_at_least_bytecode_size, nullptr);
         assert(res == 0); boost::ignore_unused(res);
         lua_rawset(L, -3);
 

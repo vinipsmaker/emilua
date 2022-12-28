@@ -31,6 +31,25 @@ f:write(write_all_bytecode)
 f:close()
 write_all_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
 
+function write_at_least_bootstrap(stream, buffer, minimum)
+    if minimum > #buffer then
+        minimum = #buffer
+    end
+    local total_nwritten = 0
+    while total_nwritten < minimum do
+        local nwritten = stream:write_some(buffer)
+        buffer = buffer:slice(1 + nwritten)
+        total_nwritten = total_nwritten + nwritten
+    end
+    return total_nwritten
+end
+
+write_at_least_bytecode = string.dump(write_at_least_bootstrap, true)
+f = io.open(OUTPUT, 'wb')
+f:write(write_at_least_bytecode)
+f:close()
+write_at_least_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
+
 function read_all_bootstrap(stream, buffer)
     local ret = #buffer
     while #buffer > 0 do
@@ -45,6 +64,25 @@ f = io.open(OUTPUT, 'wb')
 f:write(read_all_bytecode)
 f:close()
 read_all_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
+
+function read_at_least_bootstrap(stream, buffer, minimum)
+    if minimum > #buffer then
+        minimum = #buffer
+    end
+    local total_nread = 0
+    while total_nread < minimum do
+        local nread = stream:read_some(buffer)
+        buffer = buffer:slice(1 + nread)
+        total_nread = total_nread + nread
+    end
+    return total_nread
+end
+
+read_at_least_bytecode = string.dump(read_at_least_bootstrap, true)
+f = io.open(OUTPUT, 'wb')
+f:write(read_at_least_bytecode)
+f:close()
+read_at_least_cdef = strip_xxd_hdr(io.popen('xxd -i ' .. OUTPUT))
 
 function get_line_bootstrap(type, getmetatable, pcall, error, byte_span_new,
                             regex_search, re_search_flags, regex_split,
@@ -342,6 +380,16 @@ f:write('};')
 f:write(string.format('std::size_t write_all_bytecode_size = %i;', #write_all_bytecode))
 
 f:write([[
+unsigned char write_at_least_bytecode[] = {
+]])
+
+f:write(write_at_least_cdef)
+
+f:write('};')
+f:write(string.format('std::size_t write_at_least_bytecode_size = %i;',
+                      #write_at_least_bytecode))
+
+f:write([[
 unsigned char read_all_bytecode[] = {
 ]])
 
@@ -350,6 +398,16 @@ f:write(read_all_cdef)
 f:write('};')
 f:write(string.format('std::size_t read_all_bytecode_size = %i;',
                       #read_all_bytecode))
+
+f:write([[
+unsigned char read_at_least_bytecode[] = {
+]])
+
+f:write(read_at_least_cdef)
+
+f:write('};')
+f:write(string.format('std::size_t read_at_least_bytecode_size = %i;',
+                      #read_at_least_bytecode))
 
 f:write([[
 unsigned char get_line_bytecode[] = {

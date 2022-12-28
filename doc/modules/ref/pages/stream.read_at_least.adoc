@@ -1,0 +1,36 @@
+= stream.read_at_least
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local stream = require "stream"
+stream.read_at_least(io_object, buffer: byte_span, minimum: number) -> number
+----
+
+== Description
+
+Read data until a `minimum` number of bytes has been transferred and blocks
+current fiber until it completes or errs.
+
+Returns the number of bytes read.
+
+https://www.boost.org/doc/libs/1_77_0/doc/html/boost_asio/reference/async_read/overload1.html[As
+in Boost.Asio]:
+
+[quote]
+____
+This operation is implemented in terms of zero or more calls to the stream's
+async_read_some function, and is known as a _composed operation_. The program
+must ensure that the stream performs no other read operations (such as
+async_read, the stream's async_read_some function, or any other composed
+operations that perform reads) until this operation completes.
+____

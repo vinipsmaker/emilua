@@ -13,7 +13,9 @@
 *** xref:ref:file.random_access.adoc[]
 *** xref:ref:file.stream.adoc[]
 *** xref:ref:file.read_all_at.adoc[]
+*** xref:ref:file.read_at_least_at.adoc[]
 *** xref:ref:file.write_all_at.adoc[]
+*** xref:ref:file.write_at_least_at.adoc[]
 ** http
 *** xref:ref:http.headers.adoc[]
 *** xref:ref:http.request.adoc[]
@@ -41,7 +43,9 @@
 ** xref:ref:steady_timer.adoc[]
 ** stream
 *** xref:ref:stream.write_all.adoc[]
+*** xref:ref:stream.write_at_least.adoc[]
 *** xref:ref:stream.read_all.adoc[]
+*** xref:ref:stream.read_at_least.adoc[]
 *** xref:ref:stream.scanner.adoc[]
 ** sync primitives
 *** xref:ref:mutex.adoc[]

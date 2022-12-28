@@ -14,7 +14,11 @@ include::pages/file.stream.adoc[]
 
 include::pages/file.read_all_at.adoc[]
 
+include::pages/file.read_at_least_at.adoc[]
+
 include::pages/file.write_all_at.adoc[]
+
+include::pages/file.write_at_least_at.adoc[]
 
 include::pages/http.headers.adoc[]
 
@@ -64,7 +68,11 @@ include::pages/steady_timer.adoc[]
 
 include::pages/stream.write_all.adoc[]
 
+include::pages/stream.write_at_least.adoc[]
+
 include::pages/stream.read_all.adoc[]
+
+include::pages/stream.read_at_least.adoc[]
 
 include::pages/stream.scanner.adoc[]
 
