@@ -26,3 +26,7 @@ Returns the number of bytes read.
 
 NOTE: First argument is ignored and it's only there to make it have a
 stream-like interface.
+
+=== `dup(self) -> file_descriptor`
+
+Creates a new file descriptor that refers to `STDIN_FILENO`.

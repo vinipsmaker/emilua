@@ -15,8 +15,10 @@
 #include <boost/asio/signal_set.hpp>
 #include <boost/vmd/is_number.hpp>
 #include <boost/predef/os/macos.h>
+#include <boost/scope_exit.hpp>
 #include <boost/vmd/empty.hpp>
 
+#include <emilua/file_descriptor.hpp>
 #include <emilua/dispatch_table.hpp>
 
 #if BOOST_OS_WINDOWS
@@ -851,6 +853,34 @@ inline int system_environment(lua_State* L)
     return 1;
 }
 
+#if BOOST_OS_UNIX
+template<int FD>
+static int system_stdhandle_dup(lua_State* L)
+{
+    int newfd = dup(FD);
+    BOOST_SCOPE_EXIT_ALL(&) {
+        if (newfd != -1) {
+            int res = close(newfd);
+            boost::ignore_unused(res);
+        }
+    };
+    if (newfd == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+
+    auto newhandle = static_cast<file_descriptor_handle*>(
+        lua_newuserdata(L, sizeof(file_descriptor_handle))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    setmetatable(L, -2);
+
+    *newhandle = newfd;
+    newfd = -1;
+    return 1;
+}
+#endif // BOOST_OS_UNIX
+
 #if !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
 inline int system_in(lua_State* L)
 {
@@ -1058,7 +1088,7 @@ void init_system(lua_State* L)
 #if !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
     lua_pushlightuserdata(L, &system_in_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/1);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/2);
 
         lua_pushliteral(L, "read_some");
         rawgetp(L, LUA_REGISTRYINDEX,
@@ -1067,13 +1097,19 @@ void init_system(lua_State* L)
         lua_pushcfunction(L, system_in_read_some);
         lua_call(L, 2, 1);
         lua_rawset(L, -3);
+
+# if BOOST_OS_UNIX
+        lua_pushliteral(L, "dup");
+        lua_pushcfunction(L, system_stdhandle_dup<STDIN_FILENO>);
+        lua_rawset(L, -3);
+# endif // BOOST_OS_UNIX
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 #endif // !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
 
     lua_pushlightuserdata(L, &system_out_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/1);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/2);
 
         lua_pushliteral(L, "write_some");
 #if BOOST_OS_WINDOWS
@@ -1086,12 +1122,18 @@ void init_system(lua_State* L)
         lua_call(L, 2, 1);
 #endif // BOOST_OS_WINDOWS
         lua_rawset(L, -3);
+
+#if BOOST_OS_UNIX
+        lua_pushliteral(L, "dup");
+        lua_pushcfunction(L, system_stdhandle_dup<STDOUT_FILENO>);
+        lua_rawset(L, -3);
+#endif // BOOST_OS_UNIX
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &system_err_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/1);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/2);
 
         lua_pushliteral(L, "write_some");
 #if BOOST_OS_WINDOWS
@@ -1104,6 +1146,12 @@ void init_system(lua_State* L)
         lua_call(L, 2, 1);
 #endif // BOOST_OS_WINDOWS
         lua_rawset(L, -3);
+
+#if BOOST_OS_UNIX
+        lua_pushliteral(L, "dup");
+        lua_pushcfunction(L, system_stdhandle_dup<STDERR_FILENO>);
+        lua_rawset(L, -3);
+#endif // BOOST_OS_UNIX
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
