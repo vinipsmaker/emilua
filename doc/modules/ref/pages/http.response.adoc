@@ -10,6 +10,8 @@ Emilua - Lua execution engine
 
 endif::[]
 
+WARNING: The `http` module is experimental.
+
 Represents an HTTP response. This extra level of indirection — as opposed to as,
 for instance, making it part of `http.socket` — makes it easier to map semantics
 such as HTTP pipelining w/o imposing even more confusing state machines.

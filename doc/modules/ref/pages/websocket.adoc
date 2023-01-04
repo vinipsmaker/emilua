@@ -10,6 +10,8 @@ Emilua - Lua execution engine
 
 endif::[]
 
+WARNING: The `websocket` module is experimental.
+
 [source,lua]
 ----
 local websocket = require('websocket')

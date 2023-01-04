@@ -10,6 +10,8 @@ Emilua - Lua execution engine
 
 endif::[]
 
+WARNING: The `http` module is experimental.
+
 [source,lua]
 ----
 local h = req.headers
