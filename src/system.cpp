@@ -77,7 +77,7 @@ struct spawn_arguments_t
     std::optional<sigset_t> signal_default_handlers;
     std::optional<int> scheduler_policy;
     std::optional<int> scheduler_priority;
-    bool setsid;
+    bool start_new_session;
     std::optional<pid_t> setpgroup;
     bool resetids;
     std::optional<std::string_view> chdir;
@@ -1278,7 +1278,7 @@ static int system_spawn_child_main(void* a)
         }
     }
 
-    if (args->setsid && setsid() == -1) {
+    if (args->start_new_session && setsid() == -1) {
         reply.code = errno;
         write(args->closeonexecpipe, &reply, sizeof(reply));
         return 1;
@@ -1779,16 +1779,16 @@ static int system_spawn_do(bool use_path, lua_State* L)
         }
     }
 
-    bool setsid = false;
-    lua_getfield(L, 1, "setsid");
+    bool start_new_session = false;
+    lua_getfield(L, 1, "start_new_session");
     switch (lua_type(L, -1)) {
     case LUA_TNIL:
         break;
     case LUA_TBOOLEAN:
-        setsid = lua_toboolean(L, -1);
+        start_new_session = lua_toboolean(L, -1);
         break;
     default:
-        push(L, std::errc::invalid_argument, "arg", "setsid");
+        push(L, std::errc::invalid_argument, "arg", "start_new_session");
         return lua_error(L);
     }
 
@@ -1858,7 +1858,7 @@ static int system_spawn_do(bool use_path, lua_State* L)
     args.signal_default_handlers = signal_default_handlers;
     args.scheduler_policy = scheduler_policy;
     args.scheduler_priority = scheduler_priority;
-    args.setsid = setsid;
+    args.start_new_session = start_new_session;
     args.setpgroup = setpgroup;
     args.resetids = resetids;
     args.chdir = chdir;

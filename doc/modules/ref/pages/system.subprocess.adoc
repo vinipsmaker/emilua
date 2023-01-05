@@ -128,9 +128,10 @@ If `true`, grandchildren created as a result of a call to fork(2) from the
 direct child will not inherit privileged scheduling policies. If set, must also
 set `scheduler.policy`.
 
-`setsid: boolean|nil = false`::
+`start_new_session: boolean|nil = false`::
 
-Whether to create a new session and become the session leader.
+Whether to create a new session and become the session leader. On `true`, calls
+`setsid()` on the child.
 
 `setpgroup: number|nil`::
 
