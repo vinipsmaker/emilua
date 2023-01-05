@@ -78,7 +78,7 @@ struct spawn_arguments_t
     std::optional<int> scheduler_policy;
     std::optional<int> scheduler_priority;
     bool start_new_session;
-    std::optional<pid_t> setpgroup;
+    std::optional<pid_t> process_group;
     bool resetids;
     std::optional<std::string_view> chdir;
 };
@@ -1284,7 +1284,7 @@ static int system_spawn_child_main(void* a)
         return 1;
     }
 
-    if (args->setpgroup && setpgid(/*pid=*/0, *args->setpgroup) == -1) {
+    if (args->process_group && setpgid(/*pid=*/0, *args->process_group) == -1) {
         reply.code = errno;
         write(args->closeonexecpipe, &reply, sizeof(reply));
         return 1;
@@ -1792,16 +1792,16 @@ static int system_spawn_do(bool use_path, lua_State* L)
         return lua_error(L);
     }
 
-    std::optional<pid_t> setpgroup;
-    lua_getfield(L, 1, "setpgroup");
+    std::optional<pid_t> process_group;
+    lua_getfield(L, 1, "process_group");
     switch (lua_type(L, -1)) {
     case LUA_TNIL:
         break;
     case LUA_TNUMBER:
-        setpgroup.emplace(lua_tointeger(L, -1));
+        process_group.emplace(lua_tointeger(L, -1));
         break;
     default:
-        push(L, std::errc::invalid_argument, "arg", "setpgroup");
+        push(L, std::errc::invalid_argument, "arg", "process_group");
         return lua_error(L);
     }
 
@@ -1859,7 +1859,7 @@ static int system_spawn_do(bool use_path, lua_State* L)
     args.scheduler_policy = scheduler_policy;
     args.scheduler_priority = scheduler_priority;
     args.start_new_session = start_new_session;
-    args.setpgroup = setpgroup;
+    args.process_group = process_group;
     args.resetids = resetids;
     args.chdir = chdir;
 
