@@ -1,4 +1,4 @@
-/* Copyright (c) 2021, 2022 Vinícius dos Santos Oliveira
+/* Copyright (c) 2021, 2022, 2023 Vinícius dos Santos Oliveira
 
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
@@ -33,6 +33,11 @@
 # include <boost/asio/posix/stream_descriptor.hpp>
 #endif // BOOST_OS_WINDOWS
 
+#if BOOST_OS_LINUX
+#include <linux/close_range.h>
+#include <sys/wait.h>
+#endif // BOOST_OS_LINUX
+
 namespace emilua {
 
 char system_key;
@@ -46,6 +51,82 @@ static char system_in_key;
 #endif // !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
 static char system_out_key;
 static char system_err_key;
+
+#if BOOST_OS_LINUX
+static char subprocess_mt_key;
+static char subprocess_wait_key;
+
+struct spawn_arguments_t
+{
+    struct errno_reply_t
+    {
+        int code;
+    };
+    static_assert(sizeof(errno_reply_t) <= PIPE_BUF);
+
+    bool use_path;
+    int closeonexecpipe;
+    const char* program;
+    char** argv;
+    char** envp;
+    int proc_stdin;
+    int proc_stdout;
+    int proc_stderr;
+
+    std::optional<sigset_t> signal_mask;
+    std::optional<sigset_t> signal_default_handlers;
+    std::optional<int> scheduler_policy;
+    std::optional<int> scheduler_priority;
+    bool setsid;
+    std::optional<pid_t> setpgroup;
+    bool resetids;
+    std::optional<std::string_view> chdir;
+};
+
+struct spawn_reaper
+{
+    spawn_reaper(asio::io_context& ctx, int childpidfd, pid_t childpid,
+                 int signal_on_zombie)
+        : waiter{
+            std::make_shared<asio::posix::stream_descriptor>(ctx, childpidfd)}
+        , childpid{childpid}
+        , signal_on_zombie{signal_on_zombie}
+    {}
+
+    std::shared_ptr<asio::posix::stream_descriptor> waiter;
+    pid_t childpid;
+    int signal_on_zombie;
+};
+
+struct subprocess
+{
+    subprocess()
+        : info{std::in_place_type_t<void>{}}
+    {}
+
+    ~subprocess()
+    {
+        if (!reaper)
+            return;
+
+        if (reaper->signal_on_zombie != 0) {
+            int res = kill(reaper->childpid, reaper->signal_on_zombie);
+            boost::ignore_unused(res);
+        }
+        reaper->waiter->async_wait(
+            asio::posix::descriptor_base::wait_read,
+            [waiter=reaper->waiter](const boost::system::error_code& /*ec*/) {
+                siginfo_t i;
+                int res = waitid(P_PIDFD, waiter->native_handle(), &i, WEXITED);
+                boost::ignore_unused(res);
+            });
+    }
+
+    std::optional<spawn_reaper> reaper;
+    bool wait_in_progress = false;
+    result<siginfo_t, void> info;
+};
+#endif // BOOST_OS_LINUX
 
 #if BOOST_OS_WINDOWS
 # if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
@@ -963,6 +1044,881 @@ static int system_exit(lua_State* L)
     return lua_yield(L, 0);
 }
 
+#if BOOST_OS_LINUX
+static int subprocess_wait(lua_State* L)
+{
+    auto vm_ctx = get_vm_context(L).shared_from_this();
+    auto current_fiber = vm_ctx->current_fiber();
+    EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
+
+    auto p = static_cast<subprocess*>(lua_touserdata(L, 1));
+    if (!p || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &subprocess_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (!p->reaper) {
+        push(L, std::errc::no_child_process);
+        return lua_error(L);
+    }
+
+    if (p->wait_in_progress) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    p->wait_in_progress = true;
+
+    lua_pushvalue(L, 1);
+    lua_pushcclosure(
+        L,
+        [](lua_State* L) -> int {
+            auto p = static_cast<subprocess*>(
+                lua_touserdata(L, lua_upvalueindex(1)));
+            boost::system::error_code ignored_ec;
+            p->reaper->waiter->cancel(ignored_ec);
+            return 0;
+        },
+        1);
+    set_interrupter(L, *vm_ctx);
+
+    p->reaper->waiter->async_wait(
+        asio::posix::descriptor_base::wait_read,
+        asio::bind_executor(
+            vm_ctx->strand_using_defer(),
+            [waiter=p->reaper->waiter,vm_ctx,current_fiber,p](
+                const boost::system::error_code& ec
+            ) {
+                if (vm_ctx->valid())
+                    p->wait_in_progress = false;
+
+                if (ec) {
+                    assert(ec == asio::error::operation_aborted);
+                    auto opt_args = vm_context::options::arguments;
+                    vm_ctx->fiber_resume(
+                        current_fiber,
+                        hana::make_set(
+                            vm_context::options::fast_auto_detect_interrupt,
+                            hana::make_pair(opt_args, hana::make_tuple(ec))));
+                    return;
+                }
+
+                if (!vm_ctx->valid())
+                    return;
+
+                siginfo_t i;
+                int res = waitid(P_PIDFD, waiter->native_handle(), &i, WEXITED);
+                boost::ignore_unused(res);
+                p->info = i;
+
+                p->reaper = std::nullopt;
+
+                vm_ctx->fiber_resume(current_fiber);
+            }
+        )
+    );
+
+    return lua_yield(L, 0);
+}
+
+static int subprocess_kill(lua_State* L)
+{
+    luaL_checktype(L, 2, LUA_TNUMBER);
+
+    auto p = static_cast<subprocess*>(lua_touserdata(L, 1));
+    if (!p || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &subprocess_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (!p->reaper) {
+        push(L, std::errc::no_such_process);
+        return lua_error(L);
+    }
+
+    if (kill(p->reaper->childpid, lua_tointeger(L, 2)) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+
+    return 0;
+}
+
+inline int subprocess_exit_code(lua_State* L)
+{
+    auto p = static_cast<subprocess*>(lua_touserdata(L, 1));
+    if (!p->info) {
+        push(L, std::errc::invalid_argument);
+        return lua_error(L);
+    }
+    switch (p->info.value().si_code) {
+    default:
+        assert(false);
+        push(L, std::errc::state_not_recoverable);
+        return lua_error(L);
+    case CLD_EXITED:
+        lua_pushinteger(L, p->info.value().si_status);
+        return 1;
+    case CLD_KILLED:
+    case CLD_DUMPED:
+        lua_pushinteger(L, 128 + p->info.value().si_status);
+        return 1;
+    }
+}
+
+inline int subprocess_exit_signal(lua_State* L)
+{
+    auto p = static_cast<subprocess*>(lua_touserdata(L, 1));
+    if (!p->info) {
+        push(L, std::errc::invalid_argument);
+        return lua_error(L);
+    }
+    switch (p->info.value().si_code) {
+    default:
+        lua_pushnil(L);
+        return 1;
+    case CLD_KILLED:
+    case CLD_DUMPED:
+        lua_pushinteger(L, p->info.value().si_status);
+        return 1;
+    }
+}
+
+inline int subprocess_pid(lua_State* L)
+{
+    auto p = static_cast<subprocess*>(lua_touserdata(L, 1));
+    if (!p->reaper) {
+        push(L, std::errc::no_child_process);
+        return lua_error(L);
+    }
+
+    lua_pushinteger(L, p->reaper->childpid);
+    return 1;
+}
+
+static int subprocess_mt_index(lua_State* L)
+{
+    return dispatch_table::dispatch(
+        hana::make_tuple(
+            hana::make_pair(
+                BOOST_HANA_STRING("wait"),
+                [](lua_State* L) -> int {
+                    rawgetp(L, LUA_REGISTRYINDEX, &subprocess_wait_key);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("kill"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, subprocess_kill);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("exit_code"), subprocess_exit_code),
+            hana::make_pair(
+                BOOST_HANA_STRING("exit_signal"), subprocess_exit_signal),
+            hana::make_pair(BOOST_HANA_STRING("pid"), subprocess_pid)
+        ),
+        [](std::string_view /*key*/, lua_State* L) -> int {
+            push(L, errc::bad_index, "index", 2);
+            return lua_error(L);
+        },
+        tostringview(L, 2),
+        L
+    );
+}
+
+static int system_spawn_child_main(void* a)
+{
+    auto args = reinterpret_cast<spawn_arguments_t*>(a);
+    spawn_arguments_t::errno_reply_t reply;
+
+    if (args->signal_mask) {
+        int res = sigprocmask(SIG_SETMASK, &*args->signal_mask,
+                              /*oldset=*/NULL);
+        boost::ignore_unused(res);
+    }
+
+    if (args->signal_default_handlers) {
+        struct sigaction sa;
+        std::memset(&sa, 0, sizeof(sa));
+        for (int signo = 1 ; signo != NSIG ; ++signo) {
+            if (sigismember(&*args->signal_default_handlers, signo) == 1) {
+                sa.sa_handler = SIG_DFL;
+                int res = sigaction(signo, /*act=*/&sa, /*oldact=*/NULL);
+                boost::ignore_unused(res);
+            }
+        }
+    }
+
+    if (args->scheduler_policy) {
+        struct sched_param sp;
+        sp.sched_priority = *args->scheduler_priority;
+        if (sched_setscheduler(/*pid=*/0, *args->scheduler_policy, &sp) == -1) {
+            reply.code = errno;
+            write(args->closeonexecpipe, &reply, sizeof(reply));
+            return 1;
+        }
+    } else if (args->scheduler_priority) {
+        struct sched_param sp;
+        sp.sched_priority = *args->scheduler_priority;
+        if (sched_setparam(/*pid=*/0, &sp) == -1) {
+            reply.code = errno;
+            write(args->closeonexecpipe, &reply, sizeof(reply));
+            return 1;
+        }
+    }
+
+    if (args->setsid && setsid() == -1) {
+        reply.code = errno;
+        write(args->closeonexecpipe, &reply, sizeof(reply));
+        return 1;
+    }
+
+    if (args->setpgroup && setpgid(/*pid=*/0, *args->setpgroup) == -1) {
+        reply.code = errno;
+        write(args->closeonexecpipe, &reply, sizeof(reply));
+        return 1;
+    }
+
+    if (
+        args->resetids && (seteuid(getuid()) == -1 || setegid(getgid()) == -1)
+    ) {
+        reply.code = errno;
+        write(args->closeonexecpipe, &reply, sizeof(reply));
+        return 1;
+    }
+
+    if (args->chdir && chdir(args->chdir->data()) == -1) {
+        reply.code = errno;
+        write(args->closeonexecpipe, &reply, sizeof(reply));
+        return 1;
+    }
+
+    switch (args->proc_stdin) {
+    case -1: {
+        int pipefd[2];
+        if (pipe(pipefd) == -1) {
+            reply.code = errno;
+            write(args->closeonexecpipe, &reply, sizeof(reply));
+            return 1;
+        }
+        if (dup2(pipefd[0], STDIN_FILENO) == -1) {
+            reply.code = errno;
+            write(args->closeonexecpipe, &reply, sizeof(reply));
+            return 1;
+        }
+        break;
+    }
+    case STDIN_FILENO:
+        break;
+    default:
+        if (dup2(args->proc_stdin, STDIN_FILENO) == -1) {
+            reply.code = errno;
+            write(args->closeonexecpipe, &reply, sizeof(reply));
+            return 1;
+        }
+    }
+
+    switch (args->proc_stdout) {
+    case -1: {
+        int pipefd[2];
+        if (pipe(pipefd) == -1) {
+            reply.code = errno;
+            write(args->closeonexecpipe, &reply, sizeof(reply));
+            return 1;
+        }
+        if (dup2(pipefd[1], STDOUT_FILENO) == -1) {
+            reply.code = errno;
+            write(args->closeonexecpipe, &reply, sizeof(reply));
+            return 1;
+        }
+        break;
+    }
+    case STDOUT_FILENO:
+        break;
+    default:
+        if (dup2(args->proc_stdout, STDOUT_FILENO) == -1) {
+            reply.code = errno;
+            write(args->closeonexecpipe, &reply, sizeof(reply));
+            return 1;
+        }
+    }
+
+    switch (args->proc_stderr) {
+    case -1: {
+        int pipefd[2];
+        if (pipe(pipefd) == -1) {
+            reply.code = errno;
+            write(args->closeonexecpipe, &reply, sizeof(reply));
+            return 1;
+        }
+        if (dup2(pipefd[1], STDERR_FILENO) == -1) {
+            reply.code = errno;
+            write(args->closeonexecpipe, &reply, sizeof(reply));
+            return 1;
+        }
+        break;
+    }
+    case STDERR_FILENO:
+        break;
+    default:
+        if (dup2(args->proc_stderr, STDERR_FILENO) == -1) {
+            reply.code = errno;
+            write(args->closeonexecpipe, &reply, sizeof(reply));
+            return 1;
+        }
+    }
+
+    if (dup3(args->closeonexecpipe, 3, O_CLOEXEC) == -1) {
+        reply.code = errno;
+        write(args->closeonexecpipe, &reply, sizeof(reply));
+        return 1;
+    }
+
+    if (close_range(/*first=*/4, /*last=*/~0U, /*flags=*/0) == -1) {
+        reply.code = errno;
+        write(3, &reply, sizeof(reply));
+        return 1;
+    }
+
+    if (args->use_path)
+        execvpe(args->program, args->argv, args->envp);
+    else
+        execve(args->program, args->argv, args->envp);
+
+    reply.code = errno;
+    write(3, &reply, sizeof(reply));
+    return 1;
+}
+
+static int system_spawn_do(bool use_path, lua_State* L)
+{
+    luaL_checktype(L, 1, LUA_TTABLE);
+    auto& vm_ctx = get_vm_context(L);
+
+    lua_getfield(L, 1, "program");
+    if (lua_type(L, -1) != LUA_TSTRING) {
+        push(L, std::errc::invalid_argument, "arg", "program");
+        return lua_error(L);
+    }
+    auto program = tostringview(L, -1);
+
+    int signal_on_zombie = SIGTERM;
+    lua_getfield(L, 1, "signal_on_zombie");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TNUMBER:
+        signal_on_zombie = lua_tointeger(L, -1);
+        break;
+    default:
+        push(L, std::errc::invalid_argument, "arg", "signal_on_zombie");
+        return lua_error(L);
+    }
+
+    std::vector<char*> arguments;
+    lua_getfield(L, 1, "arguments");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TTABLE:
+        for (int i = 1 ;; ++i) {
+            lua_rawgeti(L, -1, i);
+            switch (lua_type(L, -1)) {
+            case LUA_TNIL:
+                goto end_for;
+            case LUA_TSTRING:
+                // If the Lua string were to be deallocated/GC'ed, this would be
+                // a bug. That's why we avoid any "dynamic string generation" on
+                // Lua-side. We call rawgeti, not getfield. We avoid any
+                // metamethod call. These pointers are sure to stay alive until
+                // we're done with them. Do notice as well that we don't even
+                // pop the arguments table from the Lua stack. That's all
+                // intentional.
+                arguments.emplace_back(const_cast<char*>(lua_tostring(L, -1)));
+                lua_pop(L, 1);
+                break;
+            default:
+                push(L, std::errc::invalid_argument, "arg", "arguments");
+                return lua_error(L);
+            }
+        }
+        end_for:
+        break;
+    default:
+        push(L, std::errc::invalid_argument, "arg", "arguments");
+        return lua_error(L);
+    }
+    arguments.emplace_back(nullptr);
+
+    std::vector<std::string> environment;
+    lua_getfield(L, 1, "environment");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TTABLE:
+        lua_pushnil(L);
+        while (lua_next(L, -2) != 0) {
+            if (
+                lua_type(L, -2) != LUA_TSTRING || lua_type(L, -1) != LUA_TSTRING
+            ) {
+                push(L, std::errc::invalid_argument, "arg", "environment");
+                return lua_error(L);
+            }
+
+            environment.emplace_back(tostringview(L, -2));
+            environment.back() += '=';
+            environment.back() += tostringview(L, -1);
+            lua_pop(L, 1);
+        }
+        break;
+    default:
+        push(L, std::errc::invalid_argument, "arg", "environment");
+        return lua_error(L);
+    }
+    std::vector<char*> environmentb;
+    environmentb.reserve(environment.size() + 1);
+    for (auto& e: environment) {
+        environmentb.emplace_back(e.data());
+    }
+    environmentb.emplace_back(nullptr);
+
+    int proc_stdin = -1;
+    lua_getfield(L, 1, "stdin");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TSTRING:
+        if (tostringview(L) != "share") {
+            push(L, std::errc::invalid_argument, "arg", "stdin");
+            return lua_error(L);
+        }
+        proc_stdin = STDIN_FILENO;
+        break;
+    case LUA_TUSERDATA: {
+        auto handle = static_cast<file_descriptor_handle*>(
+            lua_touserdata(L, -1));
+        if (!lua_getmetatable(L, -1)) {
+            push(L, std::errc::invalid_argument, "arg", "stdin");
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", "stdin");
+            return lua_error(L);
+        }
+        if (*handle == INVALID_FILE_DESCRIPTOR) {
+            push(L, std::errc::device_or_resource_busy, "arg", "stdin");
+            return lua_error(L);
+        }
+        proc_stdin = *handle;
+        break;
+    }
+    default:
+        push(L, std::errc::invalid_argument, "arg", "stdin");
+        return lua_error(L);
+    }
+
+    int proc_stdout = -1;
+    lua_getfield(L, 1, "stdout");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TSTRING:
+        if (tostringview(L) != "share") {
+            push(L, std::errc::invalid_argument, "arg", "stdout");
+            return lua_error(L);
+        }
+        proc_stdout = STDOUT_FILENO;
+        break;
+    case LUA_TUSERDATA: {
+        auto handle = static_cast<file_descriptor_handle*>(
+            lua_touserdata(L, -1));
+        if (!lua_getmetatable(L, -1)) {
+            push(L, std::errc::invalid_argument, "arg", "stdout");
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", "stdout");
+            return lua_error(L);
+        }
+        if (*handle == INVALID_FILE_DESCRIPTOR) {
+            push(L, std::errc::device_or_resource_busy, "arg", "stdout");
+            return lua_error(L);
+        }
+        proc_stdout = *handle;
+        break;
+    }
+    default:
+        push(L, std::errc::invalid_argument, "arg", "stdout");
+        return lua_error(L);
+    }
+
+    int proc_stderr = -1;
+    lua_getfield(L, 1, "stderr");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TSTRING:
+        if (tostringview(L) != "share") {
+            push(L, std::errc::invalid_argument, "arg", "stderr");
+            return lua_error(L);
+        }
+        proc_stderr = STDERR_FILENO;
+        break;
+    case LUA_TUSERDATA: {
+        auto handle = static_cast<file_descriptor_handle*>(
+            lua_touserdata(L, -1));
+        if (!lua_getmetatable(L, -1)) {
+            push(L, std::errc::invalid_argument, "arg", "stderr");
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", "stderr");
+            return lua_error(L);
+        }
+        if (*handle == INVALID_FILE_DESCRIPTOR) {
+            push(L, std::errc::device_or_resource_busy, "arg", "stderr");
+            return lua_error(L);
+        }
+        proc_stderr = *handle;
+        break;
+    }
+    default:
+        push(L, std::errc::invalid_argument, "arg", "stderr");
+        return lua_error(L);
+    }
+
+    std::optional<sigset_t> signal_mask;
+    lua_getfield(L, 1, "signal_mask");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TTABLE:
+        sigemptyset(&signal_mask.emplace());
+        for (int i = 1 ;; ++i) {
+            lua_rawgeti(L, -1, i);
+            switch (lua_type(L, -1)) {
+            case LUA_TNIL:
+                goto end_for2;
+            case LUA_TNUMBER:
+                if (sigaddset(&*signal_mask, lua_tointeger(L, -1)) == -1) {
+                    push(L, std::error_code{errno, std::system_category()});
+                    return lua_error(L);
+                }
+                lua_pop(L, 1);
+                break;
+            default:
+                push(L, std::errc::invalid_argument, "arg", "signal_mask");
+                return lua_error(L);
+            }
+        }
+        end_for2:
+        break;
+    default:
+        push(L, std::errc::invalid_argument, "arg", "signal_mask");
+        return lua_error(L);
+    }
+
+    std::optional<sigset_t> signal_default_handlers;
+    lua_getfield(L, 1, "signal_default_handlers");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TTABLE:
+        sigemptyset(&signal_default_handlers.emplace());
+        for (int i = 1 ;; ++i) {
+            lua_rawgeti(L, -1, i);
+            switch (lua_type(L, -1)) {
+            case LUA_TNIL:
+                goto end_for3;
+            case LUA_TNUMBER: {
+                int signo = lua_tointeger(L, -1);
+                if (signo == SIGKILL || signo == SIGSTOP) {
+                    push(L, std::errc::invalid_argument,
+                         "arg", "signal_default_handlers");
+                    return lua_error(L);
+                }
+                if (sigaddset(&*signal_default_handlers, signo) == -1) {
+                    push(L, std::error_code{errno, std::system_category()});
+                    return lua_error(L);
+                }
+                lua_pop(L, 1);
+                break;
+            }
+            default:
+                push(L, std::errc::invalid_argument,
+                     "arg", "signal_default_handlers");
+                return lua_error(L);
+            }
+        }
+        end_for3:
+        break;
+    default:
+        push(L, std::errc::invalid_argument, "arg", "signal_default_handlers");
+        return lua_error(L);
+    }
+
+    std::optional<int> scheduler_policy;
+    std::optional<int> scheduler_priority;
+    lua_getfield(L, 1, "scheduler");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TTABLE:
+        lua_getfield(L, -1, "policy");
+        switch (lua_type(L, -1)) {
+        case LUA_TNIL:
+            break;
+        case LUA_TSTRING: {
+            auto policy = tostringview(L);
+            if (policy == "other") {
+                scheduler_policy.emplace(SCHED_OTHER);
+            } else if (policy == "batch") {
+                scheduler_policy.emplace(SCHED_BATCH);
+            } else if (policy == "idle") {
+                scheduler_policy.emplace(SCHED_IDLE);
+            } else if (policy == "fifo") {
+                scheduler_policy.emplace(SCHED_FIFO);
+            } else if (policy == "rr") {
+                scheduler_policy.emplace(SCHED_RR);
+            } else {
+                push(L, std::errc::invalid_argument, "arg", "scheduler.policy");
+                return lua_error(L);
+            }
+            break;
+        }
+        default:
+            push(L, std::errc::invalid_argument, "arg", "scheduler.policy");
+            return lua_error(L);
+        }
+        lua_pop(L, 1);
+
+        lua_getfield(L, -1, "reset_on_fork");
+        switch (lua_type(L, -1)) {
+        case LUA_TNIL:
+            break;
+        case LUA_TBOOLEAN:
+            if (!scheduler_policy) {
+                push(L, std::errc::invalid_argument,
+                     "arg", "scheduler.reset_on_fork");
+                return lua_error(L);
+            }
+
+            if (!lua_toboolean(L, -1))
+                break;
+
+            *scheduler_policy |= SCHED_RESET_ON_FORK;
+            break;
+        default:
+            push(L, std::errc::invalid_argument,
+                 "arg", "scheduler.reset_on_fork");
+            return lua_error(L);
+        }
+        lua_pop(L, 1);
+
+        lua_getfield(L, -1, "priority");
+        switch (lua_type(L, -1)) {
+        case LUA_TNIL:
+            break;
+        case LUA_TNUMBER:
+            scheduler_priority.emplace(lua_tointeger(L, -1));
+            break;
+        default:
+            push(L, std::errc::invalid_argument, "arg", "scheduler.priority");
+            return lua_error(L);
+        }
+        break;
+    default:
+        push(L, std::errc::invalid_argument, "arg", "scheduler");
+        return lua_error(L);
+    }
+
+    if (scheduler_policy) {
+        switch (
+            int policy = *scheduler_policy & ~SCHED_RESET_ON_FORK ; policy
+        ) {
+        case SCHED_OTHER:
+        case SCHED_BATCH:
+        case SCHED_IDLE:
+            if (scheduler_priority && *scheduler_priority != 0) {
+                push(L, std::errc::invalid_argument,
+                     "arg", "scheduler.priority");
+                return lua_error(L);
+            }
+            scheduler_priority.emplace(0);
+            break;
+        case SCHED_FIFO:
+        case SCHED_RR:
+            if (!scheduler_priority) {
+                push(L, std::errc::invalid_argument,
+                     "arg", "scheduler.priority");
+                return lua_error(L);
+            }
+
+            if (
+                *scheduler_priority < sched_get_priority_min(policy) ||
+                *scheduler_priority > sched_get_priority_max(policy)
+            ) {
+                push(L, std::errc::invalid_argument,
+                     "arg", "scheduler.priority");
+                return lua_error(L);
+            }
+        }
+    }
+
+    bool setsid = false;
+    lua_getfield(L, 1, "setsid");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TBOOLEAN:
+        setsid = lua_toboolean(L, -1);
+        break;
+    default:
+        push(L, std::errc::invalid_argument, "arg", "setsid");
+        return lua_error(L);
+    }
+
+    std::optional<pid_t> setpgroup;
+    lua_getfield(L, 1, "setpgroup");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TNUMBER:
+        setpgroup.emplace(lua_tointeger(L, -1));
+        break;
+    default:
+        push(L, std::errc::invalid_argument, "arg", "setpgroup");
+        return lua_error(L);
+    }
+
+    bool resetids = false;
+    lua_getfield(L, 1, "resetids");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TBOOLEAN:
+        resetids = lua_toboolean(L, -1);
+        break;
+    default:
+        push(L, std::errc::invalid_argument, "arg", "resetids");
+        return lua_error(L);
+    }
+
+    std::optional<std::string_view> chdir;
+    lua_getfield(L, 1, "chdir");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TSTRING:
+        chdir = tostringview(L);
+        break;
+    default:
+        push(L, std::errc::invalid_argument, "arg", "chdir");
+        return lua_error(L);
+    }
+
+    int pipefd[2];
+    if (pipe2(pipefd, O_DIRECT) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    BOOST_SCOPE_EXIT_ALL(&) {
+        int res = close(pipefd[0]);
+        boost::ignore_unused(res);
+        if (pipefd[1] != -1) {
+            res = close(pipefd[1]);
+            boost::ignore_unused(res);
+        }
+    };
+
+    spawn_arguments_t args;
+    args.use_path = use_path;
+    args.closeonexecpipe = pipefd[1];
+    args.program = program.data();
+    args.argv = arguments.data();
+    args.envp = environmentb.data();
+    args.proc_stdin = proc_stdin;
+    args.proc_stdout = proc_stdout;
+    args.proc_stderr = proc_stderr;
+    args.signal_mask = signal_mask;
+    args.signal_default_handlers = signal_default_handlers;
+    args.scheduler_policy = scheduler_policy;
+    args.scheduler_priority = scheduler_priority;
+    args.setsid = setsid;
+    args.setpgroup = setpgroup;
+    args.resetids = resetids;
+    args.chdir = chdir;
+
+    int clone_flags = CLONE_PIDFD;
+    int pidfd = -1;
+    int childpid = clone(system_spawn_child_main, clone_stack_address,
+                         clone_flags, &args, &pidfd);
+    if (childpid == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    BOOST_SCOPE_EXIT_ALL(&) {
+        if (pidfd != -1) {
+            int res = kill(childpid, SIGKILL);
+            boost::ignore_unused(res);
+            siginfo_t info;
+            res = waitid(P_PIDFD, pidfd, &info, WEXITED);
+            boost::ignore_unused(res);
+            res = close(pidfd);
+            boost::ignore_unused(res);
+        }
+    };
+
+    int res = close(pipefd[1]);
+    boost::ignore_unused(res);
+    pipefd[1] = -1;
+
+    spawn_arguments_t::errno_reply_t reply;
+    auto nread = read(pipefd[0], &reply, sizeof(reply));
+    assert(nread != -1);
+    if (nread != 0) {
+        // exec() or pre-exec() failed
+        push(L, std::error_code{reply.code, std::system_category()});
+        return lua_error(L);
+    }
+
+    auto p = static_cast<subprocess*>(lua_newuserdata(L, sizeof(subprocess)));
+    rawgetp(L, LUA_REGISTRYINDEX, &subprocess_mt_key);
+    setmetatable(L, -2);
+    new (p) subprocess{};
+
+    p->reaper.emplace(
+        vm_ctx.strand().context(), pidfd, childpid, signal_on_zombie);
+    pidfd = -1;
+
+    return 1;
+}
+
+static int system_spawn(lua_State* L)
+{
+    return system_spawn_do(/*use_path=*/false, L);
+}
+
+static int system_spawnp(lua_State* L)
+{
+    return system_spawn_do(/*use_path=*/true, L);
+}
+#endif // BOOST_OS_LINUX
+
 static int system_mt_index(lua_State* L)
 {
     return dispatch_table::dispatch(
@@ -976,6 +1932,20 @@ static int system_mt_index(lua_State* L)
 #endif // !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
             hana::make_pair(BOOST_HANA_STRING("out"), system_out),
             hana::make_pair(BOOST_HANA_STRING("err"), system_err),
+#if BOOST_OS_LINUX
+            hana::make_pair(
+                BOOST_HANA_STRING("spawn"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_spawn);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("spawnp"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_spawnp);
+                    return 1;
+                }),
+#endif // BOOST_OS_LINUX
             hana::make_pair(
                 BOOST_HANA_STRING("exit"),
                 [](lua_State* L) -> int {
@@ -1180,6 +2150,33 @@ void init_system(lua_State* L)
     lua_pushcfunction(L, system_signal_set_wait);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
+
+#if BOOST_OS_LINUX
+    lua_pushlightuserdata(L, &subprocess_mt_key);
+    {
+        lua_createtable(L, /*narr=*/0, /*nrec=*/3);
+
+        lua_pushliteral(L, "__metatable");
+        lua_pushliteral(L, "subprocess");
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__index");
+        lua_pushcfunction(L, subprocess_mt_index);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__gc");
+        lua_pushcfunction(L, finalizer<subprocess>);
+        lua_rawset(L, -3);
+    }
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &subprocess_wait_key);
+    rawgetp(L, LUA_REGISTRYINDEX, &var_args__retval1_to_error__key);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+    lua_pushcfunction(L, subprocess_wait);
+    lua_call(L, 2, 1);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+#endif // BOOST_OS_LINUX
 }
 
 } // namespace emilua

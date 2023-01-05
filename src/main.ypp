@@ -19,6 +19,10 @@
 #include <emilua/windows.hpp>
 #include <emilua/state.hpp>
 
+#if BOOST_OS_LINUX
+#include <boost/context/fixedsize_stack.hpp>
+#endif // BOOST_OS_LINUX
+
 #if EMILUA_CONFIG_ENABLE_COLOR
 #include <cstdlib>
 #include <cstdio>
@@ -49,6 +53,12 @@ static constexpr auto help_text = FMT_STRING(
 
 int main(int argc, char *argv[], char *envp[])
 {
+#if BOOST_OS_LINUX
+    boost::context::fixedsize_stack clone_stack_allocator;
+    auto clone_stack = clone_stack_allocator.allocate();
+    emilua::clone_stack_address = clone_stack.sp;
+#endif // BOOST_OS_LINUX
+
     LUAJIT_VERSION_SYM();
     std::optional<boost::nowide::args> args = std::nullopt;
     try {

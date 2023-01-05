@@ -94,6 +94,8 @@ include::pages/system.signal.raise.adoc[]
 
 include::pages/system.signal.set.adoc[]
 
+include::pages/system.subprocess.adoc[]
+
 include::pages/tls.context.adoc[]
 
 include::pages/tls.context_flag.adoc[]

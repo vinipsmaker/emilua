@@ -13,6 +13,7 @@
 #include <boost/core/ignore_unused.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/intrusive/list.hpp>
+#include <boost/predef/os/linux.h>
 #include <boost/predef/os/unix.h>
 #include <boost/config.hpp>
 
@@ -108,6 +109,10 @@ extern char raw_next_key;
 extern char raw_setmetatable_key;
 extern char raw_getmetatable_key;
 extern char fiber_list_key;
+
+#if BOOST_OS_LINUX
+extern void* clone_stack_address;
+#endif // BOOST_OS_LINUX
 
 enum FiberDataIndex: lua_Integer
 {

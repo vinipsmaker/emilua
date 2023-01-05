@@ -15,13 +15,19 @@ else
     thread_dep = dependency('', required : false)
 endif
 
+boost_modules = [
+    'nowide',
+]
+
+if host_machine.system() == 'linux'
+    boost_modules += 'context'
+endif
+
 luajit = dependency('luajit', version : '>=2.0.5')
 boost = dependency(
     'boost',
     version : '>=1.80',
-    modules : [
-        'nowide',
-    ],
+    modules : boost_modules,
 )
 fmt = dependency('fmt', version : '>=8.0')
 trial_protocol = dependency('trial-protocol')

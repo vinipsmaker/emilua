@@ -1,0 +1,190 @@
+= system.subprocess
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+----
+
+== Functions
+
+=== `system.spawn(opts: table) -> subprocess`
+
+[source,lua]
+----
+system.spawn(opts: table)
+system.spawnp(opts: table)
+----
+
+Creates a new process.
+
+.Named parameters (i.e. attributes from its single table parameter)
+
+`program: string`::
++
+--
+`system.spawn()`::: The path (which can be absolute or relative) of the
+ executable.
+
+`system.spawnp()`::: A simple filename. The system searches for this file in the
+list of directories specified by PATH (in the same way as for execvp(3)).
+--
++
+That's the only argument where meaning changes between `system.spawn()` and
+`system.spawnp()`.
+
+`arguments: table[string]|nil`:: A table of strings that will be used as the
+created process' `argv`. On `nil`, an empty `argv` will be used.
++
+CAUTION: Don't forget to include the name of the program as the first argument.
+
+`environment: table[string:string]|nil`:: A table of strings that will be used
+as the created process' `envp`. On `nil`, an empty `envp` will be used.
+
+`stdin,stdout,stderr: string|file_descriptor|nil`::
+
+`string`:::
+The only acceptable value is `"share"`. The spawned process will then share the
+specified standard handle (`stdin`, `stdout`, and/or `stderr`) with the caller
+process.
+
+`file_descriptor`:::
+Use the file descriptor as the specified standard handle (`stdin`, `stdout`,
+and/or `stderr`) for the spawned process.
+
+`nil`:::
+Create and use a closed pipe end as the specified standard handle (`stdin`,
+`stdout`, and/or `stderr`) for the spawned process.
+
+`signal_on_zombie: number|nil = system.SIGTERM`::
+
+Each process is responsible for reaping its own children. A process that fails
+to reap its children will soon exhaust its OS-provided resources. For
+short-lived programs that's hardly a problem given the process quits and its
+children are re-parented to the next subreaper in the chain (usually the init
+process). However for a concurrency runtime such as Emilua we expect other
+concurrent tasks to remain unaffected by the one failing task (be it a single
+fiber or the whole VM).  Emilua will then transparently reap any child process
+for which its handle has been GC'ed. `signal_on_zombie` allows the user to
+specify a signal to be sent to the child that's about to be reaped at this
+occasion.
++
+
+By default, the `system.SIGTERM` signal will be sent to the child and then the
+main Emilua process will -- indefinitely, non-blockingly, and non-pollingly --
+await for all of its children to finish even if there's no longer any Lua
+program being executed. Use the more dangerous `system.SIGKILL` if you don't
+want the main Emilua process to wait long for the child. Use `0` if you don't
+want the Emilua reaper to send any signal before awaiting for the child.
+
++
+NOTE: Ideally the system kernel would expose some re-parent syscall, but until
+then (if ever), `signal_on_zombie` will be necessary.
+
+`signal_mask: table[number]|nil`::
+
+Set the set of blocked signals in the child process before the exec() step.
+
+`signal_default_handlers: table[number]|nil`::
+
+Reset the disposition of the specified signals.
+
+`scheduler.policy: string|nil`::
+
+Values acceptable on Linux for non-real-time policies are:
++
+--
+`"other"`::: See `SCHED_OTHER`.
+
+`"batch"`::: See `SCHED_BATCH`.
+
+`"idle"`::: See `SCHED_IDLE`.
+--
++
+Values acceptable on Linux for real-time policies are:
++
+--
+`"fifo"`::: See `SCHED_FIFO`. Must also set `scheduler.priority`.
+
+`"rr"`::: See `SCHED_RR`. Must also set `scheduler.priority`.
+--
+
+`scheduler.priority: number|nil`::
+
+The interpretation of this parameter is dependant on `scheduler.policy`.
+
+`scheduler.reset_on_fork: boolean|nil = false`::
+
+If `true`, grandchildren created as a result of a call to fork(2) from the
+direct child will not inherit privileged scheduling policies. If set, must also
+set `scheduler.policy`.
+
+`setsid: boolean|nil = false`::
+
+Whether to create a new session and become the session leader.
+
+`setpgroup: number|nil`::
+
+Set the process group. On 0, the child's process group ID is made the same as
+its process ID.
+
+`resetids: boolean|nil = false`::
+
+On `true`, reset the effective UID and GID to the real UID and GID of the parent
+process. Otherwise the child retains the effective UID and GID of the parent. In
+either case, if the set-user-ID and set-group-ID permission bits are enabled on
+the executable file, their effect will override the setting of the effective UID
+and GID (see execve(2)).
+
+`chdir: string|nil`::
+
+Sets the working directory for the spawned program.
+
+=== `wait(self)`
+
+Wait for the process to finish, and then reap it. Information regarding
+termination status is stored in `exit_code` and `exit_signal`.
+
+NOTE: If your code fails to call `wait()`, the Emilua runtime will reap the
+process in your stead as soon as the GC collects `self` and the underlying
+subprocess finishes. It's important to reap children processes to free
+OS-associated resources.
+
+=== `kill(self, signal: number)`
+
+Send a signal to the process.
+
+TIP: You may specify `0` (the null signal) to not send any signal, but still let
+the OS to perform permission checks (reported as raised errors).
+
+== Attributes
+
+=== `exit_code: number`
+
+The process return code as passed to exit(3). If the process was terminated by a
+signal, this will be `128 + exit_signal` (as done in BASH).
+
+NOTE: You can only access this field for ``wait()``'ed processes.
+
+=== `exit_signal: number|nil`
+
+The signal that terminated the process. If the process was *not* terminated by a
+signal, this will be `nil`.
+
+NOTE: You can only access this field for ``wait()``'ed processes.
+
+=== `pid: number`
+
+The process id used by the OS to represent this child process (e.g. the number
+that shows up in `/proc` on some UNIX systems).
+
+NOTE: You can only access this field for non-``wait()``'ed processes.

@@ -48,6 +48,7 @@ src3 = [
     'modules/ref/pages/system.signal.adoc',
     'modules/ref/pages/system.signal.raise.adoc',
     'modules/ref/pages/system.signal.set.adoc',
+    'modules/ref/pages/system.subprocess.adoc',
     'modules/ref/pages/tls.context.adoc',
     'modules/ref/pages/tls.context_flag.adoc',
     'modules/ref/pages/tls.socket.adoc',
