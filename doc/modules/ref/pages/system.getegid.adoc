@@ -1,0 +1,21 @@
+= system.getegid
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.getegid() -> number
+----
+
+== Description
+
+Returns the current process' effective group id.

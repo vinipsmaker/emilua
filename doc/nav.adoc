@@ -61,6 +61,9 @@
 *** xref:ref:system.signal.raise.adoc[]
 *** xref:ref:system.signal.set.adoc[]
 *** xref:ref:system.subprocess.adoc[]
+*** Misc
+**** xref:ref:system.geteuid.adoc[]
+**** xref:ref:system.getegid.adoc[]
 ** tls
 *** xref:ref:tls.context.adoc[]
 *** xref:ref:tls.context_flag.adoc[]

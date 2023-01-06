@@ -96,6 +96,10 @@ include::pages/system.signal.set.adoc[]
 
 include::pages/system.subprocess.adoc[]
 
+include::pages/system.geteuid.adoc[]
+
+include::pages/system.getegid.adoc[]
+
 include::pages/tls.context.adoc[]
 
 include::pages/tls.context_flag.adoc[]
