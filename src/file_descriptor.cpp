@@ -5,7 +5,16 @@
 
 #include <emilua/file_descriptor.hpp>
 
+#include <charconv>
+
+#include <boost/hana/integral_constant.hpp>
+#include <boost/hana/greater.hpp>
+#include <boost/hana/string.hpp>
+#include <boost/hana/plus.hpp>
+#include <boost/hana/div.hpp>
+
 #include <boost/scope_exit.hpp>
+#include <boost/config.hpp>
 
 namespace emilua {
 
@@ -97,7 +106,42 @@ static int file_descriptor_mt_index(lua_State* L)
 static int file_descriptor_mt_tostring(lua_State* L)
 {
     auto& handle = *static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
-    lua_pushfstring(L, "file_descriptor:%i", handle);
+
+    if (handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    // Paranoia. Apparently the kernel side disagrees about what should be the
+    // file descriptor's underlying type (cf. close_range(2)) so negative values
+    // could be possible (very unlikely as EMFILE should still hinder them
+    // anyway).
+    if (BOOST_UNLIKELY(handle < 0)) {
+        lua_pushfstring(L, "/dev/fd/%i", handle);
+        return 1;
+    }
+
+    auto prefix = BOOST_HANA_STRING("/dev/fd/");
+    constexpr auto max_digits = hana::second(hana::while_(
+        [](auto s) { return hana::first(s) > hana::int_c<0>; },
+        hana::make_pair(
+            /*i=*/hana::int_c<std::numeric_limits<int>::max()>,
+            /*max_digits=*/hana::int_c<0>),
+        [](auto s) {
+            return hana::make_pair(
+                hana::first(s) / hana::int_c<10>,
+                hana::second(s) + hana::int_c<1>);
+        }
+    ));
+
+    std::array<char, hana::length(prefix).value + max_digits.value> buf;
+    std::memcpy(buf.data(), prefix.c_str(), hana::length(prefix));
+    auto s_size = std::to_chars(
+        buf.data() + hana::length(prefix).value,
+        buf.data() + buf.size(),
+        handle).ptr - buf.data();
+
+    lua_pushlstring(L, buf.data(), s_size);
     return 1;
 }
 

@@ -27,3 +27,10 @@ NOTE: It can only be called once.
 === `dup(self) -> file_descriptor`
 
 Creates a new file descriptor that refers to the same open file description.
+
+== Metamethods
+
+=== `__tostring()`
+
+Produces a string in the format `"/dev/fd/%i"` where `"%i"` is the integer value
+as seen by the OS.
