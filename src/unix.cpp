@@ -568,6 +568,33 @@ static int unix_datagram_socket_shutdown(lua_State* L)
     return 0;
 }
 
+static int unix_datagram_socket_disconnect(lua_State* L)
+{
+    auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &unix_datagram_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    struct sockaddr_in sin;
+    std::memset(&sin, 0, sizeof(sin));
+    sin.sin_family = AF_UNSPEC;
+    int res = connect(
+        sock->socket.native_handle(), reinterpret_cast<struct sockaddr*>(&sin),
+        sizeof(sin));
+    if (res == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+
+    return 0;
+}
+
 static int unix_datagram_socket_cancel(lua_State* L)
 {
     auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
@@ -1513,6 +1540,13 @@ static int unix_datagram_socket_mt_index(lua_State* L)
                 }
             ),
             hana::make_pair(
+                BOOST_HANA_STRING("disconnect"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, unix_datagram_socket_disconnect);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
                 BOOST_HANA_STRING("cancel"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, unix_datagram_socket_cancel);
@@ -1977,6 +2011,33 @@ static int unix_stream_socket_shutdown(lua_State* L)
         push(L, static_cast<std::error_code>(ec2));
         return lua_error(L);
     }
+    return 0;
+}
+
+static int unix_stream_socket_disconnect(lua_State* L)
+{
+    auto sock = static_cast<unix_stream_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &unix_stream_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    struct sockaddr_in sin;
+    std::memset(&sin, 0, sizeof(sin));
+    sin.sin_family = AF_UNSPEC;
+    int res = connect(
+        sock->socket.native_handle(), reinterpret_cast<struct sockaddr*>(&sin),
+        sizeof(sin));
+    if (res == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+
     return 0;
 }
 
@@ -2568,6 +2629,13 @@ static int unix_stream_socket_mt_index(lua_State* L)
                 BOOST_HANA_STRING("shutdown"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, unix_stream_socket_shutdown);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("disconnect"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, unix_stream_socket_disconnect);
                     return 1;
                 }
             ),
@@ -3480,6 +3548,33 @@ static int unix_seqpacket_socket_shutdown(lua_State* L)
     return 0;
 }
 
+static int unix_seqpacket_socket_disconnect(lua_State* L)
+{
+    auto sock = static_cast<unix_seqpacket_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &unix_seqpacket_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    struct sockaddr_in sin;
+    std::memset(&sin, 0, sizeof(sin));
+    sin.sin_family = AF_UNSPEC;
+    int res = connect(
+        sock->socket.native_handle(), reinterpret_cast<struct sockaddr*>(&sin),
+        sizeof(sin));
+    if (res == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+
+    return 0;
+}
+
 static int unix_seqpacket_socket_connect(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TSTRING);
@@ -4078,6 +4173,13 @@ static int unix_seqpacket_socket_mt_index(lua_State* L)
                 BOOST_HANA_STRING("shutdown"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, unix_seqpacket_socket_shutdown);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("disconnect"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, unix_seqpacket_socket_disconnect);
                     return 1;
                 }
             ),

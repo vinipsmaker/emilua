@@ -122,6 +122,11 @@ Disable sends or receives on the socket.
 Initiate a connect operation and blocks current fiber until it completes or
 errs.
 
+=== `disconnect(self)`
+
+Dissolve the socket's association by resetting the socket's peer address
+(i.e. connect(3) will be called with an `AF_UNSPEC` address).
+
 === `read_some(self, buffer: byte_span) -> number`
 
 Read data from the stream socket and blocks current fiber until it completes or

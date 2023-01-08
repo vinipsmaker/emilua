@@ -954,6 +954,38 @@ static int tcp_socket_shutdown(lua_State* L)
     return 0;
 }
 
+static int tcp_socket_disconnect(lua_State* L)
+{
+    auto sock = static_cast<tcp_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_tcp_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+#if BOOST_OS_WINDOWS
+    push(L, std::errc::function_not_supported);
+    return lua_error(L);
+#else
+    struct sockaddr_in sin;
+    std::memset(&sin, 0, sizeof(sin));
+    sin.sin_family = AF_UNSPEC;
+    int res = connect(
+        sock->socket.native_handle(), reinterpret_cast<struct sockaddr*>(&sin),
+        sizeof(sin));
+    if (res == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+
+    return 0;
+#endif // BOOST_OS_WINDOWS
+}
+
 static int tcp_socket_connect(lua_State* L)
 {
     luaL_checktype(L, 3, LUA_TNUMBER);
@@ -1968,6 +2000,13 @@ static int tcp_socket_mt_index(lua_State* L)
                 BOOST_HANA_STRING("shutdown"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, tcp_socket_shutdown);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("disconnect"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, tcp_socket_disconnect);
                     return 1;
                 }
             ),
@@ -4033,6 +4072,38 @@ static int udp_socket_shutdown(lua_State* L)
     return 0;
 }
 
+static int udp_socket_disconnect(lua_State* L)
+{
+    auto sock = static_cast<udp_socket*>(lua_touserdata(L, 1));
+    if (!sock || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_udp_socket_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+#if BOOST_OS_WINDOWS
+    push(L, std::errc::function_not_supported);
+    return lua_error(L);
+#else
+    struct sockaddr_in sin;
+    std::memset(&sin, 0, sizeof(sin));
+    sin.sin_family = AF_UNSPEC;
+    int res = connect(
+        sock->socket.native_handle(), reinterpret_cast<struct sockaddr*>(&sin),
+        sizeof(sin));
+    if (res == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+
+    return 0;
+#endif // BOOST_OS_WINDOWS
+}
+
 static int udp_socket_connect(lua_State* L)
 {
     luaL_checktype(L, 3, LUA_TNUMBER);
@@ -5123,6 +5194,13 @@ static int udp_socket_mt_index(lua_State* L)
                 BOOST_HANA_STRING("shutdown"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, udp_socket_shutdown);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("disconnect"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, udp_socket_disconnect);
                     return 1;
                 }
             ),
