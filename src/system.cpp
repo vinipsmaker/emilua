@@ -80,7 +80,7 @@ struct spawn_arguments_t
     bool start_new_session;
     std::optional<pid_t> process_group;
     bool resetids;
-    std::optional<std::string_view> chdir;
+    std::optional<std::string> chdir;
 };
 
 struct spawn_reaper
@@ -1417,15 +1417,19 @@ static int system_spawn_child_main(void* a)
 
 static int system_spawn_do(bool use_path, lua_State* L)
 {
+    lua_settop(L, 1);
     luaL_checktype(L, 1, LUA_TTABLE);
     auto& vm_ctx = get_vm_context(L);
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    const int FILE_DESCRIPTOR_MT_INDEX = lua_gettop(L);
 
     lua_getfield(L, 1, "program");
     if (lua_type(L, -1) != LUA_TSTRING) {
         push(L, std::errc::invalid_argument, "arg", "program");
         return lua_error(L);
     }
-    auto program = tostringview(L, -1);
+    std::string program{tostringview(L)};
+    lua_pop(L, 1);
 
     int signal_on_zombie = SIGTERM;
     lua_getfield(L, 1, "signal_on_zombie");
@@ -1439,8 +1443,9 @@ static int system_spawn_do(bool use_path, lua_State* L)
         push(L, std::errc::invalid_argument, "arg", "signal_on_zombie");
         return lua_error(L);
     }
+    lua_pop(L, 1);
 
-    std::vector<char*> arguments;
+    std::vector<std::string> arguments;
     lua_getfield(L, 1, "arguments");
     switch (lua_type(L, -1)) {
     case LUA_TNIL:
@@ -1450,16 +1455,10 @@ static int system_spawn_do(bool use_path, lua_State* L)
             lua_rawgeti(L, -1, i);
             switch (lua_type(L, -1)) {
             case LUA_TNIL:
+                lua_pop(L, 1);
                 goto end_for;
             case LUA_TSTRING:
-                // If the Lua string were to be deallocated/GC'ed, this would be
-                // a bug. That's why we avoid any "dynamic string generation" on
-                // Lua-side. We call rawgeti, not getfield. We avoid any
-                // metamethod call. These pointers are sure to stay alive until
-                // we're done with them. Do notice as well that we don't even
-                // pop the arguments table from the Lua stack. That's all
-                // intentional.
-                arguments.emplace_back(const_cast<char*>(lua_tostring(L, -1)));
+                arguments.emplace_back(tostringview(L));
                 lua_pop(L, 1);
                 break;
             default:
@@ -1473,7 +1472,13 @@ static int system_spawn_do(bool use_path, lua_State* L)
         push(L, std::errc::invalid_argument, "arg", "arguments");
         return lua_error(L);
     }
-    arguments.emplace_back(nullptr);
+    lua_pop(L, 1);
+    std::vector<char*> argumentsb;
+    argumentsb.reserve(arguments.size() + 1);
+    for (auto& a: arguments) {
+        argumentsb.emplace_back(a.data());
+    }
+    argumentsb.emplace_back(nullptr);
 
     std::vector<std::string> environment;
     lua_getfield(L, 1, "environment");
@@ -1500,6 +1505,7 @@ static int system_spawn_do(bool use_path, lua_State* L)
         push(L, std::errc::invalid_argument, "arg", "environment");
         return lua_error(L);
     }
+    lua_pop(L, 1);
     std::vector<char*> environmentb;
     environmentb.reserve(environment.size() + 1);
     for (auto& e: environment) {
@@ -1526,11 +1532,11 @@ static int system_spawn_do(bool use_path, lua_State* L)
             push(L, std::errc::invalid_argument, "arg", "stdin");
             return lua_error(L);
         }
-        rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
-        if (!lua_rawequal(L, -1, -2)) {
+        if (!lua_rawequal(L, -1, FILE_DESCRIPTOR_MT_INDEX)) {
             push(L, std::errc::invalid_argument, "arg", "stdin");
             return lua_error(L);
         }
+        lua_pop(L, 1);
         if (*handle == INVALID_FILE_DESCRIPTOR) {
             push(L, std::errc::device_or_resource_busy, "arg", "stdin");
             return lua_error(L);
@@ -1542,6 +1548,7 @@ static int system_spawn_do(bool use_path, lua_State* L)
         push(L, std::errc::invalid_argument, "arg", "stdin");
         return lua_error(L);
     }
+    lua_pop(L, 1);
 
     int proc_stdout = -1;
     lua_getfield(L, 1, "stdout");
@@ -1562,11 +1569,11 @@ static int system_spawn_do(bool use_path, lua_State* L)
             push(L, std::errc::invalid_argument, "arg", "stdout");
             return lua_error(L);
         }
-        rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
-        if (!lua_rawequal(L, -1, -2)) {
+        if (!lua_rawequal(L, -1, FILE_DESCRIPTOR_MT_INDEX)) {
             push(L, std::errc::invalid_argument, "arg", "stdout");
             return lua_error(L);
         }
+        lua_pop(L, 1);
         if (*handle == INVALID_FILE_DESCRIPTOR) {
             push(L, std::errc::device_or_resource_busy, "arg", "stdout");
             return lua_error(L);
@@ -1578,6 +1585,7 @@ static int system_spawn_do(bool use_path, lua_State* L)
         push(L, std::errc::invalid_argument, "arg", "stdout");
         return lua_error(L);
     }
+    lua_pop(L, 1);
 
     int proc_stderr = -1;
     lua_getfield(L, 1, "stderr");
@@ -1598,11 +1606,11 @@ static int system_spawn_do(bool use_path, lua_State* L)
             push(L, std::errc::invalid_argument, "arg", "stderr");
             return lua_error(L);
         }
-        rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
-        if (!lua_rawequal(L, -1, -2)) {
+        if (!lua_rawequal(L, -1, FILE_DESCRIPTOR_MT_INDEX)) {
             push(L, std::errc::invalid_argument, "arg", "stderr");
             return lua_error(L);
         }
+        lua_pop(L, 1);
         if (*handle == INVALID_FILE_DESCRIPTOR) {
             push(L, std::errc::device_or_resource_busy, "arg", "stderr");
             return lua_error(L);
@@ -1614,6 +1622,7 @@ static int system_spawn_do(bool use_path, lua_State* L)
         push(L, std::errc::invalid_argument, "arg", "stderr");
         return lua_error(L);
     }
+    lua_pop(L, 1);
 
     std::optional<sigset_t> signal_mask;
     lua_getfield(L, 1, "signal_mask");
@@ -1626,6 +1635,7 @@ static int system_spawn_do(bool use_path, lua_State* L)
             lua_rawgeti(L, -1, i);
             switch (lua_type(L, -1)) {
             case LUA_TNIL:
+                lua_pop(L, 1);
                 goto end_for2;
             case LUA_TNUMBER:
                 if (sigaddset(&*signal_mask, lua_tointeger(L, -1)) == -1) {
@@ -1645,6 +1655,7 @@ static int system_spawn_do(bool use_path, lua_State* L)
         push(L, std::errc::invalid_argument, "arg", "signal_mask");
         return lua_error(L);
     }
+    lua_pop(L, 1);
 
     std::optional<sigset_t> signal_default_handlers;
     lua_getfield(L, 1, "signal_default_handlers");
@@ -1657,6 +1668,7 @@ static int system_spawn_do(bool use_path, lua_State* L)
             lua_rawgeti(L, -1, i);
             switch (lua_type(L, -1)) {
             case LUA_TNIL:
+                lua_pop(L, 1);
                 goto end_for3;
             case LUA_TNUMBER: {
                 int signo = lua_tointeger(L, -1);
@@ -1684,6 +1696,7 @@ static int system_spawn_do(bool use_path, lua_State* L)
         push(L, std::errc::invalid_argument, "arg", "signal_default_handlers");
         return lua_error(L);
     }
+    lua_pop(L, 1);
 
     std::optional<int> scheduler_policy;
     std::optional<int> scheduler_priority;
@@ -1754,11 +1767,13 @@ static int system_spawn_do(bool use_path, lua_State* L)
             push(L, std::errc::invalid_argument, "arg", "scheduler.priority");
             return lua_error(L);
         }
+        lua_pop(L, 1);
         break;
     default:
         push(L, std::errc::invalid_argument, "arg", "scheduler");
         return lua_error(L);
     }
+    lua_pop(L, 1);
 
     if (scheduler_policy) {
         switch (
@@ -1805,6 +1820,7 @@ static int system_spawn_do(bool use_path, lua_State* L)
         push(L, std::errc::invalid_argument, "arg", "start_new_session");
         return lua_error(L);
     }
+    lua_pop(L, 1);
 
     std::optional<pid_t> process_group;
     lua_getfield(L, 1, "process_group");
@@ -1818,6 +1834,7 @@ static int system_spawn_do(bool use_path, lua_State* L)
         push(L, std::errc::invalid_argument, "arg", "process_group");
         return lua_error(L);
     }
+    lua_pop(L, 1);
 
     bool resetids = false;
     lua_getfield(L, 1, "resetids");
@@ -1831,19 +1848,21 @@ static int system_spawn_do(bool use_path, lua_State* L)
         push(L, std::errc::invalid_argument, "arg", "resetids");
         return lua_error(L);
     }
+    lua_pop(L, 1);
 
-    std::optional<std::string_view> chdir;
+    std::optional<std::string> chdir;
     lua_getfield(L, 1, "chdir");
     switch (lua_type(L, -1)) {
     case LUA_TNIL:
         break;
     case LUA_TSTRING:
-        chdir = tostringview(L);
+        chdir.emplace(tostringview(L));
         break;
     default:
         push(L, std::errc::invalid_argument, "arg", "chdir");
         return lua_error(L);
     }
+    lua_pop(L, 1);
 
     int pipefd[2];
     if (pipe2(pipefd, O_DIRECT) == -1) {
@@ -1863,7 +1882,7 @@ static int system_spawn_do(bool use_path, lua_State* L)
     args.use_path = use_path;
     args.closeonexecpipe = pipefd[1];
     args.program = program.data();
-    args.argv = arguments.data();
+    args.argv = argumentsb.data();
     args.envp = environmentb.data();
     args.proc_stdin = proc_stdin;
     args.proc_stdout = proc_stdout;
