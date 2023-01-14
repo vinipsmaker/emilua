@@ -1056,6 +1056,30 @@ static int system_getegid(lua_State* L)
     lua_pushinteger(L, getegid());
     return 1;
 }
+
+static int system_getresuid(lua_State* L)
+{
+    uid_t ruid, euid, suid;
+    int res = getresuid(&ruid, &euid, &suid);
+    assert(res == 0);
+    boost::ignore_unused(res);
+    lua_pushinteger(L, ruid);
+    lua_pushinteger(L, euid);
+    lua_pushinteger(L, suid);
+    return 3;
+}
+
+static int system_getresgid(lua_State* L)
+{
+    gid_t rgid, egid, sgid;
+    int res = getresgid(&rgid, &egid, &sgid);
+    assert(res == 0);
+    boost::ignore_unused(res);
+    lua_pushinteger(L, rgid);
+    lua_pushinteger(L, egid);
+    lua_pushinteger(L, sgid);
+    return 3;
+}
 #endif // BOOST_OS_UNIX
 
 #if BOOST_OS_LINUX
@@ -1990,6 +2014,18 @@ static int system_mt_index(lua_State* L)
                 BOOST_HANA_STRING("getegid"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, system_getegid);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("getresuid"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_getresuid);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("getresgid"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_getresgid);
                     return 1;
                 }),
 #endif // BOOST_OS_UNIX

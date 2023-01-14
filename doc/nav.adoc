@@ -64,6 +64,8 @@
 *** Misc
 **** xref:ref:system.geteuid.adoc[]
 **** xref:ref:system.getegid.adoc[]
+**** xref:ref:system.getresuid.adoc[]
+**** xref:ref:system.getresgid.adoc[]
 ** tls
 *** xref:ref:tls.context.adoc[]
 *** xref:ref:tls.context_flag.adoc[]

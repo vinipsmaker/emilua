@@ -1,0 +1,22 @@
+= system.getresgid
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.getresgid() -> number, number, number
+----
+
+== Description
+
+Returns the real GID, the effective GID, and the saved set-group-ID of the
+calling process, respectively.

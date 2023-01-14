@@ -1,0 +1,22 @@
+= system.getresuid
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.getresuid() -> number, number, number
+----
+
+== Description
+
+Returns the real UID, the effective UID, and the saved set-user-ID of the
+calling process, respectively.
