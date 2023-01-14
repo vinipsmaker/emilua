@@ -1045,18 +1045,6 @@ static int system_exit(lua_State* L)
 }
 
 #if BOOST_OS_UNIX
-static int system_geteuid(lua_State* L)
-{
-    lua_pushinteger(L, geteuid());
-    return 1;
-}
-
-static int system_getegid(lua_State* L)
-{
-    lua_pushinteger(L, getegid());
-    return 1;
-}
-
 static int system_getresuid(lua_State* L)
 {
     uid_t ruid, euid, suid;
@@ -2004,18 +1992,6 @@ static int system_mt_index(lua_State* L)
                 }),
 #endif // BOOST_OS_LINUX
 #if BOOST_OS_UNIX
-            hana::make_pair(
-                BOOST_HANA_STRING("geteuid"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_geteuid);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("getegid"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_getegid);
-                    return 1;
-                }),
             hana::make_pair(
                 BOOST_HANA_STRING("getresuid"),
                 [](lua_State* L) -> int {

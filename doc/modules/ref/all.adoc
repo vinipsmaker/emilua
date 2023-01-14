@@ -96,10 +96,6 @@ include::pages/system.signal.set.adoc[]
 
 include::pages/system.subprocess.adoc[]
 
-include::pages/system.geteuid.adoc[]
-
-include::pages/system.getegid.adoc[]
-
 include::pages/system.getresuid.adoc[]
 
 include::pages/system.getresgid.adoc[]

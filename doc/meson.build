@@ -49,8 +49,6 @@ src3 = [
     'modules/ref/pages/system.signal.raise.adoc',
     'modules/ref/pages/system.signal.set.adoc',
     'modules/ref/pages/system.subprocess.adoc',
-    'modules/ref/pages/system.geteuid.adoc',
-    'modules/ref/pages/system.getegid.adoc',
     'modules/ref/pages/system.getresuid.adoc',
     'modules/ref/pages/system.getresgid.adoc',
     'modules/ref/pages/tls.context.adoc',
