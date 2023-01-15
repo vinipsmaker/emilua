@@ -100,6 +100,10 @@ include::pages/system.getresuid.adoc[]
 
 include::pages/system.getresgid.adoc[]
 
+include::pages/system.setresuid.adoc[]
+
+include::pages/system.setresgid.adoc[]
+
 include::pages/tls.context.adoc[]
 
 include::pages/tls.context_flag.adoc[]

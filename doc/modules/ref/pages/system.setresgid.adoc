@@ -1,0 +1,26 @@
+= system.setresgid
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.setresgid(rgid: number, egid: number, sgid: number)
+----
+
+== Description
+
+Sets the real GID, the effective GID, and the saved set-group-ID of the calling
+process.
+
+If one of the arguments equals `-1`, the corresponding value is not changed.
+
+NOTE: Only the master VM is allowed to use this function.

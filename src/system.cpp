@@ -1068,6 +1068,44 @@ static int system_getresgid(lua_State* L)
     lua_pushinteger(L, sgid);
     return 3;
 }
+
+static int system_setresuid(lua_State* L)
+{
+    lua_settop(L, 3);
+    auto& vm_ctx = get_vm_context(L);
+    if (!vm_ctx.is_master()) {
+        push(L, std::errc::operation_not_permitted);
+        return lua_error(L);
+    }
+
+    uid_t ruid = lua_tointeger(L, 1);
+    uid_t euid = lua_tointeger(L, 2);
+    uid_t suid = lua_tointeger(L, 3);
+    if (setresuid(ruid, euid, suid) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    return 0;
+}
+
+static int system_setresgid(lua_State* L)
+{
+    lua_settop(L, 3);
+    auto& vm_ctx = get_vm_context(L);
+    if (!vm_ctx.is_master()) {
+        push(L, std::errc::operation_not_permitted);
+        return lua_error(L);
+    }
+
+    gid_t rgid = lua_tointeger(L, 1);
+    gid_t egid = lua_tointeger(L, 2);
+    gid_t sgid = lua_tointeger(L, 3);
+    if (setresgid(rgid, egid, sgid) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    return 0;
+}
 #endif // BOOST_OS_UNIX
 
 #if BOOST_OS_LINUX
@@ -2002,6 +2040,18 @@ static int system_mt_index(lua_State* L)
                 BOOST_HANA_STRING("getresgid"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, system_getresgid);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("setresuid"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_setresuid);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("setresgid"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_setresgid);
                     return 1;
                 }),
 #endif // BOOST_OS_UNIX

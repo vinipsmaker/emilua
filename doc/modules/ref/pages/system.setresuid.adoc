@@ -1,0 +1,26 @@
+= system.setresuid
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.setresuid(ruid: number, euid: number, suid: number)
+----
+
+== Description
+
+Sets the real UID, the effective UID, and the saved set-user-ID of the calling
+process.
+
+If one of the arguments equals `-1`, the corresponding value is not changed.
+
+NOTE: Only the master VM is allowed to use this function.
