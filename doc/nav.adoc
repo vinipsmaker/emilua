@@ -61,7 +61,7 @@
 *** xref:ref:system.signal.raise.adoc[]
 *** xref:ref:system.signal.set.adoc[]
 *** xref:ref:system.subprocess.adoc[]
-*** Misc
+*** Process credentials
 **** xref:ref:system.getresuid.adoc[]
 **** xref:ref:system.getresgid.adoc[]
 **** xref:ref:system.setresuid.adoc[]
