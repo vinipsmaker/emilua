@@ -1,0 +1,23 @@
+= system.getgroups
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.getgroups() -> table[number]
+----
+
+== Description
+
+Returns the current supplementary group IDs of the calling process. It is
+unspecified whether `getgroups()` also returns the effective group ID in the
+list.

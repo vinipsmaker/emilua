@@ -1106,6 +1106,27 @@ static int system_setresgid(lua_State* L)
     }
     return 0;
 }
+
+static int system_getgroups(lua_State* L)
+{
+    std::vector<gid_t> ret;
+    int len = -1;
+
+    // other threads could be modifying the list
+    // so we loop until it succeeds
+    while (len == -1) {
+        len = getgroups(0, NULL);
+        ret.resize(len);
+        len = getgroups(len, ret.data());
+    }
+
+    lua_createtable(L, /*narr=*/len, /*nrec=*/0);
+    for (int i = 0 ; i != len ; ++i) {
+        lua_pushinteger(L, ret[i]);
+        lua_rawseti(L, -2, i + 1);
+    }
+    return 1;
+}
 #endif // BOOST_OS_UNIX
 
 #if BOOST_OS_LINUX
@@ -2052,6 +2073,12 @@ static int system_mt_index(lua_State* L)
                 BOOST_HANA_STRING("setresgid"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, system_setresgid);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("getgroups"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_getgroups);
                     return 1;
                 }),
 #endif // BOOST_OS_UNIX
