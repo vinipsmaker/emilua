@@ -67,6 +67,12 @@ else
     liburing = dependency('', required : false)
 endif
 
+if host_machine.system() == 'linux'
+    libcap = [dependency('libcap'), dependency('libpsx')]
+else
+    libcap = dependency('', required : false)
+endif
+
 if get_option('use_wolfssl')
     ssl = dependency('wolfssl')
     add_project_arguments('-DBOOST_ASIO_USE_WOLFSSL', language : 'cpp')
@@ -253,6 +259,7 @@ emilua_bin = executable(
         curses,
         libdl,
         liburing,
+        libcap,
     ],
     export_dynamic : get_option('enable_plugins'),
     include_directories : include_directories(incdir),

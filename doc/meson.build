@@ -55,6 +55,7 @@ src3 = [
     'modules/ref/pages/system.setresgid.adoc',
     'modules/ref/pages/system.getgroups.adoc',
     'modules/ref/pages/system.setgroups.adoc',
+    'modules/ref/pages/system.linux_capabilities.adoc',
     'modules/ref/pages/tls.context.adoc',
     'modules/ref/pages/tls.context_flag.adoc',
     'modules/ref/pages/tls.socket.adoc',

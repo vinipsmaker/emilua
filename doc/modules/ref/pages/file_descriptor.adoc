@@ -28,6 +28,14 @@ NOTE: It can only be called once.
 
 Creates a new file descriptor that refers to the same open file description.
 
+=== `cap_get(self) -> system.linux_capabilities`
+
+See cap_get_fd(3).
+
+=== `cap_set(self, caps: system.linux_capabilities)`
+
+See cap_set_fd(3).
+
 == Metamethods
 
 === `__tostring()`

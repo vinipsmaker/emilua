@@ -1,0 +1,119 @@
+= system.linux_capabilities
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+== Synopsis
+
+endif::[]
+
+[source,lua]
+----
+local system = require "system"
+local caps = system.cap_init()
+caps:set_proc()
+system.cap_reset_ambient()
+----
+
+== Functions
+
+=== `cap_get_proc() -> linux_capabilities`
+
+See cap_get_proc(3).
+
+=== `cap_init() -> linux_capabilities`
+
+See cap_init(3).
+
+=== `cap_from_text(caps: string) -> linux_capabilities`
+
+See cap_from_text(3).
+
+=== `cap_get_bound(cap: string) -> boolean`
+
+See cap_get_bound(3).
+
+=== `cap_drop_bound(cap: string)`
+
+See cap_drop_bound(3).
+
+NOTE: Only the master VM is allowed to use this function.
+
+=== `cap_get_ambient(cap: string) -> boolean`
+
+See cap_get_ambient(3).
+
+=== `cap_set_ambient(cap: string, value: boolean)`
+
+See cap_set_ambient(3).
+
+NOTE: Only the master VM is allowed to use this function.
+
+=== `cap_reset_ambient()`
+
+See cap_reset_ambient(3).
+
+NOTE: Only the master VM is allowed to use this function.
+
+=== `cap_get_secbits() -> number`
+
+See cap_get_secbits(3).
+
+=== `cap_set_secbits(bits: number)`
+
+See cap_set_secbits(3).
+
+NOTE: Only the master VM is allowed to use this function.
+
+=== `cap_get_file(path: string) -> linux_capabilities`
+
+See cap_get_file(3).
+
+=== `cap_set_file(path: string, caps: linux_capabilities)`
+
+See cap_set_file(3).
+
+=== `dup(self) -> linux_capabilities`
+
+See cap_dup(3).
+
+=== `clear(self)`
+
+See cap_clear(3).
+
+=== `clear_flag(self, flag: string)`
+
+See cap_clear_flag(3).
+
+=== `get_flag(self, cap: string, flag: string) -> boolean`
+
+See cap_get_flag(3).
+
+=== `set_flag(self, flag: string, caps: table[string], value: boolean)`
+
+See cap_set_flag(3).
+
+=== `fill_flag(self, to: string, ref: linux_capabilities, from: string)`
+
+See cap_fill_flag(3).
+
+=== `fill(self, to: string, from: string)`
+
+See cap_fill(3).
+
+=== `set_proc(self)`
+
+See cap_set_proc(3).
+
+NOTE: Only the master VM is allowed to use this function.
+
+=== `get_nsowner(self) -> number`
+
+See cap_get_nsowner(3).
+
+=== `set_nsowner(self, rootuid: number)`
+
+See cap_set_nsowner(3).

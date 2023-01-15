@@ -35,6 +35,7 @@
 
 #if BOOST_OS_LINUX
 #include <linux/close_range.h>
+#include <sys/capability.h>
 #include <sys/wait.h>
 #include <grp.h>
 #endif // BOOST_OS_LINUX
@@ -56,6 +57,7 @@ static char system_err_key;
 #if BOOST_OS_LINUX
 static char subprocess_mt_key;
 static char subprocess_wait_key;
+char linux_capabilities_mt_key;
 
 struct spawn_arguments_t
 {
@@ -1270,6 +1272,43 @@ static int subprocess_kill(lua_State* L)
     return 0;
 }
 
+static int subprocess_cap_get(lua_State* L)
+{
+    auto p = static_cast<subprocess*>(lua_touserdata(L, 1));
+    if (!p || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &subprocess_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (!p->reaper) {
+        push(L, std::errc::no_such_process);
+        return lua_error(L);
+    }
+
+    cap_t caps = cap_get_pid(p->reaper->childpid);
+    if (caps == NULL) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    BOOST_SCOPE_EXIT_ALL(&) {
+        if (caps != NULL)
+            cap_free(caps);
+    };
+
+    auto& caps2 = *static_cast<cap_t*>(lua_newuserdata(L, sizeof(cap_t)));
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    setmetatable(L, -2);
+    caps2 = caps;
+    caps = NULL;
+
+    return 1;
+}
+
 inline int subprocess_exit_code(lua_State* L)
 {
     auto p = static_cast<subprocess*>(lua_touserdata(L, 1));
@@ -1336,6 +1375,12 @@ static int subprocess_mt_index(lua_State* L)
                 BOOST_HANA_STRING("kill"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, subprocess_kill);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("cap_get"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, subprocess_cap_get);
                     return 1;
                 }),
             hana::make_pair(
@@ -2052,6 +2097,648 @@ static int system_spawnp(lua_State* L)
 {
     return system_spawn_do(/*use_path=*/true, L);
 }
+
+static int linux_capabilities_dup(lua_State* L)
+{
+    auto caps = static_cast<cap_t*>(lua_touserdata(L, 1));
+    if (!caps || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto& caps2 = *static_cast<cap_t*>(lua_newuserdata(L, sizeof(cap_t)));
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    setmetatable(L, -2);
+    caps2 = cap_dup(*caps);
+    return 1;
+}
+
+static int linux_capabilities_clear(lua_State* L)
+{
+    auto caps = static_cast<cap_t*>(lua_touserdata(L, 1));
+    if (!caps || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    cap_clear(*caps);
+    return 0;
+}
+
+static int linux_capabilities_clear_flag(lua_State* L)
+{
+    auto caps = static_cast<cap_t*>(lua_touserdata(L, 1));
+    if (!caps || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    cap_flag_t flag;
+    auto s = tostringview(L, 2);
+    if (s == "effective") {
+        flag = CAP_EFFECTIVE;
+    } else if (s == "inheritable") {
+        flag = CAP_INHERITABLE;
+    } else if (s == "permitted") {
+        flag = CAP_PERMITTED;
+    } else {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    cap_clear_flag(*caps, flag);
+    return 0;
+}
+
+static int linux_capabilities_get_flag(lua_State* L)
+{
+    lua_settop(L, 3);
+
+    auto caps = static_cast<cap_t*>(lua_touserdata(L, 1));
+    if (!caps || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    const char* name = luaL_checkstring(L, 2);
+    cap_value_t cap;
+    if (cap_from_name(name, &cap) == -1) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    cap_flag_t flag;
+    auto s = tostringview(L, 3);
+    if (s == "effective") {
+        flag = CAP_EFFECTIVE;
+    } else if (s == "inheritable") {
+        flag = CAP_INHERITABLE;
+    } else if (s == "permitted") {
+        flag = CAP_PERMITTED;
+    } else {
+        push(L, std::errc::invalid_argument, "arg", 3);
+        return lua_error(L);
+    }
+
+    cap_flag_value_t value;
+    cap_get_flag(*caps, cap, flag, &value);
+    if (value == CAP_SET)
+        lua_pushboolean(L, 1);
+    else
+        lua_pushboolean(L, 0);
+    return 1;
+}
+
+static int linux_capabilities_set_flag(lua_State* L)
+{
+    lua_settop(L, 4);
+    luaL_checktype(L, 3, LUA_TTABLE);
+    luaL_checktype(L, 4, LUA_TBOOLEAN);
+
+    auto caps = static_cast<cap_t*>(lua_touserdata(L, 1));
+    if (!caps || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    cap_flag_t flag;
+    auto s = tostringview(L, 2);
+    if (s == "effective") {
+        flag = CAP_EFFECTIVE;
+    } else if (s == "inheritable") {
+        flag = CAP_INHERITABLE;
+    } else if (s == "permitted") {
+        flag = CAP_PERMITTED;
+    } else {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    std::vector<cap_value_t> values;
+    for (int i = 1 ;; ++i) {
+        lua_rawgeti(L, 3, i);
+        switch (lua_type(L, -1)) {
+        case LUA_TNIL:
+            goto end_for;
+        case LUA_TSTRING: {
+            const char* name = lua_tostring(L, -1);
+            cap_value_t cap;
+            if (cap_from_name(name, &cap) == -1) {
+                push(L, std::errc::invalid_argument, "arg", 3);
+                return lua_error(L);
+            }
+            values.emplace_back(cap);
+            lua_pop(L, 1);
+            break;
+        }
+        default:
+            push(L, std::errc::invalid_argument, "arg", 3);
+            return lua_error(L);
+        }
+    }
+ end_for:
+
+    cap_flag_value_t value = lua_toboolean(L, 4) ? CAP_SET : CAP_CLEAR;
+
+    if (cap_set_flag(*caps, flag, values.size(), values.data(), value) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+
+    return 0;
+}
+
+static int linux_capabilities_fill_flag(lua_State* L)
+{
+    lua_settop(L, 4);
+
+    auto caps = static_cast<cap_t*>(lua_touserdata(L, 1));
+    if (!caps || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    cap_flag_t to;
+    auto s = tostringview(L, 2);
+    if (s == "effective") {
+        to = CAP_EFFECTIVE;
+    } else if (s == "inheritable") {
+        to = CAP_INHERITABLE;
+    } else if (s == "permitted") {
+        to = CAP_PERMITTED;
+    } else {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    auto caps2 = static_cast<cap_t*>(lua_touserdata(L, 3));
+    if (!caps2 || !lua_getmetatable(L, 3)) {
+        push(L, std::errc::invalid_argument, "arg", 3);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 3);
+        return lua_error(L);
+    }
+
+    cap_flag_t from;
+    s = tostringview(L, 4);
+    if (s == "effective") {
+        from = CAP_EFFECTIVE;
+    } else if (s == "inheritable") {
+        from = CAP_INHERITABLE;
+    } else if (s == "permitted") {
+        from = CAP_PERMITTED;
+    } else {
+        push(L, std::errc::invalid_argument, "arg", 4);
+        return lua_error(L);
+    }
+
+    cap_fill_flag(*caps, to, *caps2, from);
+    return 0;
+}
+
+static int linux_capabilities_fill(lua_State* L)
+{
+    lua_settop(L, 3);
+
+    auto caps = static_cast<cap_t*>(lua_touserdata(L, 1));
+    if (!caps || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    cap_flag_t to;
+    auto s = tostringview(L, 2);
+    if (s == "effective") {
+        to = CAP_EFFECTIVE;
+    } else if (s == "inheritable") {
+        to = CAP_INHERITABLE;
+    } else if (s == "permitted") {
+        to = CAP_PERMITTED;
+    } else {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    cap_flag_t from;
+    s = tostringview(L, 3);
+    if (s == "effective") {
+        from = CAP_EFFECTIVE;
+    } else if (s == "inheritable") {
+        from = CAP_INHERITABLE;
+    } else if (s == "permitted") {
+        from = CAP_PERMITTED;
+    } else {
+        push(L, std::errc::invalid_argument, "arg", 3);
+        return lua_error(L);
+    }
+
+    cap_fill(*caps, to, from);
+    return 0;
+}
+
+static int linux_capabilities_set_proc(lua_State* L)
+{
+    auto& vm_ctx = get_vm_context(L);
+    if (!vm_ctx.is_master()) {
+        push(L, std::errc::operation_not_permitted);
+        return lua_error(L);
+    }
+
+    auto caps = static_cast<cap_t*>(lua_touserdata(L, 1));
+    if (!caps || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (cap_set_proc(*caps) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    return 0;
+}
+
+static int linux_capabilities_get_nsowner(lua_State* L)
+{
+    auto caps = static_cast<cap_t*>(lua_touserdata(L, 1));
+    if (!caps || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    lua_pushinteger(L, cap_get_nsowner(*caps));
+    return 1;
+}
+
+static int linux_capabilities_set_nsowner(lua_State* L)
+{
+    auto caps = static_cast<cap_t*>(lua_touserdata(L, 1));
+    if (!caps || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (cap_set_nsowner(*caps, luaL_checkinteger(L, 2)) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    return 0;
+}
+
+static int linux_capabilities_mt_index(lua_State* L)
+{
+    return dispatch_table::dispatch(
+        hana::make_tuple(
+            hana::make_pair(
+                BOOST_HANA_STRING("dup"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, linux_capabilities_dup);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("clear"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, linux_capabilities_clear);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("clear_flag"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, linux_capabilities_clear_flag);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("get_flag"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, linux_capabilities_get_flag);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("set_flag"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, linux_capabilities_set_flag);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("fill_flag"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, linux_capabilities_fill_flag);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("fill"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, linux_capabilities_fill);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("set_proc"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, linux_capabilities_set_proc);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("get_nsowner"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, linux_capabilities_get_nsowner);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("set_nsowner"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, linux_capabilities_set_nsowner);
+                    return 1;
+                }
+            )
+        ),
+        [](std::string_view /*key*/, lua_State* L) -> int {
+            push(L, errc::bad_index, "index", 2);
+            return lua_error(L);
+        },
+        tostringview(L, 2),
+        L
+    );
+}
+
+static int linux_capabilities_mt_gc(lua_State* L)
+{
+    auto& caps = *static_cast<cap_t*>(lua_touserdata(L, 1));
+    cap_free(caps);
+    return 0;
+}
+
+static int linux_capabilities_mt_tostring(lua_State* L)
+{
+    auto& caps = *static_cast<cap_t*>(lua_touserdata(L, 1));
+    ssize_t len;
+    char* str = cap_to_text(caps, &len);
+    BOOST_SCOPE_EXIT_ALL(&) { cap_free(str); };
+    lua_pushlstring(L, str, len);
+    return 1;
+}
+
+static int system_cap_get_proc(lua_State* L)
+{
+    auto& caps = *static_cast<cap_t*>(lua_newuserdata(L, sizeof(cap_t)));
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    setmetatable(L, -2);
+    caps = cap_get_proc();
+    return 1;
+}
+
+static int system_cap_init(lua_State* L)
+{
+    auto& caps = *static_cast<cap_t*>(lua_newuserdata(L, sizeof(cap_t)));
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    setmetatable(L, -2);
+    caps = cap_init();
+    return 1;
+}
+
+static int system_cap_from_text(lua_State* L)
+{
+    const char* str = luaL_checkstring(L, 1);
+
+    cap_t caps = cap_from_text(str);
+    if (caps == NULL) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    BOOST_SCOPE_EXIT_ALL(&) {
+        if (caps != NULL)
+            cap_free(caps);
+    };
+
+    auto& caps2 = *static_cast<cap_t*>(lua_newuserdata(L, sizeof(cap_t)));
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    setmetatable(L, -2);
+    caps2 = caps;
+    caps = NULL;
+
+    return 1;
+}
+
+static int system_cap_get_bound(lua_State* L)
+{
+    const char* name = luaL_checkstring(L, 1);
+    cap_value_t cap;
+    if (cap_from_name(name, &cap) == -1) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    int res = cap_get_bound(cap);
+    if (res == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    lua_pushboolean(L, res);
+    return 1;
+}
+
+static int system_cap_drop_bound(lua_State* L)
+{
+    auto& vm_ctx = get_vm_context(L);
+    if (!vm_ctx.is_master()) {
+        push(L, std::errc::operation_not_permitted);
+        return lua_error(L);
+    }
+
+    const char* name = luaL_checkstring(L, 1);
+    cap_value_t cap;
+    if (cap_from_name(name, &cap) == -1) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (cap_drop_bound(cap) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    return 0;
+}
+
+static int system_cap_get_ambient(lua_State* L)
+{
+    const char* name = luaL_checkstring(L, 1);
+    cap_value_t cap;
+    if (cap_from_name(name, &cap) == -1) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    int res = cap_get_ambient(cap);
+    if (res == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    lua_pushboolean(L, res);
+    return 1;
+}
+
+static int system_cap_set_ambient(lua_State* L)
+{
+    luaL_checktype(L, 2, LUA_TBOOLEAN);
+
+    auto& vm_ctx = get_vm_context(L);
+    if (!vm_ctx.is_master()) {
+        push(L, std::errc::operation_not_permitted);
+        return lua_error(L);
+    }
+
+    const char* name = luaL_checkstring(L, 1);
+    cap_value_t cap;
+    if (cap_from_name(name, &cap) == -1) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    cap_flag_value_t value = lua_toboolean(L, 2) ? CAP_SET : CAP_CLEAR;
+
+    if (cap_set_ambient(cap, value) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    return 0;
+}
+
+static int system_cap_reset_ambient(lua_State* L)
+{
+    auto& vm_ctx = get_vm_context(L);
+    if (!vm_ctx.is_master()) {
+        push(L, std::errc::operation_not_permitted);
+        return lua_error(L);
+    }
+
+    if (cap_reset_ambient() == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    return 0;
+}
+
+static int system_cap_get_secbits(lua_State* L)
+{
+    lua_pushinteger(L, cap_get_secbits());
+    return 1;
+}
+
+static int system_cap_set_secbits(lua_State* L)
+{
+    auto& vm_ctx = get_vm_context(L);
+    if (!vm_ctx.is_master()) {
+        push(L, std::errc::operation_not_permitted);
+        return lua_error(L);
+    }
+
+    if (cap_set_secbits(luaL_checkinteger(L, 1)) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    return 0;
+}
+
+static int system_cap_get_file(lua_State* L)
+{
+    cap_t caps = cap_get_file(luaL_checkstring(L, 1));
+    if (caps == NULL) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    BOOST_SCOPE_EXIT_ALL(&) {
+        if (caps != NULL)
+            cap_free(caps);
+    };
+
+    auto& caps2 = *static_cast<cap_t*>(lua_newuserdata(L, sizeof(cap_t)));
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    setmetatable(L, -2);
+    caps2 = caps;
+    caps = NULL;
+
+    return 1;
+}
+
+static int system_cap_set_file(lua_State* L)
+{
+    auto caps = static_cast<cap_t*>(lua_touserdata(L, 2));
+    if (!caps || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    if (cap_set_file(luaL_checkstring(L, 1), *caps) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    return 0;
+}
 #endif // BOOST_OS_LINUX
 
 static int system_mt_index(lua_State* L)
@@ -2078,6 +2765,78 @@ static int system_mt_index(lua_State* L)
                 BOOST_HANA_STRING("spawnp"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, system_spawnp);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("cap_get_proc"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_cap_get_proc);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("cap_init"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_cap_init);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("cap_from_text"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_cap_from_text);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("cap_get_bound"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_cap_get_bound);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("cap_drop_bound"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_cap_drop_bound);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("cap_get_ambient"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_cap_get_ambient);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("cap_set_ambient"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_cap_set_ambient);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("cap_reset_ambient"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_cap_reset_ambient);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("cap_get_secbits"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_cap_get_secbits);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("cap_set_secbits"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_cap_set_secbits);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("cap_get_file"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_cap_get_file);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("cap_set_file"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_cap_set_file);
                     return 1;
                 }),
 #endif // BOOST_OS_LINUX
@@ -2339,6 +3098,28 @@ void init_system(lua_State* L)
 
         lua_pushliteral(L, "__gc");
         lua_pushcfunction(L, finalizer<subprocess>);
+        lua_rawset(L, -3);
+    }
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &linux_capabilities_mt_key);
+    {
+        lua_createtable(L, /*narr=*/0, /*nrec=*/4);
+
+        lua_pushliteral(L, "__metatable");
+        lua_pushliteral(L, "linux_capabilities");
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__index");
+        lua_pushcfunction(L, linux_capabilities_mt_index);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__gc");
+        lua_pushcfunction(L, linux_capabilities_mt_gc);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__tostring");
+        lua_pushcfunction(L, linux_capabilities_mt_tostring);
         lua_rawset(L, -3);
     }
     lua_rawset(L, LUA_REGISTRYINDEX);

@@ -16,6 +16,11 @@
 #include <boost/scope_exit.hpp>
 #include <boost/config.hpp>
 
+#if BOOST_OS_LINUX
+#include <sys/capability.h>
+#include <emilua/system.hpp>
+#endif // BOOST_OS_LINUX
+
 namespace emilua {
 
 char file_descriptor_mt_key;
@@ -88,6 +93,81 @@ static int file_descriptor_dup(lua_State* L)
     return 1;
 }
 
+#if BOOST_OS_LINUX
+static int file_descriptor_cap_get(lua_State* L)
+{
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
+    if (!handle || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    cap_t caps = cap_get_fd(*handle);
+    if (caps == NULL) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    BOOST_SCOPE_EXIT_ALL(&) {
+        if (caps != NULL)
+            cap_free(caps);
+    };
+
+    auto& caps2 = *static_cast<cap_t*>(lua_newuserdata(L, sizeof(cap_t)));
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    setmetatable(L, -2);
+    caps2 = caps;
+    caps = NULL;
+
+    return 1;
+}
+
+static int file_descriptor_cap_set(lua_State* L)
+{
+    auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
+    if (!handle || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (*handle == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::device_or_resource_busy);
+        return lua_error(L);
+    }
+
+    auto caps = static_cast<cap_t*>(lua_touserdata(L, 2));
+    if (!caps || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    if (cap_set_fd(*handle, *caps) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    return 0;
+}
+#endif // BOOST_OS_LINUX
+
 static int file_descriptor_mt_index(lua_State* L)
 {
     auto key = tostringview(L, 2);
@@ -97,6 +177,14 @@ static int file_descriptor_mt_index(lua_State* L)
     } else if (key == "dup") {
         lua_pushcfunction(L, file_descriptor_dup);
         return 1;
+#if BOOST_OS_LINUX
+    } else if (key == "cap_get") {
+        lua_pushcfunction(L, file_descriptor_cap_get);
+        return 1;
+    } else if (key == "cap_set") {
+        lua_pushcfunction(L, file_descriptor_cap_set);
+        return 1;
+#endif // BOOST_OS_LINUX
     } else {
         push(L, errc::bad_index, "index", 2);
         return lua_error(L);

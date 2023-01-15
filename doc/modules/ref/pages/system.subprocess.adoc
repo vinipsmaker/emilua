@@ -167,6 +167,10 @@ Send a signal to the process.
 TIP: You may specify `0` (the null signal) to not send any signal, but still let
 the OS to perform permission checks (reported as raised errors).
 
+=== `cap_get(self) -> system.linux_capabilities`
+
+See cap_get_pid(3).
+
 == Attributes
 
 === `exit_code: number`
