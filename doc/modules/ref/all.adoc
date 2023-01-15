@@ -106,6 +106,8 @@ include::pages/system.setresgid.adoc[]
 
 include::pages/system.getgroups.adoc[]
 
+include::pages/system.setgroups.adoc[]
+
 include::pages/tls.context.adoc[]
 
 include::pages/tls.context_flag.adoc[]

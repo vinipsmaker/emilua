@@ -36,6 +36,7 @@
 #if BOOST_OS_LINUX
 #include <linux/close_range.h>
 #include <sys/wait.h>
+#include <grp.h>
 #endif // BOOST_OS_LINUX
 
 namespace emilua {
@@ -1127,6 +1128,36 @@ static int system_getgroups(lua_State* L)
     }
     return 1;
 }
+
+static int system_setgroups(lua_State* L)
+{
+    auto& vm_ctx = get_vm_context(L);
+    if (!vm_ctx.is_master()) {
+        push(L, std::errc::operation_not_permitted);
+        return lua_error(L);
+    }
+
+    luaL_checktype(L, 1, LUA_TTABLE);
+    std::vector<gid_t> groups;
+    for (int i = 0 ;; ++i) {
+        lua_rawgeti(L, 1, i + 1);
+        switch (lua_type(L, -1)) {
+        case LUA_TNIL:
+            if (setgroups(groups.size(), groups.data()) == -1) {
+                push(L, std::error_code{errno, std::system_category()});
+                return lua_error(L);
+            }
+            return 0;
+        case LUA_TNUMBER:
+            groups.emplace_back(lua_tointeger(L, -1));
+            lua_pop(L, 1);
+            break;
+        default:
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+    }
+}
 #endif // BOOST_OS_UNIX
 
 #if BOOST_OS_LINUX
@@ -2079,6 +2110,12 @@ static int system_mt_index(lua_State* L)
                 BOOST_HANA_STRING("getgroups"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, system_getgroups);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("setgroups"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_setgroups);
                     return 1;
                 }),
 #endif // BOOST_OS_UNIX

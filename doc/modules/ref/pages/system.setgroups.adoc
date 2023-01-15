@@ -1,0 +1,23 @@
+= system.setgroups
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.setgroups(groups: table[number])
+----
+
+== Description
+
+Sets the supplementary group IDs for the calling process.
+
+NOTE: Only the master VM is allowed to use this function.

@@ -67,6 +67,7 @@
 **** xref:ref:system.setresuid.adoc[]
 **** xref:ref:system.setresgid.adoc[]
 **** xref:ref:system.getgroups.adoc[]
+**** xref:ref:system.setgroups.adoc[]
 ** tls
 *** xref:ref:tls.context.adoc[]
 *** xref:ref:tls.context_flag.adoc[]
