@@ -83,7 +83,7 @@ struct spawn_arguments_t
     bool start_new_session;
     std::optional<pid_t> process_group;
     bool resetids;
-    std::optional<std::string> chdir;
+    std::optional<std::string> working_directory;
     int nsenter_user;
     int nsenter_mount;
     int nsenter_uts;
@@ -1464,7 +1464,9 @@ static int system_spawn_child_main(void* a)
         return 1;
     }
 
-    if (args->chdir && chdir(args->chdir->data()) == -1) {
+    if (
+        args->working_directory && chdir(args->working_directory->data()) == -1
+    ) {
         reply.code = errno;
         write(args->closeonexecpipe, &reply, sizeof(reply));
         return 1;
@@ -2042,16 +2044,16 @@ static int system_spawn_do(bool use_path, lua_State* L)
     }
     lua_pop(L, 1);
 
-    std::optional<std::string> chdir;
-    lua_getfield(L, 1, "chdir");
+    std::optional<std::string> working_directory;
+    lua_getfield(L, 1, "working_directory");
     switch (lua_type(L, -1)) {
     case LUA_TNIL:
         break;
     case LUA_TSTRING:
-        chdir.emplace(tostringview(L));
+        working_directory.emplace(tostringview(L));
         break;
     default:
-        push(L, std::errc::invalid_argument, "arg", "chdir");
+        push(L, std::errc::invalid_argument, "arg", "working_directory");
         return lua_error(L);
     }
     lua_pop(L, 1);
@@ -2236,7 +2238,7 @@ static int system_spawn_do(bool use_path, lua_State* L)
     args.start_new_session = start_new_session;
     args.process_group = process_group;
     args.resetids = resetids;
-    args.chdir = chdir;
+    args.working_directory = working_directory;
     args.nsenter_user = nsenter_user;
     args.nsenter_mount = nsenter_mount;
     args.nsenter_uts = nsenter_uts;

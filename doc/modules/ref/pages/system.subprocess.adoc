@@ -146,7 +146,7 @@ either case, if the set-user-ID and set-group-ID permission bits are enabled on
 the executable file, their effect will override the setting of the effective UID
 and GID (see execve(2)).
 
-`chdir: string|nil`::
+`working_directory: string|nil`::
 
 Sets the working directory for the spawned program.
 
