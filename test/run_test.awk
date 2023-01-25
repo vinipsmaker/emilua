@@ -18,6 +18,12 @@ BEGIN {
         "uname -s" | getline uname_output
     }
 }
+!got_seed && NR == 1 && /^SEED=[0-9]+$/ {
+    got_seed = 1
+    NR = 0
+    print
+    next
+}
 {
     sanitize_record()
     switch (getline expected <(TEST ".out")) {

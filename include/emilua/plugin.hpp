@@ -37,6 +37,22 @@ public:
     // Called only once per `appctx`. On normal conditions there is only one
     // `appctx` to the whole process, but the user might create custom
     // "launchers" to his project where multiple app contexts exist.
+    //
+    // A friendly reminder of a non-exhaustive list of things that are evil to
+    // do before main() is called:
+    //
+    // * Spawning a thread (or process).
+    // * Changing signal handling disposition.
+    // * Opening file descriptors.
+    // * Buffering data into stdout/cout.
+    // * Mutating (or even reading) environment variables.
+    // * Calling any function that might do one of the previous things.
+    //
+    // If you need to do any of the above, please do not use constructors for
+    // global variables to achieve it. Use init_appctx() instead. It might be
+    // true that plugin loading happens after main() is called, but this
+    // assumption will break on static builds that compile the plugin as part of
+    // the same binary.
     virtual void init_appctx(app_context& appctx) noexcept;
 
     // It may be called multiple times on the same `ioctx` object. Use it to

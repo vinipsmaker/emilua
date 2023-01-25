@@ -33,6 +33,11 @@ extern "C" {
 } // extern "C"
 #endif // EMILUA_CONFIG_ENABLE_COLOR
 
+#if EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+#include <sys/wait.h>
+#include <emilua/linux_namespaces.hpp>
+#endif // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+
 namespace asio = boost::asio;
 namespace hana = boost::hana;
 namespace fs = std::filesystem;
@@ -58,6 +63,77 @@ int main(int argc, char *argv[], char *envp[])
     auto clone_stack = clone_stack_allocator.allocate();
     emilua::clone_stack_address = clone_stack.sp;
 #endif // BOOST_OS_LINUX
+
+#if EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+    int linux_namespaces_service_pipe[2];
+    if (
+        socketpair(AF_UNIX, SOCK_SEQPACKET, 0, linux_namespaces_service_pipe) ==
+        -1
+    ) {
+        linux_namespaces_service_pipe[0] = -1;
+        linux_namespaces_service_pipe[1] = -1;
+        perror("<4>Failed to start Linux namespaces subsystem");
+    }
+
+    if (linux_namespaces_service_pipe[0] != -1) {
+        shutdown(linux_namespaces_service_pipe[0], SHUT_WR);
+        shutdown(linux_namespaces_service_pipe[1], SHUT_RD);
+
+        switch (fork()) {
+        case -1: {
+            perror("<4>Failed to start Linux namespaces subsystem");
+            close(linux_namespaces_service_pipe[0]);
+            close(linux_namespaces_service_pipe[1]);
+            linux_namespaces_service_pipe[0] = -1;
+            linux_namespaces_service_pipe[1] = -1;
+            break;
+        }
+        case 0:
+            close(linux_namespaces_service_pipe[1]);
+            return emilua::app_context::linux_namespaces_service_main(
+                linux_namespaces_service_pipe[0]);
+        default: {
+            close(linux_namespaces_service_pipe[0]);
+            linux_namespaces_service_pipe[0] = -1;
+
+            emilua::bzero_region args;
+
+            // These regions are computed from this process so we try (as the
+            // best of our efforts) to avoid loading them into extra
+            // registers/stack of the other process.
+            //
+            // Ideally we'd control the whole chain of executed instructions up
+            // to the point of calling explicit_bzero(), but that means writing
+            // our own libc implementation and writing everything in
+            // assembly. It's not really feasible to do the right thing here so
+            // we just settle for a weaker compromise using portable C + glibc's
+            // explicit_bzero().
+            //
+            // The alternative execve()-based approach provides stronger
+            // isolation by flushing the whole address space, but comes with its
+            // own limitations. By providing both approaches we can attack a
+            // wider range of problems. IOW, there are no plans to remove this
+            // code (the bzero() protection might not be a complete solution,
+            // but it works usually well in practice).
+            for (int i = 0 ; i != argc ; ++i) {
+                std::string_view view = argv[i];
+                args.s = const_cast<char*>(view.data());
+                args.n = view.size();
+                write(linux_namespaces_service_pipe[1], &args, sizeof(args));
+            }
+            for (char** rawenv = envp ; *rawenv ; ++rawenv) {
+                std::string_view env{*rawenv};
+                args.s = const_cast<char*>(env.data());
+                args.n = env.size();
+                write(linux_namespaces_service_pipe[1], &args, sizeof(args));
+            }
+            args.s = nullptr;
+            args.n = 0;
+            write(linux_namespaces_service_pipe[1], &args, sizeof(args));
+        }
+        }
+    }
+#endif // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
 
     LUAJIT_VERSION_SYM();
     std::optional<boost::nowide::args> args = std::nullopt;
@@ -123,6 +199,10 @@ int main(int argc, char *argv[], char *envp[])
     emilua::ContextType main_context_type = emilua::ContextType::main;
     emilua::app_context appctx;
     appctx.app_env = std::move(tmp_env);
+
+#if EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+    appctx.linux_namespaces_service_sockfd = linux_namespaces_service_pipe[1];
+#endif // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
 
 #define NEXT_ARG(OPTION, LABEL) do {                                          \
         if (YYCURSOR = *++cur_arg ; YYCURSOR != nullptr) {                    \

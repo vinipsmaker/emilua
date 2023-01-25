@@ -20,6 +20,12 @@ conf.set10(
 conf.set10('ENABLE_FILE_IO', get_option('enable_file_io'))
 conf.set('THREAD_SUPPORT_LEVEL',  get_option('thread_support_level'))
 
+conf.set10('ENABLE_LINUX_NAMESPACES', get_option('enable_linux_namespaces'))
+conf.set('LINUX_NAMESPACES_MSG_SIZE',
+         get_option('linux_namespaces_msg_size'))
+conf.set('LINUX_NAMESPACES_MSG_MAX_MEMBERS_NUMBER',
+         get_option('linux_namespaces_msg_max_members_number'))
+
 configure_file(
     input : 'config.h.in',
     output : 'config.h',

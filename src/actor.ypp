@@ -1,4 +1,4 @@
-/* Copyright (c) 2020, 2021 Vinícius dos Santos Oliveira
+/* Copyright (c) 2020, 2021, 2023 Vinícius dos Santos Oliveira
 
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
@@ -6,6 +6,9 @@
 #include <optional>
 #include <thread>
 
+#include <boost/scope_exit.hpp>
+
+#include <emilua/async_base.hpp>
 #include <emilua/windows.hpp>
 #include <emilua/actor.hpp>
 #include <emilua/state.hpp>
@@ -17,6 +20,13 @@
 #if BOOST_OS_UNIX
 #include <emilua/file_descriptor.hpp>
 #endif // BOOST_OS_UNIX
+
+#if EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+#include <boost/serialization/unordered_map.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <emilua/linux_namespaces.hpp>
+#include <sys/wait.h>
+#endif // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
 
 namespace emilua {
 
@@ -31,6 +41,152 @@ static char tx_chan_mt_key;
 static char closed_tx_chan_mt_key;
 static char chan_receive_key;
 static char chan_send_key;
+
+#if EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+char linux_container_chan_mt_key;
+static char linux_container_chan_send_key;
+
+struct linux_container_send_op
+    : public std::enable_shared_from_this<linux_container_send_op>
+{
+    struct file_descriptor_lock
+    {
+        file_descriptor_lock() = default;
+        file_descriptor_lock(const file_descriptor_lock&) = delete;
+        file_descriptor_lock& operator=(const file_descriptor_lock&) = delete;
+
+        file_descriptor_handle* reference = nullptr;
+        file_descriptor_handle value = INVALID_FILE_DESCRIPTOR;
+    };
+
+    linux_container_send_op(emilua::vm_context& vm_ctx,
+                            asio::cancellation_slot cancel_slot,
+                            asio::local::datagram_protocol::socket& sock)
+        : sock{sock}
+        , current_fiber{vm_ctx.current_fiber()}
+        , vm_ctx{vm_ctx.shared_from_this()}
+        , cancel_slot{std::move(cancel_slot)}
+    {}
+
+    void do_wait()
+    {
+        sock.async_wait(
+            asio::socket_base::wait_write,
+            asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
+                vm_ctx->strand_using_defer(),
+                [self=shared_from_this()](const boost::system::error_code& ec) {
+                    self->on_wait(ec);
+                }
+            ))
+        );
+    }
+
+    void on_wait(const boost::system::error_code& ec)
+    {
+        using descriptors_size_type = decltype(descriptors_size);
+        if (!vm_ctx->valid()) {
+            for (descriptors_size_type i = 0 ; i != descriptors_size ; ++i) {
+                int res = close(descriptors[i].value);
+                boost::ignore_unused(res);
+            }
+            return;
+        }
+
+        if (ec) {
+            for (descriptors_size_type i = 0 ; i != descriptors_size ; ++i) {
+                if (descriptors[i].reference) {
+                    *descriptors[i].reference = descriptors[i].value;
+                } else {
+                    int res = close(descriptors[i].value);
+                    boost::ignore_unused(res);
+                }
+            }
+            vm_ctx->fiber_resume(
+                current_fiber,
+                hana::make_set(
+                    vm_context::options::auto_detect_interrupt,
+                    hana::make_pair(opt_args, hana::make_tuple(ec))));
+            return;
+        }
+
+        struct msghdr msg;
+        std::memset(&msg, 0, sizeof(msg));
+
+        assert(message_size <= sizeof(message) && message_size > 0);
+        struct iovec iov;
+        iov.iov_base = &message;
+        iov.iov_len = message_size;
+        msg.msg_iov = &iov;
+        msg.msg_iovlen = 1;
+
+        union
+        {
+            struct cmsghdr align;
+            char buf[CMSG_SPACE(
+                sizeof(int) *
+                EMILUA_CONFIG_LINUX_NAMESPACES_MESSAGE_MAX_MEMBERS_NUMBER)];
+        } cmsgu;
+        msg.msg_control = cmsgu.buf;
+        msg.msg_controllen = CMSG_SPACE(sizeof(int) * descriptors_size);
+
+        struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+        cmsg->cmsg_level = SOL_SOCKET;
+        cmsg->cmsg_type = SCM_RIGHTS;
+        cmsg->cmsg_len = CMSG_LEN(sizeof(int) * descriptors_size);
+        {
+            char* out = (char*)CMSG_DATA(cmsg);
+            for (auto& fdlock: descriptors) {
+                std::memcpy(out, &fdlock.value, sizeof(int));
+                out += sizeof(int);
+            }
+        }
+
+        auto nwritten = sendmsg(sock.native_handle(), &msg,
+                                MSG_DONTWAIT | MSG_NOSIGNAL);
+        int send_errno = errno;
+        if (
+            nwritten == -1 &&
+            (send_errno == EAGAIN || send_errno == EWOULDBLOCK)
+        ) {
+            do_wait();
+            return;
+        }
+        for (descriptors_size_type i = 0 ; i != descriptors_size ; ++i) {
+            if (descriptors[i].reference) {
+                *descriptors[i].reference = descriptors[i].value;
+            } else {
+                int res = close(descriptors[i].value);
+                boost::ignore_unused(res);
+            }
+        }
+
+        if (nwritten == -1) {
+            std::error_code ec2{send_errno, std::system_category()};
+            vm_ctx->fiber_resume(
+                current_fiber,
+                hana::make_set(
+                    hana::make_pair(opt_args, hana::make_tuple(ec2))));
+            return;
+        }
+
+        vm_ctx->fiber_resume(current_fiber);
+    }
+
+    asio::local::datagram_protocol::socket& sock;
+    lua_State* current_fiber;
+    std::shared_ptr<emilua::vm_context> vm_ctx;
+    asio::cancellation_slot cancel_slot;
+    linux_container_message message;
+    std::size_t message_size;
+    std::array<
+        file_descriptor_lock,
+        EMILUA_CONFIG_LINUX_NAMESPACES_MESSAGE_MAX_MEMBERS_NUMBER
+    > descriptors;
+    std::uint8_t descriptors_size = 0;
+
+    static constexpr auto opt_args = vm_context::options::arguments;
+};
+#endif // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
 
 static int deserializer_closure(lua_State* L)
 {
@@ -103,6 +259,28 @@ static int deserializer_closure(lua_State* L)
     };
 #endif // BOOST_OS_UNIX
 
+#if EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+    static constexpr auto push_linux_container_address = [](
+        lua_State* L, inbox_t::linux_container_address& a
+    ) {
+        assert(a.inbox->value != -1);
+
+        auto& vm_ctx = get_vm_context(L);
+        auto ch = static_cast<linux_container_address*>(
+            lua_newuserdata(L, sizeof(linux_container_address))
+        );
+        rawgetp(L, LUA_REGISTRYINDEX, &linux_container_chan_mt_key);
+        setmetatable(L, -2);
+        new (ch) linux_container_address{vm_ctx.strand().context()};
+
+        asio::local::datagram_protocol protocol;
+        boost::system::error_code ignored_ec;
+        ch->dest.assign(protocol, a.inbox->value, ignored_ec);
+        assert(!ignored_ec);
+        a.inbox->value = -1;
+    };
+#endif // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+
     auto push_leaf_or_append_path_and_return_true_on_leaf = [&](
         inbox_t::value_type::variant_type& value
     ) {
@@ -116,6 +294,11 @@ static int deserializer_closure(lua_State* L)
                 push_file_descriptor(L, fdbox); return true;
             },
 #endif // BOOST_OS_UNIX
+#if EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+            [L](inbox_t::linux_container_address& a) {
+                push_linux_container_address(L, a); return true;
+            },
+#endif // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
             [&](std::map<std::string, inbox_t::value_type>& m) {
                 path.emplace_back(std::in_place_type<object_range>, m);
                 return false;
@@ -748,12 +931,14 @@ static int chan_receive(lua_State* L)
         auto sender = std::move(vm_ctx.inbox.incoming.front());
         vm_ctx.inbox.incoming.pop_front();
 
-        sender.vm_ctx->strand().post(
-            [vm_ctx=sender.vm_ctx, fiber=sender.fiber]() {
-                vm_ctx->fiber_resume(fiber);
-            },
-            std::allocator<void>{}
-        );
+        if (sender.vm_ctx) {
+            sender.vm_ctx->strand().post(
+                [vm_ctx=sender.vm_ctx, fiber=sender.fiber]() {
+                    vm_ctx->fiber_resume(fiber);
+                },
+                std::allocator<void>{}
+            );
+        }
 
         lua_pushlightuserdata(L, &sender.msg);
         lua_pushcclosure(L, deserializer_closure, 1);
@@ -794,6 +979,14 @@ static int chan_receive(lua_State* L)
         0
     );
     set_interrupter(L, vm_ctx);
+
+#if EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+    for (auto& op: vm_ctx.pending_operations) {
+        auto service = dynamic_cast<linux_container_inbox_service*>(&op);
+        if (service)
+            service->async_enqueue(vm_ctx);
+    }
+#endif // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
 
     vm_ctx.inbox.recv_fiber = vm_ctx.current_fiber();
     vm_ctx.inbox.work_guard = vm_ctx.shared_from_this();
@@ -872,6 +1065,7 @@ static int spawn_vm(lua_State* L)
     };
 
     luaL_checktype(L, 1, LUA_TSTRING);
+    lua_settop(L, 2);
 
     bool inherit_ctx = true;
 #if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 2
@@ -879,6 +1073,17 @@ static int spawn_vm(lua_State* L)
 #elif EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 1
     int concurrency_hint = 1;
 #endif
+#if EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+    bool run_in_namespace = false;
+    std::unordered_map<std::string, std::string> newenv;
+    std::optional<std::string> lua_hook;
+    int lua_hook_fd = -1;
+    int proc_stdin = -1;
+    int proc_stdout = -1;
+    int proc_stderr = -1;
+    linux_container_start_vm_request request;
+    std::memset(&request, 0, sizeof(request));
+#endif // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
 
     switch (lua_type(L, 2)) {
     default:
@@ -887,10 +1092,13 @@ static int spawn_vm(lua_State* L)
     case LUA_TNONE:
     case LUA_TNIL:
         break;
-    case LUA_TTABLE:
+    case LUA_TTABLE: {
+        [[maybe_unused]] bool host_type_already_defined = false;
         lua_getfield(L, 2, "inherit_context");
-        if (lua_type(L, -1) == LUA_TBOOLEAN)
+        if (lua_type(L, -1) == LUA_TBOOLEAN) {
             inherit_ctx = lua_toboolean(L, -1);
+            host_type_already_defined = true;
+        }
 #if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
         lua_getfield(L, 2, "concurrency_hint");
         if (lua_type(L, -1) == LUA_TNUMBER) {
@@ -899,10 +1107,578 @@ static int spawn_vm(lua_State* L)
                 concurrency_hint = 1;
         }
 #endif
+        lua_getfield(L, 2, "linux_namespaces");
+        if (lua_type(L, -1) == LUA_TTABLE) {
+#if EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+            if (host_type_already_defined) {
+                push(L, std::errc::invalid_argument, "arg", 2);
+                return lua_error(L);
+            }
+            host_type_already_defined = true;
+            run_in_namespace = true;
+
+            lua_getfield(L, -1, "new_uts");
+            switch (lua_type(L, -1)) {
+            default:
+                push(L, std::errc::invalid_argument,
+                     "arg", "linux_namespaces/new_uts");
+                return lua_error(L);
+            case LUA_TBOOLEAN:
+                if (lua_toboolean(L, -1)) {
+                    request.clone_flags |= CLONE_NEWUTS;
+                }
+                [[fallthrough]];
+            case LUA_TNIL:
+                lua_pop(L, 1);
+                break;
+            }
+
+            lua_getfield(L, -1, "new_ipc");
+            switch (lua_type(L, -1)) {
+            default:
+                push(L, std::errc::invalid_argument,
+                     "arg", "linux_namespaces/new_ipc");
+                return lua_error(L);
+            case LUA_TBOOLEAN:
+                if (lua_toboolean(L, -1)) {
+                    request.clone_flags |= CLONE_NEWIPC;
+                }
+                [[fallthrough]];
+            case LUA_TNIL:
+                lua_pop(L, 1);
+                break;
+            }
+
+            lua_getfield(L, -1, "new_pid");
+            switch (lua_type(L, -1)) {
+            default:
+                push(L, std::errc::invalid_argument,
+                     "arg", "linux_namespaces/new_pid");
+                return lua_error(L);
+            case LUA_TBOOLEAN:
+                if (lua_toboolean(L, -1)) {
+                    request.clone_flags |= CLONE_NEWPID;
+                }
+                [[fallthrough]];
+            case LUA_TNIL:
+                lua_pop(L, 1);
+                break;
+            }
+
+            lua_getfield(L, -1, "new_user");
+            switch (lua_type(L, -1)) {
+            default:
+                push(L, std::errc::invalid_argument,
+                     "arg", "linux_namespaces/new_user");
+                return lua_error(L);
+            case LUA_TBOOLEAN:
+                if (lua_toboolean(L, -1)) {
+                    request.clone_flags |= CLONE_NEWUSER;
+                }
+                [[fallthrough]];
+            case LUA_TNIL:
+                lua_pop(L, 1);
+                break;
+            }
+
+            lua_getfield(L, -1, "new_net");
+            switch (lua_type(L, -1)) {
+            default:
+                push(L, std::errc::invalid_argument,
+                     "arg", "linux_namespaces/new_net");
+                return lua_error(L);
+            case LUA_TBOOLEAN:
+                if (lua_toboolean(L, -1)) {
+                    request.clone_flags |= CLONE_NEWNET;
+                }
+                [[fallthrough]];
+            case LUA_TNIL:
+                lua_pop(L, 1);
+                break;
+            }
+
+            lua_getfield(L, -1, "new_mount");
+            switch (lua_type(L, -1)) {
+            default:
+                push(L, std::errc::invalid_argument,
+                     "arg", "linux_namespaces/new_mount");
+                return lua_error(L);
+            case LUA_TBOOLEAN:
+                if (lua_toboolean(L, -1)) {
+                    request.clone_flags |= CLONE_NEWNS;
+                }
+                [[fallthrough]];
+            case LUA_TNIL:
+                lua_pop(L, 1);
+                break;
+            }
+
+            lua_getfield(L, -1, "stdin");
+            switch (lua_type(L, -1)) {
+            default:
+                push(L, std::errc::invalid_argument,
+                     "arg", "linux_namespaces/stdin");
+                return lua_error(L);
+            case LUA_TSTRING:
+                if (tostringview(L) != "share") {
+                    push(L, std::errc::invalid_argument,
+                         "arg", "linux_namespaces/stdin");
+                    return lua_error(L);
+                }
+                proc_stdin = STDIN_FILENO;
+                lua_pop(L, 1);
+                break;
+            case LUA_TUSERDATA: {
+                auto handle = static_cast<file_descriptor_handle*>(
+                    lua_touserdata(L, -1));
+                if (!lua_getmetatable(L, -1)) {
+                    push(L, std::errc::invalid_argument,
+                         "arg", "linux_namespaces/stdin");
+                    return lua_error(L);
+                }
+                rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+                if (!lua_rawequal(L, -1, -2)) {
+                    push(L, std::errc::invalid_argument,
+                         "arg", "linux_namespaces/stdin");
+                    return lua_error(L);
+                }
+                if (*handle == INVALID_FILE_DESCRIPTOR) {
+                    push(L, std::errc::device_or_resource_busy,
+                         "arg", "linux_namespaces/stdin");
+                    return lua_error(L);
+                }
+                proc_stdin = *handle;
+                lua_pop(L, 3);
+                break;
+            }
+            case LUA_TNIL:
+                lua_pop(L, 1);
+                break;
+            }
+
+            lua_getfield(L, -1, "stdout");
+            switch (lua_type(L, -1)) {
+            default:
+                push(L, std::errc::invalid_argument,
+                     "arg", "linux_namespaces/stdout");
+                return lua_error(L);
+            case LUA_TSTRING:
+                if (tostringview(L) != "share") {
+                    push(L, std::errc::invalid_argument,
+                         "arg", "linux_namespaces/stdout");
+                    return lua_error(L);
+                }
+                proc_stdout = STDOUT_FILENO;
+                lua_pop(L, 1);
+                break;
+            case LUA_TUSERDATA: {
+                auto handle = static_cast<file_descriptor_handle*>(
+                    lua_touserdata(L, -1));
+                if (!lua_getmetatable(L, -1)) {
+                    push(L, std::errc::invalid_argument,
+                         "arg", "linux_namespaces/stdout");
+                    return lua_error(L);
+                }
+                rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+                if (!lua_rawequal(L, -1, -2)) {
+                    push(L, std::errc::invalid_argument,
+                         "arg", "linux_namespaces/stdout");
+                    return lua_error(L);
+                }
+                if (*handle == INVALID_FILE_DESCRIPTOR) {
+                    push(L, std::errc::device_or_resource_busy,
+                         "arg", "linux_namespaces/stdout");
+                    return lua_error(L);
+                }
+                proc_stdout = *handle;
+                lua_pop(L, 3);
+                break;
+            }
+            case LUA_TNIL:
+                lua_pop(L, 1);
+                break;
+            }
+
+            lua_getfield(L, -1, "stderr");
+            switch (lua_type(L, -1)) {
+            default:
+                push(L, std::errc::invalid_argument,
+                     "arg", "linux_namespaces/stderr");
+                return lua_error(L);
+            case LUA_TSTRING:
+                if (tostringview(L) != "share") {
+                    push(L, std::errc::invalid_argument,
+                         "arg", "linux_namespaces/stderr");
+                    return lua_error(L);
+                }
+                proc_stderr = STDERR_FILENO;
+                lua_pop(L, 1);
+                break;
+            case LUA_TUSERDATA: {
+                auto handle = static_cast<file_descriptor_handle*>(
+                    lua_touserdata(L, -1));
+                if (!lua_getmetatable(L, -1)) {
+                    push(L, std::errc::invalid_argument,
+                         "arg", "linux_namespaces/stderr");
+                    return lua_error(L);
+                }
+                rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+                if (!lua_rawequal(L, -1, -2)) {
+                    push(L, std::errc::invalid_argument,
+                         "arg", "linux_namespaces/stderr");
+                    return lua_error(L);
+                }
+                if (*handle == INVALID_FILE_DESCRIPTOR) {
+                    push(L, std::errc::device_or_resource_busy,
+                         "arg", "linux_namespaces/stderr");
+                    return lua_error(L);
+                }
+                proc_stderr = *handle;
+                lua_pop(L, 3);
+                break;
+            }
+            case LUA_TNIL:
+                lua_pop(L, 1);
+                break;
+            }
+
+            lua_getfield(L, -1, "environment");
+            switch (lua_type(L, -1)) {
+            default:
+                push(L, std::errc::invalid_argument,
+                     "arg", "linux_namespaces/environment");
+                return lua_error(L);
+            case LUA_TTABLE:
+                lua_pushnil(L);
+                while (lua_next(L, -2) != 0) {
+                    if (
+                        lua_type(L, -2) != LUA_TSTRING ||
+                        lua_type(L, -1) != LUA_TSTRING
+                    ) {
+                        push(L, std::errc::invalid_argument,
+                             "arg", "linux_namespaces/environment");
+                        return lua_error(L);
+                    }
+
+                    newenv.emplace(tostringview(L, -2), tostringview(L));
+                    lua_pop(L, 1);
+                }
+
+                [[fallthrough]];
+            case LUA_TNIL:
+                lua_pop(L, 1);
+                break;
+            }
+
+            lua_getfield(L, -1, "init");
+            switch (lua_type(L, -1)) {
+            default:
+                push(L, std::errc::invalid_argument,
+                     "arg", "linux_namespaces/init");
+                return lua_error(L);
+            case LUA_TTABLE:
+                request.has_lua_hook = 1;
+
+                lua_getfield(L, -1, "fd");
+                switch (lua_type(L, -1)) {
+                default:
+                    push(L, std::errc::invalid_argument,
+                         "arg", "linux_namespaces/init/fd");
+                    return lua_error(L);
+                case LUA_TUSERDATA: {
+                    auto handle = static_cast<file_descriptor_handle*>(
+                        lua_touserdata(L, -1));
+                    if (!lua_getmetatable(L, -1)) {
+                        push(L, std::errc::invalid_argument,
+                             "arg", "linux_namespaces/init/fd");
+                        return lua_error(L);
+                    }
+                    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+                    if (!lua_rawequal(L, -1, -2)) {
+                        push(L, std::errc::invalid_argument,
+                             "arg", "linux_namespaces/init/fd");
+                        return lua_error(L);
+                    }
+                    if (*handle == INVALID_FILE_DESCRIPTOR) {
+                        push(L, std::errc::device_or_resource_busy,
+                             "arg", "linux_namespaces/init/fd");
+                        return lua_error(L);
+                    }
+                    lua_hook_fd = *handle;
+                    lua_pop(L, 3);
+                    break;
+                }
+                case LUA_TNIL:
+                    lua_pop(L, 1);
+                    break;
+                }
+
+                lua_getfield(L, -1, "script");
+                if (lua_type(L, -1) != LUA_TSTRING) {
+                    push(L, std::errc::invalid_argument,
+                         "arg", "linux_namespaces/init/script");
+                    return lua_error(L);
+                }
+                lua_hook.emplace(tostringview(L));
+
+                lua_pop(L, 2);
+                break;
+            case LUA_TNIL:
+                lua_pop(L, 1);
+                break;
+            }
+#else // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+            push(L, std::errc::not_supported);
+            return lua_error(L);
+#endif // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+        }
+    }
     }
 
     auto& vm_ctx = get_vm_context(L);
     auto module = tostringview(L, 1);
+
+#if EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+    if (run_in_namespace) {
+        if (vm_ctx.appctx.linux_namespaces_service_sockfd == -1) {
+            push(L, std::errc::no_child_process);
+            return lua_error(L);
+        }
+
+        std::string body;
+        {
+            constexpr unsigned int aflags = boost::archive::no_header |
+                boost::archive::no_codecvt |
+                boost::archive::no_xml_tag_checking;
+            std::ostringstream os;
+            boost::archive::binary_oarchive oa{os, aflags};
+            oa << concurrency_hint << std::string{module} << newenv;
+            body = os.str();
+        }
+
+        switch (proc_stdin) {
+        case -1:
+            request.stdin_action = linux_container_start_vm_request::CLOSE_FD;
+            break;
+        case STDIN_FILENO:
+            request.stdin_action =
+                linux_container_start_vm_request::SHARE_PARENT;
+            break;
+        default:
+            request.stdin_action = linux_container_start_vm_request::USE_PIPE;
+        }
+
+        switch (proc_stdout) {
+        case -1:
+            request.stdout_action = linux_container_start_vm_request::CLOSE_FD;
+            break;
+        case STDOUT_FILENO:
+            request.stdout_action =
+                linux_container_start_vm_request::SHARE_PARENT;
+            break;
+        default:
+            request.stdout_action = linux_container_start_vm_request::USE_PIPE;
+        }
+
+        switch (proc_stderr) {
+        case -1:
+            request.stderr_action = linux_container_start_vm_request::CLOSE_FD;
+            break;
+        case STDERR_FILENO:
+            request.stderr_action =
+                linux_container_start_vm_request::SHARE_PARENT;
+            request.stderr_has_color = emilua::stdout_has_color;
+            break;
+        default:
+            request.stderr_action = linux_container_start_vm_request::USE_PIPE;
+        }
+
+        if (body.size() > EMILUA_CONFIG_LINUX_NAMESPACES_MESSAGE_SIZE) {
+            push(L, std::errc::message_size);
+            return lua_error(L);
+        }
+
+        int channel[2];
+        int res = socketpair(AF_UNIX, SOCK_SEQPACKET, 0, channel);
+        if (res != 0) {
+            push(L, std::error_code{errno, std::system_category()});
+            return lua_error(L);
+        }
+
+        struct msghdr msg;
+        std::memset(&msg, 0, sizeof(msg));
+
+        struct iovec iov;
+        iov.iov_base = &request;
+        iov.iov_len = sizeof(request);
+        msg.msg_iov = &iov;
+        msg.msg_iovlen = 1;
+
+        union {
+            struct cmsghdr align;
+            char buf[CMSG_SPACE(sizeof(int) * 4)];
+        } cmsgu;
+        msg.msg_control = cmsgu.buf;
+        msg.msg_controllen = sizeof(cmsgu.buf);
+
+        {
+            struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+            cmsg->cmsg_level = SOL_SOCKET;
+            cmsg->cmsg_type = SCM_RIGHTS;
+
+            char* begin = (char*)CMSG_DATA(cmsg);
+            char* it = begin;
+            std::memcpy(it, &channel[0], sizeof(int));
+            it += sizeof(int);
+
+            if (
+                request.stdin_action ==
+                linux_container_start_vm_request::USE_PIPE
+            ) {
+                std::memcpy(it, &proc_stdin, sizeof(int));
+                it += sizeof(int);
+            }
+
+            if (
+                request.stdout_action ==
+                linux_container_start_vm_request::USE_PIPE
+            ) {
+                std::memcpy(it, &proc_stdout, sizeof(int));
+                it += sizeof(int);
+            }
+
+            if (
+                request.stderr_action ==
+                linux_container_start_vm_request::USE_PIPE
+            ) {
+                std::memcpy(it, &proc_stderr, sizeof(int));
+                it += sizeof(int);
+            }
+
+            auto nfds = (it - begin) / sizeof(int);
+            cmsg->cmsg_len = CMSG_LEN(sizeof(int) * nfds);
+            msg.msg_controllen = CMSG_SPACE(sizeof(int) * nfds);
+        }
+
+        auto nwritten = sendmsg(vm_ctx.appctx.linux_namespaces_service_sockfd,
+                                &msg, MSG_NOSIGNAL);
+        int send_errno = errno;
+        close(channel[0]);
+        BOOST_SCOPE_EXIT_ALL(&) {
+            if (channel[1] != -1) close(channel[1]);
+        };
+        if (nwritten == -1) {
+            std::error_code ec{send_errno, std::system_category()};
+            push(L, ec);
+            return lua_error(L);
+        }
+
+        linux_container_start_vm_reply reply;
+
+        std::memset(&msg, 0, sizeof(msg));
+        iov.iov_base = &reply;
+        iov.iov_len = sizeof(reply);
+        msg.msg_iov = &iov;
+        msg.msg_iovlen = 1;
+
+        msg.msg_control = cmsgu.buf;
+        msg.msg_controllen = CMSG_SPACE(sizeof(int));
+
+        auto nread = recvmsg(channel[1], &msg, /*flags=*/0);
+        if (nread == -1) {
+            std::error_code ec{errno, std::system_category()};
+            push(L, ec);
+            return lua_error(L);
+        }
+
+        shutdown(channel[1], SHUT_RD);
+
+        int pidfd = -1;
+        BOOST_SCOPE_EXIT_ALL(&) {
+            if (pidfd != -1) close(pidfd);
+        };
+
+        for (struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg) ; cmsg != NULL ;
+             cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+            if (cmsg->cmsg_level != SOL_SOCKET ||
+                cmsg->cmsg_type != SCM_RIGHTS) {
+                continue;
+            }
+
+            assert(cmsg->cmsg_len - CMSG_LEN(0) <= sizeof(int));
+            std::memcpy(&pidfd, CMSG_DATA(cmsg), cmsg->cmsg_len - CMSG_LEN(0));
+            break;
+        }
+
+        if (nread == 0) {
+            push(L, make_error_code(asio::error::eof));
+            return lua_error(L);
+        }
+        assert(nread == sizeof(reply));
+
+        if (reply.error != 0) {
+            std::error_code ec{reply.error, std::system_category()};
+            push(L, ec);
+            return lua_error(L);
+        }
+
+        if (pidfd == -1) {
+            push(L, std::errc::too_many_files_open);
+            return lua_error(L);
+        }
+
+        if (send(channel[1], body.data(), body.size(), MSG_NOSIGNAL) == -1) {
+            std::error_code ec{errno, std::system_category()};
+            push(L, ec);
+            return lua_error(L);
+        }
+
+        if (lua_hook) {
+            std::memset(&msg, 0, sizeof(msg));
+            iov.iov_base = lua_hook->data();
+            iov.iov_len = lua_hook->size();
+            msg.msg_iov = &iov;
+            msg.msg_iovlen = 1;
+
+            if (lua_hook_fd != -1) {
+                msg.msg_control = cmsgu.buf;
+                msg.msg_controllen = CMSG_SPACE(sizeof(int));
+                struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+                cmsg->cmsg_level = SOL_SOCKET;
+                cmsg->cmsg_type = SCM_RIGHTS;
+                cmsg->cmsg_len = CMSG_LEN(sizeof(int));
+                std::memcpy(CMSG_DATA(cmsg), &lua_hook_fd, sizeof(int));
+            }
+
+            if (sendmsg(channel[1], &msg, MSG_NOSIGNAL) == -1) {
+                std::error_code ec{errno, std::system_category()};
+                push(L, ec);
+                return lua_error(L);
+            }
+        }
+
+        auto reaper = new linux_container_reaper{pidfd, reply.childpid};
+        vm_ctx.pending_operations.push_back(*reaper);
+        pidfd = -1;
+
+        auto ch = static_cast<linux_container_address*>(lua_newuserdata(
+            L, sizeof(linux_container_address)
+        ));
+        rawgetp(L, LUA_REGISTRYINDEX, &linux_container_chan_mt_key);
+        setmetatable(L, -2);
+        new (ch) linux_container_address{vm_ctx.strand().context()};
+
+        asio::local::datagram_protocol protocol;
+        boost::system::error_code ignored_ec;
+        ch->dest.assign(protocol, channel[1], ignored_ec);
+        assert(!ignored_ec);
+        channel[1] = -1;
+
+        ch->reaper = reaper;
+        return 1;
+    }
+#endif // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+
     rawgetp(L, LUA_REGISTRYINDEX, &fiber_list_key);
     lua_pushthread(vm_ctx.current_fiber());
     lua_xmove(vm_ctx.current_fiber(), L, 1);
@@ -1167,6 +1943,532 @@ static int inbox_mt_index(lua_State* L)
     }
 }
 
+#if EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+static int linux_container_chan_send(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto& vm_ctx = get_vm_context(L);
+    EMILUA_CHECK_SUSPEND_ALLOWED(vm_ctx, L);
+
+    auto channel = static_cast<linux_container_address*>(lua_touserdata(L, 1));
+    if (!channel || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_container_chan_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (!channel->dest.is_open()) {
+        push(L, errc::channel_closed);
+        return lua_error(L);
+    }
+
+    auto cancel_slot = set_default_interrupter(L, vm_ctx);
+
+    auto op = std::make_shared<linux_container_send_op>(
+        vm_ctx, std::move(cancel_slot), channel->dest);
+    using descriptors_size_type = decltype(op->descriptors_size);
+    bool op_started = false;
+    BOOST_SCOPE_EXIT_ALL(&) {
+        if (op_started)
+            return;
+
+        for (descriptors_size_type i = 0 ; i != op->descriptors_size ; ++i) {
+            if (op->descriptors[i].reference)
+                continue;
+
+            int res = close(op->descriptors[i].value);
+            boost::ignore_unused(res);
+        }
+    };
+
+    unsigned char* strit = op->message.strbuf;
+    switch (lua_type(L, 2)) {
+    case LUA_TNIL:
+    case LUA_TFUNCTION:
+    case LUA_TTHREAD:
+    case LUA_TLIGHTUSERDATA:
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    case LUA_TBOOLEAN:
+        op->message.members[0].as_int = EXPONENT_MASK |
+            linux_container_message::nil;
+        op->message.members[1].as_int = EXPONENT_MASK;
+        op->message.members[1].as_int |=
+            lua_toboolean(L, 2) ?
+            linux_container_message::boolean_true :
+            linux_container_message::boolean_false;
+        op->message_size = sizeof(op->message.members[0]) * 2;
+        break;
+    case LUA_TNUMBER:
+        op->message.members[0].as_int = EXPONENT_MASK |
+            linux_container_message::nil;
+        op->message.members[1].as_double = lua_tonumber(L, 2);
+        assert(!is_snan(op->message.members[1].as_int));
+        op->message_size = sizeof(op->message.members[0]) * 2;
+        break;
+    case LUA_TSTRING: {
+        auto v = tostringview(L, 2);
+        if (v.size() > 255) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        op->message.members[0].as_int = EXPONENT_MASK |
+            linux_container_message::nil;
+        op->message.members[1].as_int = EXPONENT_MASK |
+            linux_container_message::string;
+        *strit++ = v.size();
+        std::memcpy(strit, v.data(), v.size());
+        strit += v.size();
+
+        // avoid leaking any non-initialized data on our stack/memory to remote
+        // processes
+        std::memset(
+            &op->message.members[2], 0,
+            sizeof(op->message.members[0]) *
+            (EMILUA_CONFIG_LINUX_NAMESPACES_MESSAGE_MAX_MEMBERS_NUMBER - 2));
+
+        op->message_size =
+            strit - reinterpret_cast<unsigned char*>(&op->message);
+        break;
+    }
+    case LUA_TUSERDATA:
+        if (!lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &tx_chan_mt_key);
+        if (lua_rawequal(L, -1, -2)) {
+            int channel[2];
+            int res = socketpair(AF_UNIX, SOCK_SEQPACKET, 0, channel);
+            if (res != 0) {
+                push(L, std::error_code{errno, std::system_category()});
+                return lua_error(L);
+            }
+            shutdown(channel[0], SHUT_WR);
+            shutdown(channel[1], SHUT_RD);
+
+            {
+                const auto& msg = *static_cast<const actor_address*>(
+                    lua_touserdata(L, 2));
+
+                auto inboxfd = channel[0];
+                auto dest = msg.dest.lock();
+                if (dest) {
+                    ++dest->inbox.nsenders;
+                    dest->strand().post([dest,inboxfd]() {
+                        if (!dest->valid()) {
+                            int res = close(inboxfd);
+                            boost::ignore_unused(res);
+                            return;
+                        }
+                        auto inbox_service = new linux_container_inbox_service{
+                            dest->strand().context(), inboxfd};
+                        dest->pending_operations.push_back(*inbox_service);
+                        if (dest->inbox.recv_fiber)
+                            inbox_service->async_enqueue(*dest);
+                    }, std::allocator<void>{});
+                } else {
+                    int res = close(inboxfd);
+                    boost::ignore_unused(res);
+                }
+            }
+
+            op->message.members[0].as_int = EXPONENT_MASK |
+                linux_container_message::nil;
+            op->message.members[1].as_int = EXPONENT_MASK |
+                linux_container_message::actor_address;
+            op->message_size = sizeof(op->message.members[0]) * 2;
+            op->descriptors[0].value = channel[1];
+            op->descriptors_size = 1;
+            break;
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &inbox_mt_key);
+        if (lua_rawequal(L, -1, -3)) {
+            int channel[2];
+            int res = socketpair(AF_UNIX, SOCK_SEQPACKET, 0, channel);
+            if (res != 0) {
+                push(L, std::error_code{errno, std::system_category()});
+                return lua_error(L);
+            }
+            shutdown(channel[0], SHUT_WR);
+            shutdown(channel[1], SHUT_RD);
+
+            ++vm_ctx.inbox.nsenders;
+            auto inbox_service = new linux_container_inbox_service{
+                vm_ctx.strand().context(), channel[0]};
+            vm_ctx.pending_operations.push_back(*inbox_service);
+
+            op->message.members[0].as_int = EXPONENT_MASK |
+                linux_container_message::nil;
+            op->message.members[1].as_int = EXPONENT_MASK |
+                linux_container_message::actor_address;
+            op->message_size = sizeof(op->message.members[0]) * 2;
+            op->descriptors[0].value = channel[1];
+            op->descriptors_size = 1;
+            break;
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+        if (lua_rawequal(L, -1, -4)) {
+            auto msg = static_cast<file_descriptor_handle*>(
+                lua_touserdata(L, 2));
+            if (*msg == INVALID_FILE_DESCRIPTOR) {
+                push(L, std::errc::device_or_resource_busy);
+                return lua_error(L);
+            }
+
+            op->message.members[0].as_int = EXPONENT_MASK |
+                linux_container_message::nil;
+            op->message.members[1].as_int = EXPONENT_MASK |
+                linux_container_message::file_descriptor;
+            op->message_size = sizeof(op->message.members[0]) * 2;
+            op->descriptors[0].reference = msg;
+            op->descriptors_size = 1;
+            break;
+        }
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    case LUA_TTABLE: {
+        if (lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        int nf = 0;
+        lua_pushnil(L);
+        while (lua_next(L, 2) != 0) {
+            if (lua_type(L, -2) != LUA_TSTRING) {
+                lua_pop(L, 1);
+                continue;
+            }
+
+            if (
+                nf == EMILUA_CONFIG_LINUX_NAMESPACES_MESSAGE_MAX_MEMBERS_NUMBER
+            ) {
+                push(L, std::errc::invalid_argument, "arg", 2);
+                return lua_error(L);
+            }
+
+            auto key = tostringview(L, -2);
+            if (key.size() > 255) {
+                push(L, std::errc::invalid_argument, "arg", 2);
+                return lua_error(L);
+            }
+            *strit++ = key.size();
+            std::memcpy(strit, key.data(), key.size());
+            strit += key.size();
+
+            switch (lua_type(L, -1)) {
+            default:
+                push(L, std::errc::invalid_argument, "arg", 2);
+                return lua_error(L);
+            case LUA_TBOOLEAN:
+                op->message.members[nf].as_int = EXPONENT_MASK;
+                op->message.members[nf].as_int |=
+                    lua_toboolean(L, -1) ?
+                    linux_container_message::boolean_true :
+                    linux_container_message::boolean_false;
+                break;
+            case LUA_TNUMBER:
+                op->message.members[nf].as_double = lua_tonumber(L, -1);
+                assert(!is_snan(op->message.members[nf].as_int));
+                break;
+            case LUA_TSTRING: {
+                auto v = tostringview(L, -1);
+                if (v.size() > 255) {
+                    push(L, std::errc::invalid_argument, "arg", 2);
+                    return lua_error(L);
+                }
+                op->message.members[nf].as_int = EXPONENT_MASK |
+                    linux_container_message::string;
+                *strit++ = v.size();
+                std::memcpy(strit, v.data(), v.size());
+                strit += v.size();
+                break;
+            }
+            case LUA_TUSERDATA:
+                if (!lua_getmetatable(L, -1)) {
+                    push(L, std::errc::invalid_argument, "arg", 2);
+                    return lua_error(L);
+                }
+                rawgetp(L, LUA_REGISTRYINDEX, &tx_chan_mt_key);
+                if (lua_rawequal(L, -1, -2)) {
+                    lua_pop(L, 2);
+                    int channel[2];
+                    int res = socketpair(AF_UNIX, SOCK_SEQPACKET, 0, channel);
+                    if (res != 0) {
+                        push(L, std::error_code{errno, std::system_category()});
+                        return lua_error(L);
+                    }
+                    shutdown(channel[0], SHUT_WR);
+                    shutdown(channel[1], SHUT_RD);
+
+                    {
+                        const auto& msg = *static_cast<const actor_address*>(
+                            lua_touserdata(L, -1));
+
+                        auto inboxfd = channel[0];
+                        auto dest = msg.dest.lock();
+                        if (dest) {
+                            ++dest->inbox.nsenders;
+                            dest->strand().post([dest,inboxfd]() {
+                                if (!dest->valid()) {
+                                    int res = close(inboxfd);
+                                    boost::ignore_unused(res);
+                                    return;
+                                }
+                                auto inbox_service =
+                                    new linux_container_inbox_service{
+                                        dest->strand().context(), inboxfd};
+                                dest->pending_operations.push_back(
+                                    *inbox_service);
+                                if (dest->inbox.recv_fiber)
+                                    inbox_service->async_enqueue(*dest);
+                            }, std::allocator<void>{});
+                        } else {
+                            int res = close(inboxfd);
+                            boost::ignore_unused(res);
+                        }
+                    }
+
+                    op->message.members[nf].as_int = EXPONENT_MASK |
+                        linux_container_message::actor_address;
+                    op->descriptors[op->descriptors_size++].value = channel[1];
+                    break;
+                }
+                rawgetp(L, LUA_REGISTRYINDEX, &inbox_mt_key);
+                if (lua_rawequal(L, -1, -3)) {
+                    lua_pop(L, 3);
+                    int channel[2];
+                    int res = socketpair(AF_UNIX, SOCK_SEQPACKET, 0, channel);
+                    if (res != 0) {
+                        push(L, std::error_code{errno, std::system_category()});
+                        return lua_error(L);
+                    }
+                    shutdown(channel[0], SHUT_WR);
+                    shutdown(channel[1], SHUT_RD);
+
+                    ++vm_ctx.inbox.nsenders;
+                    auto inbox_service = new linux_container_inbox_service{
+                        vm_ctx.strand().context(), channel[0]};
+                    vm_ctx.pending_operations.push_back(*inbox_service);
+
+                    op->message.members[nf].as_int = EXPONENT_MASK |
+                        linux_container_message::actor_address;
+                    op->descriptors[op->descriptors_size++].value = channel[1];
+                    break;
+                }
+                rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+                if (lua_rawequal(L, -1, -4)) {
+                    lua_pop(L, 4);
+                    auto msg = static_cast<file_descriptor_handle*>(
+                        lua_touserdata(L, -1));
+                    if (*msg == INVALID_FILE_DESCRIPTOR) {
+                        push(L, std::errc::device_or_resource_busy);
+                        return lua_error(L);
+                    }
+
+                    op->message.members[nf].as_int = EXPONENT_MASK |
+                        linux_container_message::file_descriptor;
+                    op->descriptors[op->descriptors_size++].reference = msg;
+                    break;
+                }
+                push(L, std::errc::invalid_argument, "arg", 2);
+                return lua_error(L);
+            }
+            ++nf;
+            lua_pop(L, 1);
+        }
+
+        if (nf == 0) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        for (
+            int i = nf ;
+            i != EMILUA_CONFIG_LINUX_NAMESPACES_MESSAGE_MAX_MEMBERS_NUMBER ; ++i
+        ) {
+            // Per protocol, only the first nil value need to be marked. However
+            // we want to avoid leaking any non-initialized data on our
+            // stack/memory to remote processes.
+            op->message.members[i].as_int = EXPONENT_MASK |
+                linux_container_message::nil;
+        }
+        op->message_size =
+            strit - reinterpret_cast<unsigned char*>(&op->message);
+    }
+    }
+
+    for (descriptors_size_type i = 0 ; i != op->descriptors_size ; ++i) {
+        if (!op->descriptors[i].reference)
+            continue;
+
+        op->descriptors[i].value = *op->descriptors[i].reference;
+        *op->descriptors[i].reference = INVALID_FILE_DESCRIPTOR;
+    }
+    op_started = true;
+    op->do_wait();
+
+    return lua_yield(L, 0);
+}
+
+inline int linux_container_chan_child_pid(lua_State* L)
+{
+    auto channel = static_cast<linux_container_address*>(lua_touserdata(L, 1));
+    assert(channel);
+    if (!channel->reaper) {
+        push(L, std::errc::invalid_argument);
+        return lua_error(L);
+    }
+    lua_pushinteger(L, channel->reaper->childpid);
+    return 1;
+}
+
+static int linux_container_chan_close(lua_State* L)
+{
+    auto channel = static_cast<linux_container_address*>(lua_touserdata(L, 1));
+    if (!channel || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_container_chan_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (!channel->dest.is_open()) {
+        return 0;
+    }
+
+    channel->reaper = nullptr;
+
+    boost::system::error_code ignored_ec;
+    channel->dest.close(ignored_ec);
+    assert(!ignored_ec);
+
+    return 0;
+}
+
+static int linux_container_chan_detach(lua_State* L)
+{
+    auto& vm_ctx = get_vm_context(L);
+
+    auto channel = static_cast<linux_container_address*>(lua_touserdata(L, 1));
+    if (!channel || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_container_chan_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (!channel->reaper) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    vm_ctx.pending_operations.erase(
+        vm_ctx.pending_operations.iterator_to(*channel->reaper));
+    delete channel->reaper;
+    channel->reaper = nullptr;
+
+    return 0;
+}
+
+static int linux_container_chan_kill(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto& vm_ctx = get_vm_context(L);
+
+    auto channel = static_cast<linux_container_address*>(lua_touserdata(L, 1));
+    if (!channel || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_container_chan_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (!channel->dest.is_open()) {
+        push(L, errc::channel_closed);
+        return lua_error(L);
+    }
+
+    if (!channel->reaper) {
+        push(L, std::errc::operation_not_permitted);
+        return lua_error(L);
+    }
+
+    switch (lua_type(L, 2)) {
+    default:
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    case LUA_TNUMBER: {
+        int signo = lua_tointeger(L, 2);
+        if (signo == SIGKILL) {
+            break;
+        }
+
+        int res = syscall(SYS_pidfd_send_signal, channel->reaper->childpidfd,
+                          signo, /*info=*/NULL, /*flags=*/0);
+        if (res == -1) {
+            push(L, std::error_code{errno, std::system_category()});
+            return lua_error(L);
+        }
+        break;
+    }
+    case LUA_TNIL:
+        break;
+    }
+
+    vm_ctx.pending_operations.erase(
+        vm_ctx.pending_operations.iterator_to(*channel->reaper));
+    channel->reaper->cancel();
+    delete channel->reaper;
+    channel->reaper = nullptr;
+
+    boost::system::error_code ignored_ec;
+    channel->dest.close(ignored_ec);
+    assert(!ignored_ec);
+
+    return 0;
+}
+
+static int linux_container_chan_mt_index(lua_State* L)
+{
+    auto key = tostringview(L, 2);
+    if (key == "send") {
+        rawgetp(L, LUA_REGISTRYINDEX, &linux_container_chan_send_key);
+        return 1;
+    } else if (key == "child_pid") {
+        return linux_container_chan_child_pid(L);
+    } else if (key == "close") {
+        lua_pushcfunction(L, linux_container_chan_close);
+        return 1;
+    } else if (key == "detach") {
+        lua_pushcfunction(L, linux_container_chan_detach);
+        return 1;
+    } else if (key == "kill") {
+        lua_pushcfunction(L, linux_container_chan_kill);
+        return 1;
+    } else {
+        push(L, errc::bad_index, "index", 2);
+        return lua_error(L);
+    }
+}
+#endif // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+
 void init_actor_module(lua_State* L)
 {
     lua_pushliteral(L, "spawn_vm");
@@ -1267,6 +2569,26 @@ void init_actor_module(lua_State* L)
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
+#if EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+    lua_pushlightuserdata(L, &linux_container_chan_mt_key);
+    {
+        lua_createtable(L, /*narr=*/0, /*nrec=*/3);
+
+        lua_pushliteral(L, "__gc");
+        lua_pushcfunction(L, finalizer<linux_container_address>);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__metatable");
+        lua_pushliteral(L, "linux_container_channel");
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__index");
+        lua_pushcfunction(L, linux_container_chan_mt_index);
+        lua_rawset(L, -3);
+    }
+    lua_rawset(L, LUA_REGISTRYINDEX);
+#endif // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+
     {
         lua_pushlightuserdata(L, &chan_send_key);
         int res = luaL_loadbuffer(
@@ -1299,6 +2621,15 @@ void init_actor_module(lua_State* L)
         setmetatable(L, -2);
         lua_rawset(L, LUA_REGISTRYINDEX);
     }
+
+#if EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+    lua_pushlightuserdata(L, &linux_container_chan_send_key);
+    rawgetp(L, LUA_REGISTRYINDEX, &var_args__retval1_to_error__key);
+    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+    lua_pushcfunction(L, linux_container_chan_send);
+    lua_call(L, 2, 1);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+#endif // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
 }
 
 } // namespace emilua

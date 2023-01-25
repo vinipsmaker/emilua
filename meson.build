@@ -23,6 +23,10 @@ if host_machine.system() == 'linux'
     boost_modules += 'context'
 endif
 
+if get_option('enable_linux_namespaces')
+    boost_modules += 'serialization'
+endif
+
 luajit = dependency('luajit', version : '>=2.0.5')
 boost = dependency(
     'boost',
@@ -242,6 +246,10 @@ if get_option('enable_file_io')
     src += 'src/file.cpp'
 endif
 
+if get_option('enable_linux_namespaces')
+    src += 'src/linux_namespaces.cpp'
+endif
+
 emilua_bin = executable(
     'emilua',
     src,
@@ -324,6 +332,16 @@ if get_option('enable_tests')
         ],
         implicit_include_directories : false,
     )
+
+    tests_env = [
+        # Test must override this env so non-colored terminal output will be
+        # auto-detected (this is, in itself, another test)
+        'EMILUA_COLORS=',
+
+        'EMILUA_BIN=' + emilua_bin.full_path(),
+        'NORMALIZE_PATH_BIN=' + normalize_path_bin.full_path(),
+        'AWK_BIN=' + gawk.full_path(),
+    ]
 
     tests = {
         'fiber' : [
@@ -543,6 +561,123 @@ if get_option('enable_tests')
         }
     endif
 
+    if get_option('enable_linux_namespaces')
+        tests +=  {
+            'linux_namespaces' : [
+                # serialization for good objects
+                'linux_namespaces1',
+                'linux_namespaces2',
+                'linux_namespaces3',
+                'linux_namespaces4',
+                'linux_namespaces5',
+                'linux_namespaces6',
+                'linux_namespaces7',
+                'linux_namespaces8',
+                'linux_namespaces9',
+                'linux_namespaces10',
+                'linux_namespaces11',
+                'linux_namespaces12',
+                'linux_namespaces13',
+                'linux_namespaces14',
+                'linux_namespaces15',
+                'linux_namespaces16',
+                'linux_namespaces17',
+                'linux_namespaces18',
+                'linux_namespaces19',
+                'linux_namespaces20',
+                'linux_namespaces21',
+                'linux_namespaces22',
+                'linux_namespaces23',
+                'linux_namespaces24',
+                'linux_namespaces25',
+                'linux_namespaces26',
+                'linux_namespaces27',
+                'linux_namespaces28',
+                'linux_namespaces29',
+                'linux_namespaces30',
+                'linux_namespaces31',
+                'linux_namespaces32',
+                'linux_namespaces33',
+                'linux_namespaces34',
+                'linux_namespaces35',
+                'linux_namespaces36',
+                'linux_namespaces37',
+                'linux_namespaces38',
+                'linux_namespaces39',
+                'linux_namespaces40',
+                'linux_namespaces41',
+                'linux_namespaces42',
+                'linux_namespaces43',
+                'linux_namespaces44',
+
+                # bad input on send()
+                'linux_namespaces45',
+                'linux_namespaces46',
+                'linux_namespaces47',
+                'linux_namespaces48',
+                'linux_namespaces49',
+                'linux_namespaces50',
+                'linux_namespaces51',
+                'linux_namespaces52',
+                'linux_namespaces53',
+                'linux_namespaces54',
+                'linux_namespaces55',
+
+                # misc
+                'linux_namespaces56',
+            ]
+        }
+    endif
+
+    if get_option('enable_linux_namespaces') and get_option('enable_plugins')
+        linux_namespaces_badinjector = shared_module(
+            'linux_namespaces_badinjector',
+            ['test/linux_namespaces_badinjector.cpp'],
+            dependencies : [
+                thread_dep,
+                boost,
+                luajit,
+            ],
+            include_directories : include_directories(incdir),
+            implicit_include_directories : false,
+            gnu_symbol_visibility : 'hidden',
+        )
+
+        tests_env += (
+            'EMILUA_PATH=' +
+            fs.parent(linux_namespaces_badinjector.full_path()))
+
+        tests +=  {
+            'linux_namespaces2' : [
+                'linux_namespaces2_1',
+                'linux_namespaces2_2',
+                'linux_namespaces2_3',
+                'linux_namespaces2_4',
+                'linux_namespaces2_5',
+                'linux_namespaces2_6',
+                'linux_namespaces2_7',
+                'linux_namespaces2_8',
+                'linux_namespaces2_9',
+                'linux_namespaces2_10',
+                'linux_namespaces2_11',
+                'linux_namespaces2_12',
+                'linux_namespaces2_13',
+                'linux_namespaces2_14',
+                'linux_namespaces2_15',
+                'linux_namespaces2_16',
+                'linux_namespaces2_17',
+                'linux_namespaces2_18',
+                'linux_namespaces2_19',
+                'linux_namespaces2_20',
+                'linux_namespaces2_21',
+                'linux_namespaces2_22',
+
+                'linux_namespaces_fuzzer1',
+                'linux_namespaces_fuzzer2',
+            ]
+        }
+    endif
+
     if host_machine.system() == 'linux'
         tests +=  {
             'module_system2' : [
@@ -560,15 +695,7 @@ if get_option('enable_tests')
                      meson.current_source_dir() / 'test' / 'run_test.awk',
                      meson.current_source_dir() / 'test' / t,
                  ],
-                 env : [
-                     # Test must override this env so non-colored terminal
-                     # output will be auto-detected (this is, in itself, another
-                     # test)
-                     'EMILUA_COLORS=',
-                     'EMILUA_BIN=' + emilua_bin.full_path(),
-                     'NORMALIZE_PATH_BIN=' + normalize_path_bin.full_path(),
-                     'AWK_BIN=' + gawk.full_path(),
-                 ])
+                 env : tests_env)
         endforeach
     endforeach
 endif

@@ -121,6 +121,13 @@ $ ninja test
 
 You also need to have GNU AWK installed to run the tests.
 
+Some tests are more intrusive and can only be built if you enable the plugins
+support.
+
+Some fuzz tests are also available. You can configure the seed for these tests
+by setting the `EMILUA_TEST_SEED` environment variable. The envirnoment variable
+`EMILUA_TEST_FUZZER_NITER` can be used to override the number of iterations.
+
 == ROADMAP
 
 * More plugins.

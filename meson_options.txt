@@ -47,3 +47,36 @@ option(
     'use_wolfssl', type : 'boolean', value : false,
     description : 'Use wolfSSL as the openssl provider'
 )
+option(
+    'enable_linux_namespaces', type : 'boolean', value : false,
+    description : 'Whether to enable the Linux namespace powered actor API'
+)
+
+# Do mind that smaller limits may apply. For instance SCM_MAX_FD (usually 253)
+# will limit you from sending more than SCM_MAX_FD file descriptors per message.
+option(
+    'linux_namespaces_msg_max_members_number', type : 'integer', value : 20,
+    description : 'Maximum number of fields that may be sent in a single message'
+)
+
+# For the default value, we multiply 20 by 520 and arrive at 10400. 520 is the
+# maximum size occupied by each member.
+# 520 = 8 bytes for the floating point NaN-tagging field + 512.
+# 512 = 256 for the maximum key string + 256 for the maximum value.
+# 256 = 1 byte for size member + maximum 255 bytes following.
+# 255 = the maximum value of an uint8 field (the size parameter preceding).
+#
+# Do keep /proc/sys/net/core/wmem_max in mind (cf.
+# <https://stackoverflow.com/a/8227480/883113>).
+#
+# Linux distro maintainers may disagree about the default value here. The above
+# explanation should hint packagers on how to determine a new size.
+#
+# Do keep in mind that you don't really need to support really huge
+# messages. The user can just send a pipe over and read bigger messages out of
+# the pipe. The important limit is to get related resources in a single message
+# at once.
+option(
+    'linux_namespaces_msg_size', type : 'integer', value : 10400,
+    description : 'Message size to VMs in namespaces'
+)

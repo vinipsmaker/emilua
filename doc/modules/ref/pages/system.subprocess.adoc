@@ -150,6 +150,27 @@ and GID (see execve(2)).
 
 Sets the working directory for the spawned program.
 
+`nsenter_user: file_descriptor`::
+
+Enter in this Linux user namespace. When `nsenter_user` is specified, Emilua
+always enter in the user namespace before any other namespace.
+
+`nsenter_mount: file_descriptor`::
+
+Enter in this Linux mount namespace.
+
+`nsenter_uts: file_descriptor`::
+
+Enter in this Linux UTS namespace.
+
+`nsenter_ipc: file_descriptor`::
+
+Enter in this Linux IPC namespace.
+
+`nsenter_net: file_descriptor`::
+
+Enter in this Linux net namespace.
+
 === `wait(self)`
 
 Wait for the process to finish, and then reap it. Information regarding

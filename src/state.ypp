@@ -1237,13 +1237,13 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
 #endif
 
     // core modules (don't change order here) {{{
+    init_async_base(L);
     init_scope_cleanup_module(L);
     init_lua_shim_module(L);
     init_fiber_module(L);
     init_mutex_module(L);
     init_cond_module(L);
     init_actor_module(L);
-    init_async_base(L);
 
 #if BOOST_OS_UNIX
     init_file_descriptor(L);

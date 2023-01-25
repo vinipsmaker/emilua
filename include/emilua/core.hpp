@@ -297,6 +297,10 @@ public:
         log(priority, log_domain<Domain>::name, format_str, std::move(args));
     }
 
+#if EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+    static int linux_namespaces_service_main(int sockfd);
+#endif // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+
     std::vector<std::string_view> app_args;
     std::unordered_map<std::string_view, std::string_view> app_env;
     int exit_code = 0;
@@ -317,6 +321,10 @@ public:
     std::size_t extra_threads_count = 0;
     std::mutex extra_threads_count_mtx;
     std::condition_variable extra_threads_count_empty_cond;
+
+#if EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+    int linux_namespaces_service_sockfd = -1;
+#endif // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
 
 private:
     void init_log_domain(std::string_view name, int& log_level);
@@ -385,11 +393,25 @@ struct inbox_t
     };
 #endif // BOOST_OS_UNIX
 
+#if EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+    struct linux_container_address
+    {
+        linux_container_address(std::shared_ptr<file_descriptor_box> inbox)
+            : inbox{std::move(inbox)}
+        {}
+
+        std::shared_ptr<file_descriptor_box> inbox;
+    };
+#endif // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+
     struct value_type: std::variant<
         bool, lua_Number, std::string,
 #if BOOST_OS_UNIX
         std::shared_ptr<file_descriptor_box>,
 #endif // BOOST_OS_UNIX
+#if EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
+        linux_container_address,
+#endif // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
         std::map<std::string, value_type>,
         std::vector<value_type>,
         actor_address
@@ -412,6 +434,7 @@ struct inbox_t
     {
         sender_state(vm_context& vm_ctx);
         sender_state(vm_context& vm_ctx, lua_State* fiber);
+        sender_state(std::nullopt_t);
         sender_state(sender_state&& o);
 
         ~sender_state();
@@ -865,17 +888,10 @@ void vm_context::fiber_resume(lua_State* new_current_fiber, HanaSet&& options)
            lua_status(new_current_fiber) == LUA_YIELD);
     current_fiber_ = new_current_fiber;
 
-    if (hana::none_of(options, is_skip_clear_interrupter)) {
-        // There is no need for a try-catch block here. Only throwing function
-        // in set_interrupter() is lua_rawseti(). lua_rawseti() shouldn't throw
-        // on LUA_ERRMEM for `nil` assignment.
-        lua_pushnil(new_current_fiber);
-        set_interrupter(new_current_fiber, *this);
-    }
-
     int narg = 0;
 
     try {
+        bool ok = true;
         hana::find_if(options, is_arguments) | [&](auto&& x) {
             auto push2 = hana::overload(
                 [&](const boost::system::error_code& ec) {
@@ -924,18 +940,36 @@ void vm_context::fiber_resume(lua_State* new_current_fiber, HanaSet&& options)
             );
 
             narg += hana::size(hana::second(x));
+            if (!lua_checkstack(new_current_fiber, narg + LUA_MINSTACK)) {
+                ok = false;
+                return hana::nothing;
+            }
             hana::for_each(hana::second(x), push2);
             return hana::nothing;
         };
+        if (!ok) {
+            notify_errmem();
+            close();
+            return;
+        }
     } catch (...) {
-        // On Lua errors, current exception should be empty. And the try-block
-        // should only be calling Lua functions. It is an error to throw
-        // arbitrary exceptions at this point.
-        assert(!static_cast<bool>(std::current_exception()));
+        // on Lua errors, current exception should be empty
+        if (std::current_exception()) {
+            lua_settop(new_current_fiber, 0);
+            throw;
+        }
 
         notify_errmem();
         close();
         return;
+    }
+
+    if (hana::none_of(options, is_skip_clear_interrupter)) {
+        // There is no need for a try-catch block here. Only throwing function
+        // in set_interrupter() is lua_rawseti(). lua_rawseti() shouldn't throw
+        // on LUA_ERRMEM for `nil` assignment.
+        lua_pushnil(new_current_fiber);
+        set_interrupter(new_current_fiber, *this);
     }
 
     int res = lua_resume(new_current_fiber, narg);
@@ -1011,6 +1045,19 @@ inline inbox_t::sender_state::sender_state(vm_context& vm_ctx, lua_State* fiber)
     , work_guard(vm_ctx.work_guard())
     , fiber(fiber)
     , msg{std::in_place_type<bool>, false}
+{}
+
+inline inbox_t::sender_state::sender_state(std::nullopt_t)
+    : work_guard{[]() {
+        asio::io_context ioctx;
+        asio::executor_work_guard<asio::io_context::executor_type> work_guard{
+            ioctx.get_executor()};
+        work_guard.reset();
+        return work_guard;
+    }()}
+    , fiber{nullptr}
+    , msg{std::in_place_type<bool>, false}
+    , wake_on_destruct{false}
 {}
 
 inline inbox_t::sender_state::sender_state(sender_state&& o)

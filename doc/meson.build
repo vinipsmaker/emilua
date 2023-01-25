@@ -102,6 +102,7 @@ src7 = [
     'modules/tutorial/pages/interruption.adoc',
     'modules/tutorial/pages/lua51.adoc',
     'modules/tutorial/pages/modules.adoc',
+    'modules/tutorial/pages/linux_namespaces.adoc',
 ]
 
 # Full-of-shit's Meson won't let me do away with the for-loop:

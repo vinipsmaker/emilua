@@ -1,5 +1,6 @@
 = Tutorials
 
+:imagesdir: modules/tutorial/images/
 :leveloffset: +1
 
 include::pages/actor.adoc[]
@@ -15,5 +16,7 @@ include::pages/interruption.adoc[]
 include::pages/lua51.adoc[]
 
 include::pages/modules.adoc[]
+
+include::pages/linux_namespaces.adoc[]
 
 :leveloffset: -1
