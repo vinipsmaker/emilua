@@ -1165,6 +1165,19 @@ static int system_setgroups(lua_State* L)
         }
     }
 }
+
+static int system_umask(lua_State* L)
+{
+    auto& vm_ctx = get_vm_context(L);
+    if (!vm_ctx.is_master()) {
+        push(L, std::errc::operation_not_permitted);
+        return lua_error(L);
+    }
+
+    mode_t res = umask(luaL_checkinteger(L, 1));
+    lua_pushinteger(L, res);
+    return 1;
+}
 #endif // BOOST_OS_UNIX
 
 #if BOOST_OS_LINUX
@@ -3077,6 +3090,12 @@ static int system_mt_index(lua_State* L)
                 BOOST_HANA_STRING("setgroups"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, system_setgroups);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("umask"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_umask);
                     return 1;
                 }),
 #endif // BOOST_OS_UNIX

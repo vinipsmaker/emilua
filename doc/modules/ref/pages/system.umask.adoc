@@ -1,0 +1,26 @@
+= system.umask
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.umask(mask: number) -> number
+----
+
+== Description
+
+Sets the file mode creation mask (umask) of the calling process to ``mask &
+0777``.
+
+Returns the old mask.
+
+NOTE: Only the master VM is allowed to use this function.
