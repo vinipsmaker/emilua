@@ -1,0 +1,21 @@
+= system.getpid
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.getpid() -> number
+----
+
+== Description
+
+Returns the process ID of the calling process.

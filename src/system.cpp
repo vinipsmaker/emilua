@@ -974,6 +974,35 @@ static int system_stdhandle_dup(lua_State* L)
     newfd = -1;
     return 1;
 }
+
+template<int FD>
+static int system_stdhandle_isatty(lua_State* L)
+{
+    lua_pushboolean(L, isatty(FD));
+    return 1;
+}
+
+template<int FD>
+static int system_stdhandle_tcgetpgrp(lua_State* L)
+{
+    pid_t res = tcgetpgrp(FD);
+    if (res == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    lua_pushnumber(L, res);
+    return 1;
+}
+
+template<int FD>
+static int system_stdhandle_tcsetpgrp(lua_State* L)
+{
+    if (tcsetpgrp(FD, luaL_checknumber(L, 2)) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    return 0;
+}
 #endif // BOOST_OS_UNIX
 
 #if !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
@@ -1181,6 +1210,99 @@ static int system_umask(lua_State* L)
     }
 
     mode_t res = umask(luaL_checkinteger(L, 1));
+    lua_pushinteger(L, res);
+    return 1;
+}
+
+static int system_getpid(lua_State* L)
+{
+    lua_pushinteger(L, getpid());
+    return 1;
+}
+
+static int system_getppid(lua_State* L)
+{
+    lua_pushinteger(L, getppid());
+    return 1;
+}
+
+static int system_kill(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto& vm_ctx = get_vm_context(L);
+    if (!vm_ctx.is_master()) {
+        push(L, std::errc::operation_not_permitted);
+        return lua_error(L);
+    }
+
+    if (kill(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2)) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    return 0;
+}
+
+static int system_getpgrp(lua_State* L)
+{
+    lua_pushinteger(L, getpgrp());
+    return 1;
+}
+
+static int system_getpgid(lua_State* L)
+{
+    pid_t res = getpgid(luaL_checkinteger(L, 1));
+    if (res == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    lua_pushinteger(L, res);
+    return 1;
+}
+
+static int system_setpgid(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto& vm_ctx = get_vm_context(L);
+    if (!vm_ctx.is_master()) {
+        push(L, std::errc::operation_not_permitted);
+        return lua_error(L);
+    }
+
+    if (setpgid(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2)) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    return 0;
+}
+
+static int system_getsid(lua_State* L)
+{
+    pid_t res = getsid(luaL_checknumber(L, 1));
+    if (res == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+
+    lua_pushinteger(L, res);
+    return 1;
+}
+
+static int system_setsid(lua_State* L)
+{
+    auto& vm_ctx = get_vm_context(L);
+    if (!vm_ctx.is_master()) {
+        push(L, std::errc::operation_not_permitted);
+        return lua_error(L);
+    }
+
+    pid_t res = setsid();
+    if (res == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+
     lua_pushinteger(L, res);
     return 1;
 }
@@ -3104,6 +3226,54 @@ static int system_mt_index(lua_State* L)
                     lua_pushcfunction(L, system_umask);
                     return 1;
                 }),
+            hana::make_pair(
+                BOOST_HANA_STRING("getpid"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_getpid);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("getppid"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_getppid);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("kill"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_kill);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("getpgrp"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_getpgrp);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("getpgid"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_getpgid);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("setpgid"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_setpgid);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("getsid"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_getsid);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("setsid"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, system_setsid);
+                    return 1;
+                }),
 #endif // BOOST_OS_UNIX
             hana::make_pair(
                 BOOST_HANA_STRING("exit"),
@@ -3217,7 +3387,7 @@ void init_system(lua_State* L)
 #if !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
     lua_pushlightuserdata(L, &system_in_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/2);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/5);
 
         lua_pushliteral(L, "read_some");
         rawgetp(L, LUA_REGISTRYINDEX,
@@ -3231,6 +3401,18 @@ void init_system(lua_State* L)
         lua_pushliteral(L, "dup");
         lua_pushcfunction(L, system_stdhandle_dup<STDIN_FILENO>);
         lua_rawset(L, -3);
+
+        lua_pushliteral(L, "isatty");
+        lua_pushcfunction(L, system_stdhandle_isatty<STDIN_FILENO>);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "tcgetpgrp");
+        lua_pushcfunction(L, system_stdhandle_tcgetpgrp<STDIN_FILENO>);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "tcsetpgrp");
+        lua_pushcfunction(L, system_stdhandle_tcsetpgrp<STDIN_FILENO>);
+        lua_rawset(L, -3);
 # endif // BOOST_OS_UNIX
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
@@ -3238,7 +3420,7 @@ void init_system(lua_State* L)
 
     lua_pushlightuserdata(L, &system_out_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/2);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/5);
 
         lua_pushliteral(L, "write_some");
 #if BOOST_OS_WINDOWS
@@ -3256,13 +3438,25 @@ void init_system(lua_State* L)
         lua_pushliteral(L, "dup");
         lua_pushcfunction(L, system_stdhandle_dup<STDOUT_FILENO>);
         lua_rawset(L, -3);
+
+        lua_pushliteral(L, "isatty");
+        lua_pushcfunction(L, system_stdhandle_isatty<STDOUT_FILENO>);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "tcgetpgrp");
+        lua_pushcfunction(L, system_stdhandle_tcgetpgrp<STDOUT_FILENO>);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "tcsetpgrp");
+        lua_pushcfunction(L, system_stdhandle_tcsetpgrp<STDOUT_FILENO>);
+        lua_rawset(L, -3);
 #endif // BOOST_OS_UNIX
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     lua_pushlightuserdata(L, &system_err_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/2);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/5);
 
         lua_pushliteral(L, "write_some");
 #if BOOST_OS_WINDOWS
@@ -3279,6 +3473,18 @@ void init_system(lua_State* L)
 #if BOOST_OS_UNIX
         lua_pushliteral(L, "dup");
         lua_pushcfunction(L, system_stdhandle_dup<STDERR_FILENO>);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "isatty");
+        lua_pushcfunction(L, system_stdhandle_isatty<STDERR_FILENO>);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "tcgetpgrp");
+        lua_pushcfunction(L, system_stdhandle_tcgetpgrp<STDERR_FILENO>);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "tcsetpgrp");
+        lua_pushcfunction(L, system_stdhandle_tcsetpgrp<STDERR_FILENO>);
         lua_rawset(L, -3);
 #endif // BOOST_OS_UNIX
     }

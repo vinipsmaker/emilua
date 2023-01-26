@@ -1,0 +1,21 @@
+= system.getpgrp
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.getpgrp() -> number
+----
+
+== Description
+
+See getpgrp(3).

@@ -172,6 +172,82 @@ static int serial_port_release(lua_State* L)
     newfd = -1;
     return 1;
 }
+
+static int serial_port_isatty(lua_State* L)
+{
+    auto port = static_cast<asio::serial_port*>(lua_touserdata(L, 1));
+    if (!port || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &serial_port_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (port->native_handle() == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::bad_file_descriptor);
+        return lua_error(L);
+    }
+
+    lua_pushboolean(L, isatty(port->native_handle()));
+    return 1;
+}
+
+static int serial_port_tcgetpgrp(lua_State* L)
+{
+    auto port = static_cast<asio::serial_port*>(lua_touserdata(L, 1));
+    if (!port || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &serial_port_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (port->native_handle() == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::bad_file_descriptor);
+        return lua_error(L);
+    }
+
+    pid_t res = tcgetpgrp(port->native_handle());
+    if (res == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    lua_pushnumber(L, res);
+    return 1;
+}
+
+static int serial_port_tcsetpgrp(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto port = static_cast<asio::serial_port*>(lua_touserdata(L, 1));
+    if (!port || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &serial_port_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (port->native_handle() == INVALID_FILE_DESCRIPTOR) {
+        push(L, std::errc::bad_file_descriptor);
+        return lua_error(L);
+    }
+
+    if (tcsetpgrp(port->native_handle(), luaL_checknumber(L, 2)) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    return 0;
+}
 #endif // BOOST_OS_UNIX
 
 static int serial_port_send_break(lua_State* L)
@@ -578,6 +654,27 @@ static int serial_port_mt_index(lua_State* L)
                 BOOST_HANA_STRING("release"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, serial_port_release);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("isatty"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, serial_port_isatty);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("tcgetpgrp"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, serial_port_tcgetpgrp);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("tcsetpgrp"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, serial_port_tcsetpgrp);
                     return 1;
                 }
             ),

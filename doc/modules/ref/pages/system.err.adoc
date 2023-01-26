@@ -30,3 +30,15 @@ stream-like interface.
 === `dup(self) -> file_descriptor`
 
 Creates a new file descriptor that refers to `STDERR_FILENO`.
+
+=== `isatty(self) -> boolean`
+
+See isatty(3).
+
+=== `tcgetpgrp(self) -> number`
+
+See tcgetpgrp(3).
+
+=== `tcsetpgrp(self, pgid_id: number)`
+
+See tcsetpgrp(3).

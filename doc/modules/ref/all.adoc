@@ -112,6 +112,22 @@ include::pages/system.umask.adoc[]
 
 include::pages/system.linux_capabilities.adoc[]
 
+include::pages/system.getpid.adoc[]
+
+include::pages/system.getppid.adoc[]
+
+include::pages/system.kill.adoc[]
+
+include::pages/system.getpgrp.adoc[]
+
+include::pages/system.getpgid.adoc[]
+
+include::pages/system.setpgid.adoc[]
+
+include::pages/system.getsid.adoc[]
+
+include::pages/system.setsid.adoc[]
+
 include::pages/tls.context.adoc[]
 
 include::pages/tls.context_flag.adoc[]

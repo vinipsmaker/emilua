@@ -1016,6 +1016,8 @@ as the second result):
 * `umount2()`.
 * `pivot_root()`.
 * `chroot()`.
+* `setsid()`.
+* `setpgid()`.
 * `setresuid()`.
 * `setresgid()`.
 * `cap_reset_ambient()`.

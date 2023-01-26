@@ -1,0 +1,23 @@
+= system.setpgid
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.setpgid(pid: number, pgid: number)
+----
+
+== Description
+
+See setpgid(3).
+
+NOTE: Only the master VM is allowed to use this function.

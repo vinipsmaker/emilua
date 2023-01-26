@@ -71,6 +71,15 @@
 **** xref:ref:system.setgroups.adoc[]
 **** xref:ref:system.umask.adoc[]
 **** xref:ref:system.linux_capabilities.adoc[]
+*** Process & job control
+**** xref:ref:system.getpid.adoc[]
+**** xref:ref:system.getppid.adoc[]
+**** xref:ref:system.kill.adoc[]
+**** xref:ref:system.getpgrp.adoc[]
+**** xref:ref:system.getpgid.adoc[]
+**** xref:ref:system.setpgid.adoc[]
+**** xref:ref:system.getsid.adoc[]
+**** xref:ref:system.setsid.adoc[]
 ** tls
 *** xref:ref:tls.context.adoc[]
 *** xref:ref:tls.context_flag.adoc[]

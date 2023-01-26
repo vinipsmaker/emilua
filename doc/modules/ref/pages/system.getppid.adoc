@@ -1,0 +1,21 @@
+= system.getppid
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.getppid() -> number
+----
+
+== Description
+
+Returns the parent process ID of the calling process.

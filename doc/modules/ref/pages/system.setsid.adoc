@@ -1,0 +1,23 @@
+= system.setsid
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.setsid() -> number
+----
+
+== Description
+
+See setsid(3).
+
+NOTE: Only the master VM is allowed to use this function.

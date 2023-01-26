@@ -1,0 +1,23 @@
+= system.kill
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.kill(pid: number, sig: number)
+----
+
+== Description
+
+See kill(2).
+
+NOTE: Only the master VM is allowed to use this function.

@@ -343,6 +343,28 @@ static int posix_mt_index(lua_State* L)
             return 2;
         });
         return 1;
+    } else if (key == "setsid") {
+        lua_pushcfunction(L, [](lua_State* L) -> int {
+            pid_t res = setsid();
+            int last_error = (res == -1) ? errno : 0;
+            check_last_error(L, last_error);
+            lua_pushinteger(L, res);
+            lua_pushinteger(L, last_error);
+            return 2;
+        });
+        return 1;
+    } else if (key == "setpgid") {
+        lua_pushcfunction(L, [](lua_State* L) -> int {
+            pid_t pid = luaL_checkinteger(L, 1);
+            pid_t pgid = luaL_checkinteger(L, 2);
+            int res = setpgid(pid, pgid);
+            int last_error = (res == -1) ? errno : 0;
+            check_last_error(L, last_error);
+            lua_pushinteger(L, res);
+            lua_pushinteger(L, last_error);
+            return 2;
+        });
+        return 1;
     } else if (key == "setresuid") {
         lua_pushcfunction(L, [](lua_State* L) -> int {
             uid_t ruid = luaL_checkinteger(L, 1);

@@ -1,0 +1,21 @@
+= system.getpgid
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.getpgid(pid: number) -> number
+----
+
+== Description
+
+See getpgid(3).
