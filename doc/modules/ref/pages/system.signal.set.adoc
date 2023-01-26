@@ -47,6 +47,8 @@ and working, but the VM won't be able to create new `set` objects.
 
 Add a signal to the set.
 
+NOTE: Only the master VM is allowed to use this function.
+
 === `remove(self, signal: number)`
 
 Remove a signal from the set.

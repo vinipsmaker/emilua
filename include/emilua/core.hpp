@@ -305,7 +305,7 @@ public:
     std::unordered_map<std::string_view, std::string_view> app_env;
     int exit_code = 0;
 
-    std::weak_ptr<vm_context> master_vm;
+    std::atomic<std::weak_ptr<vm_context>> master_vm;
 
     std::vector<std::filesystem::path> emilua_path;
 
@@ -610,7 +610,7 @@ public:
 
     bool is_master() const noexcept
     {
-        return this == appctx.master_vm.lock().get();
+        return this == appctx.master_vm.load().lock().get();
     }
 
     void async_event_thread(lua_State* new_async_event_thread)

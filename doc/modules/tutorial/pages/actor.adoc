@@ -230,3 +230,18 @@ Functions:
 * `chan:send(msg)`
 * `chan:receive()`
 * `chan:close()`
+
+== Other parameters to `spawn_vm()`
+
+=== `new_master: boolean|nil = false`
+
+The first VM (actor) to run in a process has different responsibilities as
+that's the VM that will spawn all other actors in the system. The Emilua runtime
+will restrict modification of global process resources that don't play nice with
+threads such as the current working directory and signal handling disposition to
+this VM.
+
+Upon spawning a new actor, it's possible to transfer ownership over these
+resources to the new VM. After `spawn_vm()` returns, the calling actor ceases to
+be the master VM in the process and can no longer recover its previous role as
+the master VM.

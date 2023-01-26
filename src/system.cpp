@@ -412,6 +412,12 @@ static int system_signal_set_wait(lua_State* L)
 static int system_signal_set_add(lua_State* L)
 {
     lua_settop(L, 2);
+    auto& vm_ctx = get_vm_context(L);
+
+    if (!vm_ctx.is_master()) {
+        push(L, std::errc::operation_not_permitted);
+        return lua_error(L);
+    }
 
     auto set = static_cast<asio::signal_set*>(lua_touserdata(L, 1));
     if (!set || !lua_getmetatable(L, 1)) {

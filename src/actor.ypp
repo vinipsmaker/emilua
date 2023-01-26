@@ -1067,7 +1067,11 @@ static int spawn_vm(lua_State* L)
     luaL_checktype(L, 1, LUA_TSTRING);
     lua_settop(L, 2);
 
+    auto& vm_ctx = get_vm_context(L);
+    auto module = tostringview(L, 1);
+
     bool inherit_ctx = true;
+    bool new_master = false;
 #if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 2
     int concurrency_hint = BOOST_ASIO_CONCURRENCY_HINT_SAFE;
 #elif EMILUA_CONFIG_THREAD_SUPPORT_LEVEL == 1
@@ -1097,6 +1101,16 @@ static int spawn_vm(lua_State* L)
         lua_getfield(L, 2, "inherit_context");
         if (lua_type(L, -1) == LUA_TBOOLEAN) {
             inherit_ctx = lua_toboolean(L, -1);
+            host_type_already_defined = true;
+        }
+        lua_getfield(L, 2, "new_master");
+        if (lua_type(L, -1) == LUA_TBOOLEAN) {
+            new_master = lua_toboolean(L, -1);
+            if (new_master && !vm_ctx.is_master()) {
+                push(L, std::errc::operation_not_permitted);
+                return lua_error(L);
+            }
+
             host_type_already_defined = true;
         }
 #if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
@@ -1434,9 +1448,6 @@ static int spawn_vm(lua_State* L)
         }
     }
     }
-
-    auto& vm_ctx = get_vm_context(L);
-    auto module = tostringview(L, 1);
 
 #if EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
     if (run_in_namespace) {
@@ -1804,6 +1815,10 @@ static int spawn_vm(lua_State* L)
             vm_ctx.strand().context(), vm_ctx.appctx, module_path,
             emilua::ContextType::worker);
 #endif
+
+        if (new_master) {
+            vm_ctx.appctx.master_vm = new_vm_ctx;
+        }
 
         auto buf = static_cast<actor_address*>(
             lua_newuserdata(L, sizeof(actor_address))
