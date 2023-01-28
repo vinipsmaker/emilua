@@ -1,0 +1,28 @@
+= system.signal.ignore
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.signal.ignore(signal: number)
+----
+
+== Description
+
+Ignore signal.
+
+NOTE: This function will fail if you try to ignore a signal for which a
+`system.signal.set` object exists.
+
+NOTE: Only the master VM is allowed to use this function.
+
+NOTE: This function is only available to POSIX systems.

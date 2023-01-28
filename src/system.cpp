@@ -640,6 +640,72 @@ static int system_signal_raise(lua_State* L)
     return 0;
 }
 
+#if BOOST_OS_UNIX
+static int system_signal_ignore(lua_State* L)
+{
+    int signo = luaL_checkinteger(L, 1);
+    auto& vm_ctx = get_vm_context(L);
+    if (!vm_ctx.is_master()) {
+        push(L, std::errc::operation_not_permitted);
+        return lua_error(L);
+    }
+
+    struct sigaction sa;
+    if (sigaction(signo, /*act=*/NULL, /*oldact=*/&sa) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+
+    // do not interfere with Boost.Asio installed signal handlers
+    if (sa.sa_handler != SIG_DFL && sa.sa_handler != SIG_IGN) {
+        push(L, std::errc::operation_not_permitted);
+        return lua_error(L);
+    }
+
+    sa.sa_handler = SIG_IGN;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+
+    if (sigaction(signo, /*act=*/&sa, /*oldact=*/NULL) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    return 0;
+}
+
+static int system_signal_default(lua_State* L)
+{
+    int signo = luaL_checkinteger(L, 1);
+    auto& vm_ctx = get_vm_context(L);
+    if (!vm_ctx.is_master()) {
+        push(L, std::errc::operation_not_permitted);
+        return lua_error(L);
+    }
+
+    struct sigaction sa;
+    if (sigaction(signo, /*act=*/NULL, /*oldact=*/&sa) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+
+    // do not interfere with Boost.Asio installed signal handlers
+    if (sa.sa_handler != SIG_DFL && sa.sa_handler != SIG_IGN) {
+        push(L, std::errc::operation_not_permitted);
+        return lua_error(L);
+    }
+
+    sa.sa_handler = SIG_DFL;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+
+    if (sigaction(signo, /*act=*/&sa, /*oldact=*/NULL) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    return 0;
+}
+#endif // BOOST_OS_UNIX
+
 #if BOOST_OS_WINDOWS
 # if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
 static int system_in_read_some(lua_State* L)
@@ -3245,6 +3311,16 @@ void init_system(lua_State* L)
             lua_rawset(L, -3);
         }
         lua_rawset(L, -3);
+
+#if BOOST_OS_UNIX
+        lua_pushliteral(L, "ignore");
+        lua_pushcfunction(L, system_signal_ignore);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "default");
+        lua_pushcfunction(L, system_signal_default);
+        lua_rawset(L, -3);
+#endif // BOOST_OS_UNIX
 
 #define EMILUA_DEF_SIGNAL(KEY, VALUE) do { \
             lua_pushliteral(L, KEY);       \

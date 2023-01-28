@@ -94,6 +94,10 @@ include::pages/system.signal.raise.adoc[]
 
 include::pages/system.signal.set.adoc[]
 
+include::pages/system.signal.ignore.adoc[]
+
+include::pages/system.signal.default.adoc[]
+
 include::pages/system.subprocess.adoc[]
 
 include::pages/system.getresuid.adoc[]

@@ -1,0 +1,31 @@
+= system.signal.default
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local system = require "system"
+system.signal.default(signal: number)
+----
+
+== Description
+
+Reset ``signal``'s handling to the system's default.
+
+NOTE: There's no need to set the default handlers at the start of the
+program. The Emilua runtime will already do that for you.
+
+NOTE: This function will fail if you try to reset a signal for which a
+`system.signal.set` object exists.
+
+NOTE: Only the master VM is allowed to use this function.
+
+NOTE: This function is only available to POSIX systems.
