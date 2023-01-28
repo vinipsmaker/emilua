@@ -90,14 +90,6 @@ want the Emilua reaper to send any signal before awaiting for the child.
 NOTE: Ideally the system kernel would expose some re-parent syscall, but until
 then (if ever), `signal_on_zombie` will be necessary.
 
-`signal_mask: table[number]|nil`::
-
-Set the set of blocked signals in the child process before the exec() step.
-
-`signal_default_handlers: table[number]|nil`::
-
-Reset the disposition of the specified signals.
-
 `scheduler.policy: string|nil`::
 
 Values acceptable on Linux for non-real-time policies are:

@@ -42,7 +42,6 @@ public:
     // do before main() is called:
     //
     // * Spawning a thread (or process).
-    // * Changing signal handling disposition.
     // * Opening file descriptors.
     // * Buffering data into stdout/cout.
     // * Mutating (or even reading) environment variables.

@@ -76,8 +76,6 @@ struct spawn_arguments_t
     int proc_stdout;
     int proc_stderr;
 
-    std::optional<sigset_t> signal_mask;
-    std::optional<sigset_t> signal_default_handlers;
     std::optional<int> scheduler_policy;
     std::optional<int> scheduler_priority;
     bool start_new_session;
@@ -1549,21 +1547,14 @@ static int system_spawn_child_main(void* a)
     auto args = reinterpret_cast<spawn_arguments_t*>(a);
     spawn_arguments_t::errno_reply_t reply;
 
-    if (args->signal_mask) {
-        int res = sigprocmask(SIG_SETMASK, &*args->signal_mask,
-                              /*oldset=*/NULL);
-        boost::ignore_unused(res);
-    }
-
-    if (args->signal_default_handlers) {
+    {
         struct sigaction sa;
-        std::memset(&sa, 0, sizeof(sa));
+        sa.sa_handler = SIG_DFL;
+        sigemptyset(&sa.sa_mask);
+        sa.sa_flags = 0;
+
         for (int signo = 1 ; signo != NSIG ; ++signo) {
-            if (sigismember(&*args->signal_default_handlers, signo) == 1) {
-                sa.sa_handler = SIG_DFL;
-                int res = sigaction(signo, /*act=*/&sa, /*oldact=*/NULL);
-                boost::ignore_unused(res);
-            }
+            sigaction(signo, /*act=*/&sa, /*oldact=*/NULL);
         }
     }
 
@@ -1959,80 +1950,6 @@ static int system_spawn_do(bool use_path, lua_State* L)
     }
     lua_pop(L, 1);
 
-    std::optional<sigset_t> signal_mask;
-    lua_getfield(L, 1, "signal_mask");
-    switch (lua_type(L, -1)) {
-    case LUA_TNIL:
-        break;
-    case LUA_TTABLE:
-        sigemptyset(&signal_mask.emplace());
-        for (int i = 1 ;; ++i) {
-            lua_rawgeti(L, -1, i);
-            switch (lua_type(L, -1)) {
-            case LUA_TNIL:
-                lua_pop(L, 1);
-                goto end_for2;
-            case LUA_TNUMBER:
-                if (sigaddset(&*signal_mask, lua_tointeger(L, -1)) == -1) {
-                    push(L, std::error_code{errno, std::system_category()});
-                    return lua_error(L);
-                }
-                lua_pop(L, 1);
-                break;
-            default:
-                push(L, std::errc::invalid_argument, "arg", "signal_mask");
-                return lua_error(L);
-            }
-        }
-        end_for2:
-        break;
-    default:
-        push(L, std::errc::invalid_argument, "arg", "signal_mask");
-        return lua_error(L);
-    }
-    lua_pop(L, 1);
-
-    std::optional<sigset_t> signal_default_handlers;
-    lua_getfield(L, 1, "signal_default_handlers");
-    switch (lua_type(L, -1)) {
-    case LUA_TNIL:
-        break;
-    case LUA_TTABLE:
-        sigemptyset(&signal_default_handlers.emplace());
-        for (int i = 1 ;; ++i) {
-            lua_rawgeti(L, -1, i);
-            switch (lua_type(L, -1)) {
-            case LUA_TNIL:
-                lua_pop(L, 1);
-                goto end_for3;
-            case LUA_TNUMBER: {
-                int signo = lua_tointeger(L, -1);
-                if (signo == SIGKILL || signo == SIGSTOP) {
-                    push(L, std::errc::invalid_argument,
-                         "arg", "signal_default_handlers");
-                    return lua_error(L);
-                }
-                if (sigaddset(&*signal_default_handlers, signo) == -1) {
-                    push(L, std::error_code{errno, std::system_category()});
-                    return lua_error(L);
-                }
-                lua_pop(L, 1);
-                break;
-            }
-            default:
-                push(L, std::errc::invalid_argument,
-                     "arg", "signal_default_handlers");
-                return lua_error(L);
-            }
-        }
-        end_for3:
-        break;
-    default:
-        push(L, std::errc::invalid_argument, "arg", "signal_default_handlers");
-        return lua_error(L);
-    }
-    lua_pop(L, 1);
-
     std::optional<int> scheduler_policy;
     std::optional<int> scheduler_priority;
     lua_getfield(L, 1, "scheduler");
@@ -2372,8 +2289,6 @@ static int system_spawn_do(bool use_path, lua_State* L)
     args.proc_stdin = proc_stdin;
     args.proc_stdout = proc_stdout;
     args.proc_stderr = proc_stderr;
-    args.signal_mask = signal_mask;
-    args.signal_default_handlers = signal_default_handlers;
     args.scheduler_policy = scheduler_policy;
     args.scheduler_priority = scheduler_priority;
     args.start_new_session = start_new_session;
