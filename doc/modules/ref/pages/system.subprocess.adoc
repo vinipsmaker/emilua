@@ -130,13 +130,27 @@ Whether to create a new session and become the session leader. On `true`, calls
 Set the process group (it calls `setpgid()` on the child). On 0, the child's
 process group ID is made the same as its process ID.
 
-`resetids: boolean|nil = false`::
+`ruid: number|nil`::
 
-On `true`, reset the effective UID and GID to the real UID and GID of the parent
-process. Otherwise the child retains the effective UID and GID of the parent. In
-either case, if the set-user-ID and set-group-ID permission bits are enabled on
-the executable file, their effect will override the setting of the effective UID
-and GID (see execve(2)).
+Set the real user ID.
+
+`euid: number|nil`::
+
+Set the effective user ID. If the set-user-ID permission bit is enabled on the
+executable file, its effect will override this setting (see execve(2)).
+
+`rgid: number|nil`::
+
+Set the real group ID.
+
+`egid: number|nil`::
+
+Set the effective group ID. If the set-group-ID permission bit is enabled on the
+executable file, its effect will override this setting (see execve(2)).
+
+`extra_groups: table[number]|nil`::
+
+Set the supplementary group IDs.
 
 `working_directory: string|nil`::
 

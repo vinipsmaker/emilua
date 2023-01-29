@@ -80,7 +80,11 @@ struct spawn_arguments_t
     std::optional<int> scheduler_priority;
     bool start_new_session;
     std::optional<pid_t> process_group;
-    bool resetids;
+    uid_t ruid;
+    uid_t euid;
+    gid_t rgid;
+    gid_t egid;
+    std::optional<std::vector<gid_t>> extra_groups;
     std::optional<std::string> working_directory;
     int nsenter_user;
     int nsenter_mount;
@@ -1654,12 +1658,39 @@ static int system_spawn_child_main(void* a)
         return 1;
     }
 
-    if (
-        args->resetids && (seteuid(getuid()) == -1 || setegid(getgid()) == -1)
-    ) {
-        reply.code = errno;
-        write(args->closeonexecpipe, &reply, sizeof(reply));
-        return 1;
+    if (args->extra_groups) {
+        if (
+            setgroups(args->extra_groups->size(), args->extra_groups->data()) ==
+            -1
+        ) {
+            reply.code = errno;
+            write(args->closeonexecpipe, &reply, sizeof(reply));
+            return 1;
+        }
+    }
+
+    if (args->rgid != (gid_t)(-1) || args->egid != (gid_t)(-1)) {
+        if (args->egid == (gid_t)(-1)) {
+            gid_t ignored_rgid, ignored_sgid;
+            getresgid(&ignored_rgid, &args->egid, &ignored_sgid);
+        }
+        if (setresgid(args->rgid, args->egid, args->egid) == -1) {
+            reply.code = errno;
+            write(args->closeonexecpipe, &reply, sizeof(reply));
+            return 1;
+        }
+    }
+
+    if (args->ruid != (uid_t)(-1) || args->euid != (uid_t)(-1)) {
+        if (args->euid == (uid_t)(-1)) {
+            uid_t ignored_ruid, ignored_suid;
+            getresuid(&ignored_ruid, &args->euid, &ignored_suid);
+        }
+        if (setresuid(args->ruid, args->euid, args->euid) == -1) {
+            reply.code = errno;
+            write(args->closeonexecpipe, &reply, sizeof(reply));
+            return 1;
+        }
     }
 
     if (
@@ -2154,16 +2185,88 @@ static int system_spawn_do(bool use_path, lua_State* L)
     }
     lua_pop(L, 1);
 
-    bool resetids = false;
-    lua_getfield(L, 1, "resetids");
+    uid_t ruid = -1;
+    lua_getfield(L, 1, "ruid");
     switch (lua_type(L, -1)) {
     case LUA_TNIL:
         break;
-    case LUA_TBOOLEAN:
-        resetids = lua_toboolean(L, -1);
+    case LUA_TNUMBER:
+        ruid = lua_tointeger(L, -1);
         break;
     default:
-        push(L, std::errc::invalid_argument, "arg", "resetids");
+        push(L, std::errc::invalid_argument, "arg", "ruid");
+        return lua_error(L);
+    }
+    lua_pop(L, 1);
+
+    uid_t euid = -1;
+    lua_getfield(L, 1, "euid");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TNUMBER:
+        euid = lua_tointeger(L, -1);
+        break;
+    default:
+        push(L, std::errc::invalid_argument, "arg", "euid");
+        return lua_error(L);
+    }
+    lua_pop(L, 1);
+
+    gid_t rgid = -1;
+    lua_getfield(L, 1, "rgid");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TNUMBER:
+        rgid = lua_tointeger(L, -1);
+        break;
+    default:
+        push(L, std::errc::invalid_argument, "arg", "rgid");
+        return lua_error(L);
+    }
+    lua_pop(L, 1);
+
+    gid_t egid = -1;
+    lua_getfield(L, 1, "egid");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TNUMBER:
+        egid = lua_tointeger(L, -1);
+        break;
+    default:
+        push(L, std::errc::invalid_argument, "arg", "egid");
+        return lua_error(L);
+    }
+    lua_pop(L, 1);
+
+    std::optional<std::vector<gid_t>> extra_groups;
+    lua_getfield(L, 1, "extra_groups");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TTABLE:
+        extra_groups.emplace();
+        for (int i = 1 ;; ++i) {
+            lua_rawgeti(L, -1, i);
+            switch (lua_type(L, -1)) {
+            case LUA_TNIL:
+                lua_pop(L, 1);
+                goto end_for2;
+            case LUA_TNUMBER:
+                extra_groups->emplace_back(lua_tointeger(L, -1));
+                lua_pop(L, 1);
+                break;
+            default:
+                push(L, std::errc::invalid_argument, "arg", "extra_groups");
+                return lua_error(L);
+            }
+        }
+        end_for2:
+        break;
+    default:
+        push(L, std::errc::invalid_argument, "arg", "extra_groups");
         return lua_error(L);
     }
     lua_pop(L, 1);
@@ -2359,7 +2462,11 @@ static int system_spawn_do(bool use_path, lua_State* L)
     args.scheduler_priority = scheduler_priority;
     args.start_new_session = start_new_session;
     args.process_group = process_group;
-    args.resetids = resetids;
+    args.ruid = ruid;
+    args.euid = euid;
+    args.rgid = rgid;
+    args.egid = egid;
+    args.extra_groups = std::move(extra_groups);
     args.working_directory = working_directory;
     args.nsenter_user = nsenter_user;
     args.nsenter_mount = nsenter_mount;
