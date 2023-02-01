@@ -33,7 +33,7 @@ ____
 
 == Functions
 
-=== `new([sig1: number, ...]) -> system.signal.set`
+=== `new([sig1: integer, ...]) -> system.signal.set`
 
 Constructor.
 
@@ -43,13 +43,13 @@ NOTE: Only the main VM on the process may create new `set` objects. If the VM
 elects another VM to be the new main VM, its old `set` objects will remain valid
 and working, but the VM won't be able to create new `set` objects.
 
-=== `add(self, signal: number)`
+=== `add(self, signal: integer)`
 
 Add a signal to the set.
 
 NOTE: Only the master VM is allowed to use this function.
 
-=== `remove(self, signal: number)`
+=== `remove(self, signal: integer)`
 
 Remove a signal from the set.
 
@@ -61,7 +61,7 @@ Remove all signals from the set.
 
 Cancel all operations associated with the set.
 
-=== `wait(self): number`
+=== `wait(self) -> integer`
 
 Wait for a signal to be delivered. The function will return when:
 

@@ -13,7 +13,7 @@ endif::[]
 [source,lua]
 ----
 local file = require "file"
-file.write_all_at(io_object, offset: number, buffer: byte_span|string) -> number
+file.write_all_at(io_object, offset: integer, buffer: byte_span|string) -> integer
 ----
 
 == Description

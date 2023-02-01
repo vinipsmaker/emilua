@@ -13,7 +13,7 @@ endif::[]
 [source,lua]
 ----
 local system = require "system"
-system.setpgid(pid: number, pgid: number)
+system.setpgid(pid: integer, pgid: integer)
 ----
 
 == Description

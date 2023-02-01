@@ -1,5 +1,5 @@
 name: api
-title: Emilua docs
+title: Emilua reference documentation
 version: 0.4
 asciidoc:
   attributes:

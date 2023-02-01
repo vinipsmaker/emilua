@@ -157,7 +157,7 @@ errs.
 Dissolve the socket's association by resetting the socket's peer address
 (i.e. connect(3) will be called with an `AF_UNSPEC` address).
 
-=== `receive(self, buffer: byte_span[, flags: number]) -> number`
+=== `receive(self, buffer: byte_span[, flags: integer]) -> integer`
 
 Receive a datagram and blocks current fiber until it completes or errs.
 
@@ -166,7 +166,7 @@ Returns the number of bytes read.
 `flags` is `0` or an or-combination of values from
 xref:unix.message_flag.adoc[unix.message_flag(3em)].
 
-=== `send(self, buffer: byte_span[, flags: number]) -> number`
+=== `send(self, buffer: byte_span[, flags: integer]) -> integer`
 
 Send data on the seqpacket socket and blocks current fiber until it completes or
 errs.
@@ -176,13 +176,13 @@ Returns the number of bytes written.
 `flags` is `0` or an or-combination of values from
 xref:unix.message_flag.adoc[unix.message_flag(3em)].
 
-=== `receive_with_fds(self, buffer: byte_span, maxfds: number) -> number, table`
+=== `receive_with_fds(self, buffer: byte_span, maxfds: integer) -> integer, file_descriptor[]`
 
 Receive a datagram and blocks current fiber until it completes or errs.
 
 Returns the number of bytes read plus the table containing the `fds` read.
 
-=== `send_with_fds(self, buffer: byte_span, fds: table) -> number`
+=== `send_with_fds(self, buffer: byte_span, fds: file_descriptor[]) -> integer`
 
 Send data on the seqpacket socket and blocks current fiber until it completes or
 errs.

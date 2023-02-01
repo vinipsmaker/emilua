@@ -42,30 +42,29 @@ list of directories specified by PATH (in the same way as for execvp(3)).
 That's the only argument where meaning changes between `system.spawn()` and
 `system.spawnp()`.
 
-`arguments: table[string]|nil`:: A table of strings that will be used as the
-created process' `argv`. On `nil`, an empty `argv` will be used.
+`arguments: string[]|nil`:: A table of strings that will be used as the created
+process' `argv`. On `nil`, an empty `argv` will be used.
 +
 CAUTION: Don't forget to include the name of the program as the first argument.
 
-`environment: table[string:string]|nil`:: A table of strings that will be used
+`environment: { [string]: string }|nil`:: A table of strings that will be used
 as the created process' `envp`. On `nil`, an empty `envp` will be used.
 
-`stdin,stdout,stderr: string|file_descriptor|nil`::
+`stdin,stdout,stderr: "share"|file_descriptor|nil`::
 
-`string`:::
-The only acceptable value is `"share"`. The spawned process will then share the
-specified standard handle (`stdin`, `stdout`, and/or `stderr`) with the caller
-process.
+`"share"`:::
+The spawned process will share the specified standard handle (`stdin`, `stdout`,
+or `stderr`) with the caller process.
 
 `file_descriptor`:::
-Use the file descriptor as the specified standard handle (`stdin`, `stdout`,
-and/or `stderr`) for the spawned process.
+Use the file descriptor as the specified standard handle (`stdin`, `stdout`, or
+`stderr`) for the spawned process.
 
 `nil`:::
 Create and use a closed pipe end as the specified standard handle (`stdin`,
-`stdout`, and/or `stderr`) for the spawned process.
+`stdout`, or `stderr`) for the spawned process.
 
-`signal_on_zombie: number|nil = system.SIGTERM`::
+`signal_on_zombie: integer = system.SIGTERM`::
 
 Each process is responsible for reaping its own children. A process that fails
 to reap its children will soon exhaust its OS-provided resources. For
@@ -110,45 +109,45 @@ Values acceptable on Linux for real-time policies are:
 `"rr"`::: See `SCHED_RR`. Must also set `scheduler.priority`.
 --
 
-`scheduler.priority: number|nil`::
+`scheduler.priority: integer|nil`::
 
 The interpretation of this parameter is dependant on `scheduler.policy`.
 
-`scheduler.reset_on_fork: boolean|nil = false`::
+`scheduler.reset_on_fork: boolean = false`::
 
 If `true`, grandchildren created as a result of a call to fork(2) from the
 direct child will not inherit privileged scheduling policies. If set, must also
 set `scheduler.policy`.
 
-`start_new_session: boolean|nil = false`::
+`start_new_session: boolean = false`::
 
 Whether to create a new session and become the session leader. On `true`, calls
 `setsid()` on the child.
 
-`process_group: number|nil`::
+`process_group: integer|nil`::
 
 Set the process group (it calls `setpgid()` on the child). On 0, the child's
 process group ID is made the same as its process ID.
 
-`ruid: number|nil`::
+`ruid: integer|nil`::
 
 Set the real user ID.
 
-`euid: number|nil`::
+`euid: integer|nil`::
 
 Set the effective user ID. If the set-user-ID permission bit is enabled on the
 executable file, its effect will override this setting (see execve(2)).
 
-`rgid: number|nil`::
+`rgid: integer|nil`::
 
 Set the real group ID.
 
-`egid: number|nil`::
+`egid: integer|nil`::
 
 Set the effective group ID. If the set-group-ID permission bit is enabled on the
 executable file, its effect will override this setting (see execve(2)).
 
-`extra_groups: table[number]|nil`::
+`extra_groups: integer[]|nil`::
 
 Set the supplementary group IDs.
 
@@ -156,24 +155,24 @@ Set the supplementary group IDs.
 
 Sets the working directory for the spawned program.
 
-`nsenter_user: file_descriptor`::
+`nsenter_user: file_descriptor|nil`::
 
 Enter in this Linux user namespace. When `nsenter_user` is specified, Emilua
 always enter in the user namespace before any other namespace.
 
-`nsenter_mount: file_descriptor`::
+`nsenter_mount: file_descriptor|nil`::
 
 Enter in this Linux mount namespace.
 
-`nsenter_uts: file_descriptor`::
+`nsenter_uts: file_descriptor|nil`::
 
 Enter in this Linux UTS namespace.
 
-`nsenter_ipc: file_descriptor`::
+`nsenter_ipc: file_descriptor|nil`::
 
 Enter in this Linux IPC namespace.
 
-`nsenter_net: file_descriptor`::
+`nsenter_net: file_descriptor|nil`::
 
 Enter in this Linux net namespace.
 
@@ -187,7 +186,7 @@ process in your stead as soon as the GC collects `self` and the underlying
 subprocess finishes. It's important to reap children processes to free
 OS-associated resources.
 
-=== `kill(self, signal: number)`
+=== `kill(self, signal: integer)`
 
 Send a signal to the process.
 
@@ -200,21 +199,21 @@ See cap_get_pid(3).
 
 == Attributes
 
-=== `exit_code: number`
+=== `exit_code: integer`
 
 The process return code as passed to exit(3). If the process was terminated by a
 signal, this will be `128 + exit_signal` (as done in BASH).
 
 NOTE: You can only access this field for ``wait()``'ed processes.
 
-=== `exit_signal: number|nil`
+=== `exit_signal: integer|nil`
 
 The signal that terminated the process. If the process was *not* terminated by a
 signal, this will be `nil`.
 
 NOTE: You can only access this field for ``wait()``'ed processes.
 
-=== `pid: number`
+=== `pid: integer`
 
 The process id used by the OS to represent this child process (e.g. the number
 that shows up in `/proc` on some UNIX systems).

@@ -1,0 +1,252 @@
+= Conventions
+
+== Type annotations
+
+Lua syntax is extended to document expected types.
+
+=== Parameter types
+
+Colon punctuation is used to denote the start of some type annotation after some
+variable name.
+
+[source,lua]
+----
+function some_function(arg1: number, arg2: string)
+    -- ...
+end
+----
+
+=== Return type
+
+The characters `->` are used to denote the return type of a function.
+
+[source,lua]
+----
+function some_function() -> number
+    -- ...
+end
+
+function another_function() -> string, number
+    -- ...
+end
+----
+
+=== Recognized types
+
+* `nil`
+* `boolean`
+* `number`
+* `integer`
+* `string`
+* `table`
+* `function`
+
+`value` may be used when we don't want to specify the return type for a
+function.
+
+[source,lua]
+----
+function yet_another_function() -> value
+    -- ...
+end
+----
+
+`unspecified` may be used to denote special values for which the actual type
+might change among Emilua versions. The user should avoid making any assumptions
+about the concrete type of such objects.
+
+[source,lua]
+----
+null: unspecified
+----
+
+=== Composite types
+
+|===
+|Type |Syntax| Example
+
+|Union type |`TYPE_1 \| TYPE_2` |`file_descriptor \| file.stream`
+|Array |`VALUE_TYPE[]` |`string[]`
+|Dictionary |`{ [KEY_TYPE]: VALUE_TYPE }` |`{ [string]: number }`
+|===
+
+=== Literals
+
+Literals may be used when only a subset of values are acceptable for some
+parameter.
+
+[source,lua]
+----
+function some_function(a: 0|1|2, b: "stdin"|file_descriptor)
+    -- ...
+end
+
+function another_function(c: string) -> { foo: string, bar: number }
+    -- ...
+end
+----
+
+=== Optional parameters
+
+Brackets may be used to denote optional parameters.
+
+[source,lua]
+----
+function a_function(required: string[, optional1: integer, optional2: boolean])
+    -- ...
+end
+
+function send_file(
+    self,
+    file: file.random_access,
+    offset: integer,
+    size_in_bytes: integer,
+    n_number_of_bytes_per_send: integer
+    [, head: byte_span[, tail: byte_span]]
+) -> integer
+    -- ...
+end
+
+function another_function([foo: number]) -> string[]|byte_span[]
+    -- ...
+end
+----
+
+For this syntax, it's not necessary to specify `nil` as an optional accepted
+type.
+
+=== Varargs
+
+[source,lua]
+----
+function fun(...: byte_span|string)
+    -- ...
+end
+
+function fun2(command: string[, ...])
+    -- ...
+end
+
+function fun3(n: integer) -> ip.address...
+    -- ...
+end
+----
+
+=== Overloads
+
+If a function requires different explanations for each overload, code callouts
+are used to specify a overload.
+
+[source,lua]
+----
+function foo(file.stream)        -- <1>
+function foo(file.random_access) -- <2>
+----
+<1> Lorem ipsum dolor sit amet, consectetur adipiscing elit
+<2> sed do eiusmod tempor incididunt ut labore et dolore magna
+
+=== Similar functions
+
+Similar functions that take the same arguments may be documented together.
+
+[source,lua]
+----
+ip.tcp.get_address_info()
+ip.tcp.get_address_v4_info()
+ip.tcp.get_address_v6_info()
+ip.udp.get_address_info()
+ip.udp.get_address_v4_info()
+ip.udp.get_address_v6_info()
+
+function(host: string|ip.address, service: string|integer[, flags: integer]) -> table
+----
+
+Brace expansion as in BASH may appear in section titles to denote the functions
+that are similar and documented together. However the full name for each
+function will still appear at the start of the body for these sections.
+
+:_: {example-caption}
+:example-caption:
+
+.`this_fiber.{disable,restore}_interruption()`
+====
+[source,lua]
+----
+this_fiber.disable_interruption()
+this_fiber.restore_interruption()
+----
+
+Check the interruption tutorial to see what it does.
+====
+
+:example-caption: {_}
+:_:
+
+=== Named parameters
+
+For complex functions that accept too many options a table argument is used to
+emulate named parameters. The parameters will then be defined in the text that
+follows.
+
+`parameter_a: string`::
+Lorem ipsum
+
+If a parameter is optional, then `nil` will be OR'ed among the valid types.
+
+`parameter_b: string|nil`::
+Lorem ipsum
+
+Another way to specify an optional parameter is to give it a default value. If a
+default value exists, it'll be used instead of `nil`. In this case, `nil` may be
+omitted. The default value follows an equals sign.
+
+`parameter_c: boolean = false`::
+Lorem ipsum
+
+`parameter_d: number = unspecified`::
+Lorem ipsum
+
+If a parameter might accept different types, nested definition lists in the text
+may be used to define the behavior for each type.
+
+`parameter_e: string|number`::
+
+`string`:::
+Lorem ipsum
+
+`number`:::
+dolor sit amet
+
+If nested parameters exist, we'll omit the `table` specification for the nested
+parameters, and directly document each submember using a dot-notation.
+
+`parameter_f.foo: string`::
+Lorem ipsum
+
+`parameter_f.bar: number`::
+dolor sit amet
+
+=== `self`
+
+It's safe to assume that any function that takes `self` as the first argument is
+not available as a free function in the module. These functions can only be
+accessed through the ``__index``'s metamethod on the given object.
+
+If a function is also available as a free function in the module, an explicit
+overload will be documented.
+
+[source,lua]
+----
+function append(self, ...: byte_span|string|nil) -> byte_span -- <1>
+function append(...: byte_span|string|nil) -> byte_span       -- <2>
+----
+
+When only the free function is available in that module, the term `self` won't
+be used.
+
+[source,lua]
+----
+function append(o: byte_span[, ...])
+    -- ...
+end
+----

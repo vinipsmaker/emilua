@@ -226,7 +226,7 @@ I can see it, but it's not there.
 This property is mostly transparent to lua code. Which is to say that the
 programmer is aware of this property, but there isn't a tangible object that it
 can track back to `this_fiber`. This is *mostly* true, but there is a quite
-tangible `this_fiber` lua global object that the user can inspect — exposed at
+tangible `this_fiber` lua global object that the user can inspect -- exposed at
 the beginning of the first thread execution.
 
 However, `this_fiber` being a global is shared among all the fibers, so it can't
@@ -336,8 +336,8 @@ int lua_checkstack(lua_State *L, int extra); // [-0, +0, m]
 ----
 
 That's obviously bogus. If `lua_checkstack()` can throw on `ENOMEM` that means
-there is no possible safe interaction with the VM. That's — plain and simple — a
-bug. This bug was fixed in Lua 5.2 when the signature changed to:
+there is no possible safe interaction with the VM. That's -- plain and simple --
+a bug. This bug was fixed in Lua 5.2 when the signature changed to:
 
 [source,c]
 ----
@@ -498,7 +498,7 @@ of the following facts:
   `lua_pcall()`/`lua_resume()` call might not report the correct error reason
   (`LUA_ERRMEM`). That also means the possibility to unwind the wrong number of
   cascaded `pcall()` blocks (a `pcall()` from Lua code is not supposed to handle
-  `LUA_ERRMEM` — if correctly detected — so the number of blocks unwinded
+  `LUA_ERRMEM` -- if correctly detected -- so the number of blocks unwinded
   differs whenever `LUA_ERRMEM` is involved).
 * Although LuaJIT can catch generic {cpp} exceptions, it lacks context and
   cannot possibly restore the stack state on each lateral `lua_State*` handle at
@@ -903,7 +903,7 @@ end
 Lua's `coroutine` module must never be directly exposed to lua code.
 --
 
-The problem is solved by exposing a different `coroutine` module — a small shim
+The problem is solved by exposing a different `coroutine` module -- a small shim
 over the original one. This version inspects ``this_fiber``'s suspension reason
 (native code or lua code).
 
@@ -1099,13 +1099,13 @@ Always keep in mind:
   migrate to a different `asio::io_context` and you must take care to keep a
   work guard to the original `asio::io_context`.
 * Pending operations must hold a strong reference to `vm_context` and a work
-  guard — directly or indirectly — to `vm_context.strand()`.
+  guard -- directly or indirectly -- to `vm_context.strand()`.
 * IO objects (channels included) by themselves must not hold any strong
   references to their own `vm_context` (this cycle would prevent auto-closing
   the VM and associated channels). Operation initiation is the perfect time to
   upgrade _weak_ references (if any) to strong ones.
 * Pending operations must not trust `L` from the initiating operation to decide
-  which fiber to wake-up later on. They must resort — at initiation time — to
+  which fiber to wake-up later on. They must resort -- at initiation time -- to
   the `vm_context` API. Check the simple `sleep_for()` implementation for a code
   template.
 

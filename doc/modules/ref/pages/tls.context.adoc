@@ -50,7 +50,7 @@ Add certification authority for performing verification.
 Add a directory containing certificate authority files to be used for performing
 verification.
 
-=== `clear_options(self, flags: number)`
+=== `clear_options(self, flags: integer)`
 
 Clear options on the context.
 
@@ -63,7 +63,7 @@ Load a certification authority file for performing verification.
 Configures the context to use the default directories for finding certification
 authority certificates.
 
-=== `set_options(self, flags: number)`
+=== `set_options(self, flags: integer)`
 
 Set options on the context.
 
@@ -75,7 +75,7 @@ Set the password callback.
 
 [source,lua]
 ----
-function callback(max_length: number, purpose: string) -> string
+function callback(max_length: integer, purpose: string) -> string
 ----
 
 `purpose` will be either `"for_reading"` or `"for_writing"`.
@@ -92,7 +92,7 @@ For now only one callback is supported:
 `"host_name_verification"`:: `callback_options` will be a single string
 containing the host name.
 
-=== `set_verify_depth(self, depth: number)`
+=== `set_verify_depth(self, depth: integer)`
 
 Set the peer verification depth.
 

@@ -69,7 +69,7 @@ immediately, and the handlers for cancelled operations will be passed the
 then transferred to the caller.
 ____
 
-=== `read_some(self, buffer: byte_span) -> number`
+=== `read_some(self, buffer: byte_span) -> integer`
 
 Read data from the pipe and blocks current fiber until it completes or errs.
 

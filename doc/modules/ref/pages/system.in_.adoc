@@ -18,7 +18,7 @@ system.in_
 
 == Functions
 
-=== `read_some(self, buffer: byte_span) -> number`
+=== `read_some(self, buffer: byte_span) -> integer`
 
 Read data from stdin and blocks current fiber until it completes or errs.
 
@@ -35,10 +35,10 @@ Creates a new file descriptor that refers to `STDIN_FILENO`.
 
 See isatty(3).
 
-=== `tcgetpgrp(self) -> number`
+=== `tcgetpgrp(self) -> integer`
 
 See tcgetpgrp(3).
 
-=== `tcsetpgrp(self, pgid_id: number)`
+=== `tcsetpgrp(self, pgid_id: integer)`
 
 See tcsetpgrp(3).

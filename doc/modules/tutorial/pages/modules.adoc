@@ -29,8 +29,8 @@ by what Python and NodeJS do.
 A module system is meant to isolate pieces of code, symbols and names. One
 module should not interfere with each other. And a module can have dependencies
 on other modules to reuse code. So, there is the need for private members and
-exported members. Lua has all features we need — closures, nested scopes,
-environments, global scope as a table — to implement a module system easily.
+exported members. Lua has all features we need -- closures, nested scopes,
+environments, global scope as a table -- to implement a module system easily.
 
 == Quick-start
 
@@ -130,7 +130,7 @@ src
 ----
 
 In this example, there is the project scope whose root begins at `src/init.lua`
-— the root module.
+-- the root module.
 
 In the root module, it is forbidden to use `require('../')` statements as there
 is no parent module. Any name the `src/init.lua` file ``require()``s will be
@@ -150,7 +150,7 @@ file `src/my_module/worker.lua` will be searched for. Any file (except for
 directory (i.e. their siblings) using the `require('../')` form
 (`src/my_module/init.lua` siblings live in the directory above, `src`). For
 instance, `src/my_module/worker.lua` and `src/my_module/util.lua` may both want
-to use the same error type (possibly private) to that module —
+to use the same error type (possibly private) to that module --
 `src/my_module/error.lua`. In this case, all they need to contain is the call
 `require('../error')`. And finally due to how they are defined by files (not
 directories by themselves), they don't have children modules and can't use the

@@ -44,14 +44,14 @@ finishes.
 Perform the TLS server handshake and suspend current fiber until operation
 finishes.
 
-=== `read_some(self, buffer: byte_span) -> number`
+=== `read_some(self, buffer: byte_span) -> integer`
 
 Read data from the stream socket and blocks current fiber until it completes or
 errs.
 
 Returns the number of bytes read.
 
-=== `write_some(self, buffer: byte_span) -> number`
+=== `write_some(self, buffer: byte_span) -> integer`
 
 Write data to the stream socket and blocks current fiber until it completes or
 errs.
@@ -71,7 +71,7 @@ For now only one callback is supported:
 `"host_name_verification"`:: `callback_options` will be a single string
 containing the host name.
 
-=== `set_verify_depth(self, depth: number)`
+=== `set_verify_depth(self, depth: integer)`
 
 Set the peer verification depth.
 

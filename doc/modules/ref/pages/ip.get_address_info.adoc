@@ -21,7 +21,8 @@ ip.udp.get_address_info()
 ip.udp.get_address_v4_info()
 ip.udp.get_address_v6_info()
 
-function(host: string|ip.address, service: string|number[, flags: number]) -> table
+function(host: string|ip.address, service: string|integer[, flags: integer])
+    -> { address: ip.address, port: integer, host_name: string, service_name: string }[]
 ----
 
 == Description
@@ -40,7 +41,7 @@ Returns a list of entries. Each entry will be a table with the following
 members:
 
 * `address: ip.address`.
-* `port: number`.
+* `port: integer`.
 * `host_name: string`.
 * `service_name: string`.
 

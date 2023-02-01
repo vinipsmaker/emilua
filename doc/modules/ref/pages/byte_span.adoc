@@ -42,13 +42,13 @@ slices]. However 1-indexed access is used.
 
 == Functions
 
-=== `new(length: number[, capacity: number]) -> byte_span`
+=== `new(length: integer[, capacity: integer]) -> byte_span`
 
 Constructor.
 
 When the `capacity` argument is omitted, it defaults to the specified `length`.
 
-=== `slice(self[, start: number, end: number]) -> byte_span`
+=== `slice(self[, start: integer, end: integer]) -> byte_span`
 
 Returns a new `byte_span` that points to a slice of the same memory region.
 
@@ -60,7 +60,7 @@ We can grow a `byte_span` to its capacity by slicing it again.
 Invalid ranges (e.g. `start` below `1`, a `byte_span` running beyond its
 capacity, negative indexes, ...) will raise `EINVAL`.
 
-=== `copy(self, src: byte_span|string) -> number`
+=== `copy(self, src: byte_span|string) -> integer`
 
 Copy `src` into `self`.
 
@@ -101,44 +101,44 @@ Returns whether `self` begins with `prefix`.
 
 Returns whether `self` ends with `suffix`.
 
-=== `find(self, tgt: string|byte_span[, start: number]) -> number|nil`
+=== `find(self, tgt: string|byte_span[, start: integer]) -> integer|nil`
 
 Finds the first substring equals to `tgt` and returns its index, or `nil` if not
 found.
 
-=== `rfind(self, tgt: string|byte_span[, end_: number]) -> number|nil`
+=== `rfind(self, tgt: string|byte_span[, end_: integer]) -> integer|nil`
 
 Finds the last substring equals to `tgt` and returns its index, or `nil` if not
 found.
 
-=== `find_first_of(self, strlist: string|byte_span[, start: number]) -> number|nil`
+=== `find_first_of(self, strlist: string|byte_span[, start: integer]) -> integer|nil`
 
 Finds the first octet equals to any of the octets within `strlist` and returns
 its index, or `nil` if not found.
 
-=== `find_last_of(self, strlist: string|byte_span[, end_: number]) -> number|nil`
+=== `find_last_of(self, strlist: string|byte_span[, end_: integer]) -> integer|nil`
 
 Finds the last octet equals to any of the octets within `strlist` and returns
 its index, or `nil` if not found.
 
-=== `find_first_not_of(self, strlist: string|byte_span[, start: number]) -> number|nil`
+=== `find_first_not_of(self, strlist: string|byte_span[, start: integer]) -> integer|nil`
 
 Finds the first octet not equals to any of the octets within `strlist` and
 returns its index, or `nil` if not found.
 
-=== `find_last_not_of(self, strlist: string|byte_span[, end: number]) -> number|nil`
+=== `find_last_not_of(self, strlist: string|byte_span[, end: integer]) -> integer|nil`
 
 Finds the last octet not equals to any of the octets within `strlist` and
 returns its index, or `nil` if not found.
 
-=== `trimmed(self[, lws: string|byte_span = ' \f\n\r\t\v']) -> byte_span`
+=== `trimmed(self[, lws: string|byte_span = " \f\n\r\t\v"]) -> byte_span`
 
 Returns a slice from `self` that doesn't start nor ends with any octet from
 `lws`.
 
 == Properties
 
-=== `capacity: number`
+=== `capacity: integer`
 
 The capacity.
 

@@ -14,15 +14,15 @@ endif::[]
 
 ==== Functions
 
-===== `new(options) -> regex`
+===== `new(options: table) -> regex`
 
 Constructor.
 
 .`options`
 
-`"pattern"`:: The pattern to match against.
+`pattern: string`:: The pattern to match against.
 
-`"grammar"`::
+`grammar`::
 The grammar.
 +
 Currently it has support for:
@@ -31,10 +31,10 @@ Currently it has support for:
 * `"extended"`.
 * `"ecma"`.
 
-`"ignore_case": boolean`:: Whether to ignore casing.
-`"nosubs": boolean`:: When performing matches, all marked sub-expressions are
+`ignore_case: boolean`:: Whether to ignore casing.
+`nosubs: boolean`:: When performing matches, all marked sub-expressions are
   treated as non-marking sub-expressions.
-`"optimize": boolean`:: Whether to optimize the regex.
+`optimize: boolean`:: Whether to optimize the regex.
 
 == Functions
 
@@ -57,13 +57,13 @@ groups. `0` will represent the whole match and subsequent indexes are present if
 a corresponding match for that capturing group was found. Each element will be a
 table with the following members:
 
-`"start": number`:: The index for the first character that matched.
-`"end_"`: number`:: The index for the last character that matched.
+`"start": integer`:: The index for the first character that matched.
+`"end_"`: integer`:: The index for the last character that matched.
 
-=== `split(re: regex, str: string|byte_span) -> table`
+=== `split(re: regex, str: string|byte_span) -> string[]|byte_span[]`
 
 Split `str` by the occurrences of `re`.
 
-=== `patsplit(re: regex, str: string|byte_span) -> table`
+=== `patsplit(re: regex, str: string|byte_span) -> string[]|byte_span[]`
 
 Returns occurrences of `re` in `str`.

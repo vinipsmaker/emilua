@@ -73,14 +73,14 @@ Boost.Asio documentation].
 
 Bind the acceptor to the given local endpoint.
 
-=== `listen(self [, backlog: number])`
+=== `listen(self [, backlog: integer])`
 
 Place the acceptor into the state where it will listen for new connections.
 
 `backlog` is the maximum length of the queue of pending connections. If not
 provided, an implementation defined maximum length will be used.
 
-=== `accept(self) -> unix.seqpacket_protocol.socket`
+=== `accept(self) -> unix.seqpacket_socket`
 
 Initiate an accept operation and blocks current fiber until it completes or
 errs.

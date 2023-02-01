@@ -64,7 +64,7 @@ An alternative answer is to allow _more_ lua VMs per each thread so the other
 threads can steal each other's spare VMs when they finish their own jobs. This
 is a form of work-stealing.
 
-Fortunately, Boost.Asio — the execution engine that powers Emilua — already
+Fortunately, Boost.Asio -- the execution engine that powers Emilua -- already
 implements the heavy work for us in the form of
 strands{_}footnote:[https://www.boost.org/doc/libs/1_70_0/doc/html/boost_asio/overview/core/strands.html].
 If we reserve one exclusive strand for each lua VM, Boost.Asio will perform just
@@ -128,7 +128,7 @@ if you're interested: <https://github.com/lefcha/concurrentlua>.
 
 A program written for the Emilua runtime may use multiple fibers per lua VM
 (extra lua VMs can be spawned). Each lua VM represents an actor. It is safe to
-access global variables within each VM — this is the private state of the actor
+access global variables within each VM -- this is the private state of the actor
 and actors can only affect each other through messaging.
 
 An execution engine is used to coordinate all events. Therefore, a lua VM is

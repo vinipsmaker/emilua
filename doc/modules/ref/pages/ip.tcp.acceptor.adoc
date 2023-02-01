@@ -32,7 +32,7 @@ end
 
 Constructor.
 
-=== `open(self, address_family: string|ip.address)`
+=== `open(self, address_family: "v4"|"v6"|ip.address)`
 
 Open the acceptor.
 
@@ -83,11 +83,11 @@ Boost.Asio documentation].
 https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ip%5F_v6_only.html[Check
 Boost.Asio documentation].
 
-=== `bind(self, addr: ip.address|string, port: number)`
+=== `bind(self, addr: ip.address|string, port: integer)`
 
 Bind the acceptor to the given local endpoint.
 
-=== `listen(self [, backlog: number])`
+=== `listen(self [, backlog: integer])`
 
 Place the acceptor into the state where it will listen for new connections.
 
@@ -130,7 +130,7 @@ operations to finish immediately, and the handlers for cancelled operations will
 be passed the `boost::asio::error::operation_aborted` error.
 ____
 
-=== `assign(self, address_family: string|ip.address, fd: file_descriptor)`
+=== `assign(self, address_family: "v4"|"v6"|ip.address, fd: file_descriptor)`
 
 Assign an existing native acceptor to `self`.
 
@@ -163,6 +163,6 @@ Whether the acceptor is open.
 
 The local address endpoint of the acceptor.
 
-=== `local_port: number`
+=== `local_port: integer`
 
 The local port endpoint of the acceptor.

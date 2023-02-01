@@ -262,9 +262,9 @@ There are two ways to interpret this state. It might mean that the response
 object wasn't read yet.
 +
 Another interpretation is that it was reached from the `"body_ready"` state
-(directly — through a call to `read_some()` — or indirectly — through a call to
-`read_response()`), after all trailers have been received. It's safe to assume
-that all message data is available if this is the case.
+(directly -- through a call to `read_some()` -- or indirectly -- through a call
+to `read_response()`), after all trailers have been received. It's safe to
+assume that all message data is available if this is the case.
 +
 At this state, you can only issue a `read_response()` action.
 

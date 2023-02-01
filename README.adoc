@@ -104,13 +104,13 @@ It's encouraged that you build luajit with `-DLUAJIT_ENABLE_LUA52COMPAT`.
 
 == Documentation
 
-You need to have `asciidoctor` and `hugo`. Then, just run inside the `doc`
-directory:
+You can browse the documentation online at <https://emilua.gitlab.io/docs/>.
 
-[source,bash]
-----
-$ hugo server
-----
+Alternatively, you may pass `-Denable_manpages=true` when building the project
+to have the documentation installed as manpages in your system. The reference
+pages will be installed in the section `3em` ("em" stands for Emilua
+Module). Tutorial pages will be installed in section 7, but every page in this
+section will be prefixed by "emilua-".
 
 == Tests
 

@@ -13,7 +13,7 @@ endif::[]
 [source,lua]
 ----
 local system = require "system"
-system.environment: table
+system.environment: { [string]: string }
 ----
 
 == Description

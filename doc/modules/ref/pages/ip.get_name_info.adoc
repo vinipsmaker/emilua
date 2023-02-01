@@ -17,7 +17,8 @@ local ip = require "ip"
 ip.tcp.get_name_info()
 ip.udp.get_name_info()
 
-function(a: ip.address, port: number) -> table
+function(a: ip.address, port: integer)
+    -> { address: ip.address, port: integer, host_name: string, service_name: string }[]
 ----
 
 == Description
@@ -29,7 +30,7 @@ Returns a list of entries. Each entry will be a table with the following
 members:
 
 * `address: ip.address`.
-* `port: number`.
+* `port: integer`.
 * `host_name: string`.
 * `service_name: string`.
 

@@ -13,7 +13,7 @@ endif::[]
 [source,lua]
 ----
 local system = require "system"
-system.signal.default(signal: number)
+system.signal.default(signal: integer)
 ----
 
 == Description

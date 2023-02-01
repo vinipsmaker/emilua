@@ -20,7 +20,7 @@ new(fd: file_descriptor) -- <2>
 <1> Default constructor.
 <2> Converts a file descriptor into a `file.stream` object.
 
-=== `open(self, path: string, flags: number)`
+=== `open(self, path: string, flags: integer)`
 
 Open the file using the specified path.
 
@@ -76,7 +76,7 @@ finish immediately, and the handlers for cancelled operations will be passed the
 then transferred to the caller.
 ____
 
-=== `resize(self, n: number)`
+=== `resize(self, n: integer)`
 
 Alter the size of the file.
 
@@ -84,15 +84,15 @@ This function resizes the file to the specified size, in bytes. If the current
 file size exceeds n then any extra data is discarded. If the current size is
 less than n then the file is extended and filled with zeroes
 
-=== `seek(self, offset: number, whence: string) -> number`
+=== `seek(self, offset: integer, whence: string) -> integer`
 
 Sets and gets the file position, measured from the beginning of the file, to the
 position given by `offset` plus a base specified by the string `whence`, as
 follows:
 
-`set`:: Seek to an absolute position.
-`cur`:: Seek to an offset relative to the current file position.
-`end`:: Seek to an offset relative to the end of the file.
+`"set"`:: Seek to an absolute position.
+`"cur"`:: Seek to an offset relative to the current file position.
+`"end"`:: Seek to an offset relative to the end of the file.
 
 Returns the final file position, measured in bytes from the beginning of the
 file.
@@ -100,14 +100,14 @@ file.
 IMPORTANT: Lua conventions on index starting at `1` are ignored. Indexes here
 are OS-mandated and start at `0`.
 
-=== `read_some(self, buffer: byte_span) -> number`
+=== `read_some(self, buffer: byte_span) -> integer`
 
 Read data from the stream file and blocks current fiber until it completes or
 errs.
 
 Returns the number of bytes read.
 
-=== `write_some(self, buffer: byte_span) -> number`
+=== `write_some(self, buffer: byte_span) -> integer`
 
 Write data to the stream file and blocks current fiber until it completes or
 errs.
@@ -120,6 +120,6 @@ Returns the number of bytes written.
 
 Whether the file is open.
 
-=== `size: number`
+=== `size: integer`
 
 The size of the file.

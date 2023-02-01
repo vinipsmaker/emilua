@@ -13,7 +13,7 @@ endif::[]
 [source,lua]
 ----
 local system = require "system"
-system.kill(pid: number, sig: number)
+system.kill(pid: integer, sig: integer)
 ----
 
 == Description

@@ -20,7 +20,7 @@ new(fd: file_descriptor) -- <2>
 <1> Default constructor.
 <2> Converts a file descriptor into a `file.random_access` object.
 
-=== `open(self, path: string, flags: number)`
+=== `open(self, path: string, flags: integer)`
 
 Open the file using the specified path.
 
@@ -76,7 +76,7 @@ finish immediately, and the handlers for cancelled operations will be passed the
 then transferred to the caller.
 ____
 
-=== `resize(self, n: number)`
+=== `resize(self, n: integer)`
 
 Alter the size of the file.
 
@@ -84,7 +84,7 @@ This function resizes the file to the specified size, in bytes. If the current
 file size exceeds n then any extra data is discarded. If the current size is
 less than n then the file is extended and filled with zeroes
 
-=== `read_some_at(self, offset: number, buffer: byte_span) -> number`
+=== `read_some_at(self, offset: integer, buffer: byte_span) -> integer`
 
 Read data from the file at the specified offset and blocks current fiber until
 it completes or errs.
@@ -94,7 +94,7 @@ Returns the number of bytes read.
 IMPORTANT: Lua conventions on index starting at `1` are ignored. Indexes here
 are OS-mandated and start at `0`.
 
-=== `write_some_at(self, offset: number, buffer: byte_span) -> number`
+=== `write_some_at(self, offset: integer, buffer: byte_span) -> integer`
 
 Write data to the file at the specified and blocks current fiber until it
 completes or errs.
@@ -110,6 +110,6 @@ are OS-mandated and start at `0`.
 
 Whether the file is open.
 
-=== `size: number`
+=== `size: integer`
 
 The size of the file.

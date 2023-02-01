@@ -79,13 +79,13 @@ Send a break sequence to the serial port.
 This function causes a break sequence of platform-specific duration to be sent
 out the serial port.
 
-=== `read_some(self, buffer: byte_span) -> number`
+=== `read_some(self, buffer: byte_span) -> integer`
 
 Read data from the port and blocks current fiber until it completes or errs.
 
 Returns the number of bytes read.
 
-=== `write_some(self, buffer: byte_span) -> number`
+=== `write_some(self, buffer: byte_span) -> integer`
 
 Write data to the port and blocks current fiber until it completes or errs.
 
@@ -95,11 +95,11 @@ Returns the number of bytes written.
 
 See isatty(3).
 
-=== `tcgetpgrp(self) -> number`
+=== `tcgetpgrp(self) -> integer`
 
 See tcgetpgrp(3).
 
-=== `tcsetpgrp(self, pgid_id: number)`
+=== `tcsetpgrp(self, pgid_id: integer)`
 
 See tcsetpgrp(3).
 
@@ -109,7 +109,7 @@ See tcsetpgrp(3).
 
 Whether the port is open.
 
-=== `baud_rate: number`
+=== `baud_rate: integer`
 
 Read or write current baud rate setting.
 
@@ -143,6 +143,6 @@ It can be one of:
 * `"one_point_five"`.
 * `"two"`.
 
-=== `character_size: number`
+=== `character_size: integer`
 
 Read or write current character size setting.

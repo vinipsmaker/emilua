@@ -151,42 +151,41 @@ local my_channel = spawn_vm(module, { linux_namespaces = { ... } })
 
 The following options are supported for the `linux_namespaces` table:
 
-`new_uts: boolean|nil = false`:: Whether to create the process within a new UTS
+`new_uts: boolean = false`:: Whether to create the process within a new UTS
 namespace.
 
-`new_ipc: boolean|nil = false`:: Whether to create the process within a new IPC
+`new_ipc: boolean = false`:: Whether to create the process within a new IPC
 namespace.
 
-`new_pid: boolean|nil = false`::
+`new_pid: boolean = false`::
 
 Whether to create the process within a new PID namespace.
 
-`new_user: boolean|nil = false`:: Whether to create the process within a new
+`new_user: boolean = false`:: Whether to create the process within a new
 user namespace.
 
-`new_net: boolean|nil = false`:: Whether to create the process within a new net
+`new_net: boolean = false`:: Whether to create the process within a new net
 namespace.
 
-`new_mount: boolean|nil = false`:: Whether to create the process within a new
+`new_mount: boolean = false`:: Whether to create the process within a new
 mount namespace.
 
-`environment: table[string:string]|nil`:: A table of strings that will be used
+`environment: { [string] = string }|nil`:: A table of strings that will be used
 as the created process' `envp`. On `nil`, an empty `envp` will be used.
 
-`stdin,stdout,stderr: string|file_descriptor|nil`::
+`stdin,stdout,stderr: "share"|file_descriptor|nil`::
 
-`string`:::
-The only acceptable value is `"share"`. The spawned process will then share the
-specified standard handle (`stdin`, `stdout`, and/or `stderr`) with the caller
-process.
+`"share"`:::
+The spawned process will share the specified standard handle (`stdin`, `stdout`,
+or `stderr`) with the caller process.
 
 `file_descriptor`:::
-Use the file descriptor as the specified standard handle (`stdin`, `stdout`,
-and/or `stderr`) for the spawned process.
+Use the file descriptor as the specified standard handle (`stdin`, `stdout`, or
+`stderr`) for the spawned process.
 
 `nil`:::
 Create and use a closed pipe end as the specified standard handle (`stdin`,
-`stdout`, and/or `stderr`) for the spawned process.
+`stdout`, or `stderr`) for the spawned process.
 
 `init.script: string`:: The source code for a script that is used to initialize
 the sandbox in the child process.
@@ -398,7 +397,7 @@ represented by `self` is allowed to outlive the calling process.
 
 NOTE: This method will fail for channels received through `inbox`.
 
-=== `kill(self, signo: number|nil = system.signal.SIGKILL)`
+=== `kill(self, signo: integer|nil = system.signal.SIGKILL)`
 
 Sends `signo` to the process. On `SIGKILL`, it'll also close the channel.
 
@@ -949,7 +948,7 @@ members of the C struct we send over the wire).
 
 === Helpers
 
-==== `mode(user: number, group: number, other: number) -> number`
+==== `mode(user: integer, group: integer, other: integer) -> integer`
 
 [source,lua]
 ----
@@ -958,7 +957,7 @@ function mode(user, group, other)
 end
 ----
 
-==== `receive_with_fd(fd: number, buf_size: number) -> string, number, number`
+==== `receive_with_fd(fd: integer, buf_size: integer) -> string, integer, integer`
 
 Returns three values:
 
@@ -966,7 +965,7 @@ Returns three values:
 2. File descriptor received (or `-1` on none).
 3. The errno value (or `0` on success).
 
-==== `send_with_fd(fd: number, str: buffer, fd2: number) -> number, number`
+==== `send_with_fd(fd: integer, str: buffer, fd2: integer) -> integer, integer`
 
 Returns two values:
 

@@ -259,7 +259,7 @@ the same solution is chosen here with the introduction of a `json.null` value.
 
 === JSON arrays
 
-JSON arrays and JSON objects will map to the same type — lua tables. How do we
+JSON arrays and JSON objects will map to the same type -- lua tables. How do we
 differentiate them? This problem isn't exclusive to Lua.  JavaScript itself
 suffers from this problem:
 

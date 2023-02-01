@@ -54,7 +54,7 @@ local t = steady_timer.new()
 
 Constructor. Returns a new `steady_timer` object.
 
-=== `expires_after(self, msecs: number) -> number`
+=== `expires_after(self, msecs: integer) -> integer`
 
 Forward the call to
 https://www.boost.org/doc/libs/1_66_0/doc/html/boost_asio/reference/basic_waitable_timer/expires_after.html[the
@@ -82,7 +82,7 @@ events occur:
 * The timer was cancelled, in which case it raises
   `boost::asio::error::operation_aborted`.
 
-=== `cancel(self) -> number`
+=== `cancel(self) -> integer`
 
 Cancel any operations that are waiting on the timer. Returns the number of
 asynchronous operations that were cancelled.

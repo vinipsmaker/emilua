@@ -13,7 +13,7 @@ endif::[]
 [source,lua]
 ----
 local stream = require "stream"
-stream.write_at_least(io_object, buffer: byte_span, minimum: number) -> number
+stream.write_at_least(io_object, buffer: byte_span, minimum: integer) -> integer
 ----
 
 == Description

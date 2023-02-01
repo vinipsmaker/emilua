@@ -58,11 +58,11 @@ See cap_reset_ambient(3).
 
 NOTE: Only the master VM is allowed to use this function.
 
-=== `cap_get_secbits() -> number`
+=== `cap_get_secbits() -> integer`
 
 See cap_get_secbits(3).
 
-=== `cap_set_secbits(bits: number)`
+=== `cap_set_secbits(bits: integer)`
 
 See cap_set_secbits(3).
 
@@ -92,7 +92,7 @@ See cap_clear_flag(3).
 
 See cap_get_flag(3).
 
-=== `set_flag(self, flag: string, caps: table[string], value: boolean)`
+=== `set_flag(self, flag: string, caps: string[], value: boolean)`
 
 See cap_set_flag(3).
 
@@ -110,10 +110,10 @@ See cap_set_proc(3).
 
 NOTE: Only the master VM is allowed to use this function.
 
-=== `get_nsowner(self) -> number`
+=== `get_nsowner(self) -> integer`
 
 See cap_get_nsowner(3).
 
-=== `set_nsowner(self, rootuid: number)`
+=== `set_nsowner(self, rootuid: integer)`
 
 See cap_set_nsowner(3).

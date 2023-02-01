@@ -18,7 +18,7 @@ system.err
 
 == Functions
 
-=== `write_some(self, buffer: byte_span) -> number`
+=== `write_some(self, buffer: byte_span) -> integer`
 
 Write data to stderr and blocks current fiber until it completes or errs.
 
@@ -35,10 +35,10 @@ Creates a new file descriptor that refers to `STDERR_FILENO`.
 
 See isatty(3).
 
-=== `tcgetpgrp(self) -> number`
+=== `tcgetpgrp(self) -> integer`
 
 See tcgetpgrp(3).
 
-=== `tcsetpgrp(self, pgid_id: number)`
+=== `tcsetpgrp(self, pgid_id: integer)`
 
 See tcsetpgrp(3).

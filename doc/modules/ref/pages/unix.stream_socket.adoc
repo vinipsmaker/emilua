@@ -127,28 +127,28 @@ errs.
 Dissolve the socket's association by resetting the socket's peer address
 (i.e. connect(3) will be called with an `AF_UNSPEC` address).
 
-=== `read_some(self, buffer: byte_span) -> number`
+=== `read_some(self, buffer: byte_span) -> integer`
 
 Read data from the stream socket and blocks current fiber until it completes or
 errs.
 
 Returns the number of bytes read.
 
-=== `write_some(self, buffer: byte_span) -> number`
+=== `write_some(self, buffer: byte_span) -> integer`
 
 Write data to the stream socket and blocks current fiber until it completes or
 errs.
 
 Returns the number of bytes written.
 
-=== `receive_with_fds(self, buffer: byte_span, maxfds: number) -> number, table`
+=== `receive_with_fds(self, buffer: byte_span, maxfds: integer) -> integer, file_descriptor[]`
 
 Read data from the stream socket and blocks current fiber until it completes or
 errs.
 
 Returns the number of bytes read {plus} the table containing the `fds` read.
 
-=== `send_with_fds(self, buffer: byte_span, fds: table) -> number`
+=== `send_with_fds(self, buffer: byte_span, fds: file_descriptor[]) -> integer`
 
 Write data to the stream socket and blocks current fiber until it completes or
 errs.

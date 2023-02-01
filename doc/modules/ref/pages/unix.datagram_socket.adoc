@@ -115,7 +115,7 @@ be passed the `boost::asio::error::operation_aborted` error. Ownership of the
 native socket is then transferred to the caller.
 ____
 
-=== `receive(self, buffer: byte_span[, flags: number]) -> number`
+=== `receive(self, buffer: byte_span[, flags: integer]) -> integer`
 
 Receive a datagram and blocks current fiber until it completes or errs.
 
@@ -124,7 +124,7 @@ Returns the number of bytes read.
 `flags` is `0` or an or-combination of values from
 xref:unix.message_flag.adoc[unix.message_flag(3em)].
 
-=== `receive_from(self, buffer: byte_span[, flags: number]) -> number, string`
+=== `receive_from(self, buffer: byte_span[, flags: integer]) -> integer, string`
 
 Receive a datagram and blocks current fiber until it completes or errs.
 
@@ -134,7 +134,7 @@ remote sender of the datagram.
 `flags` is `0` or an or-combination of values from
 xref:unix.message_flag.adoc[unix.message_flag(3em)].
 
-=== `send(self, buffer: byte_span[, flags: number]) -> number`
+=== `send(self, buffer: byte_span[, flags: integer]) -> integer`
 
 Send data on the datagram socket and blocks current fiber until it completes or
 errs.
@@ -147,7 +147,7 @@ xref:unix.message_flag.adoc[unix.message_flag(3em)].
 NOTE: The `send` operation can only be used with a connected socket. Use the
 `send_to` function to send data on an unconnected datagram socket.
 
-=== `send_to(self, buffer: byte_span, pathname: string[, flags: number]) -> number`
+=== `send_to(self, buffer: byte_span, pathname: string[, flags: integer]) -> integer`
 
 Send a datagram to the specified remote endpoint and blocks current fiber until
 it completes or errs.
@@ -157,20 +157,20 @@ Returns the number of bytes written.
 `flags` is `0` or an or-combination of values from
 xref:unix.message_flag.adoc[unix.message_flag(3em)].
 
-=== `receive_with_fds(self, buffer: byte_span, maxfds: number) -> number, table`
+=== `receive_with_fds(self, buffer: byte_span, maxfds: integer) -> integer, file_descriptor[]`
 
 Receive a datagram and blocks current fiber until it completes or errs.
 
 Returns the number of bytes read plus the table containing the `fds` read.
 
-=== `receive_from_with_fds(self, buffer: byte_span, maxfds: number) -> number, string, table`
+=== `receive_from_with_fds(self, buffer: byte_span, maxfds: integer) -> integer, string, file_descriptor[]`
 
 Receive a datagram and blocks current fiber until it completes or errs.
 
 Returns the number of bytes read plus the pathname of the remote sender of the
 datagram plus the table containing the `fds` read.
 
-=== `send_with_fds(self, buffer: byte_span, fds: table) -> number`
+=== `send_with_fds(self, buffer: byte_span, fds: file_descriptor[]) -> integer`
 
 Send data on the datagram socket and blocks current fiber until it completes or
 errs.
@@ -180,7 +180,7 @@ Returns the number of bytes written.
 NOTE: The `send` operation can only be used with a connected socket. Use the
 `send_to` function to send data on an unconnected datagram socket.
 
-=== `send_to_with_fds(self, buffer: byte_span, pathname: string, fds: table) -> number`
+=== `send_to_with_fds(self, buffer: byte_span, pathname: string, fds: file_descriptor[]) -> integer`
 
 Send a datagram to the specified remote endpoint and blocks current fiber until
 it completes or errs.

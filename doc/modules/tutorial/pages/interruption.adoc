@@ -48,7 +48,7 @@ collect the interrupted fiber's stack. There are other reasons why we can't rely
 on the GC for the job.
 
 Windows approach to thread cancellation would be a contract. This contract
-requires the programmer to never call a blocking function directly — always
+requires the programmer to never call a blocking function directly -- always
 using `WaitForMultipleObjects()`. And another rule: pass a cancellation handle
 along the call chain for other functions that need to perform blocking calls.
 Conceptually, this solution is just the same as Go's:
@@ -314,7 +314,7 @@ to do is handle the raised exceptions.
 A fiber is always either interrupted or not interrupted. A fiber doesn't go back
 to the un-interrupted state. Once the fiber has been interrupted, it'll stay in
 this state. The task in hand is to rewind the stack calling the cleanup handlers
-to keep the application state consistent after the GC collect the fiber — all
+to keep the application state consistent after the GC collect the fiber -- all
 done by the Emilua runtime.
 
 So you can't call more suspending functions after the fiber gets interrupted:

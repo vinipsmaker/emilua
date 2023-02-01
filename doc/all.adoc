@@ -1,8 +1,12 @@
-= Emilua
+= Emilua 0.4 reference documentation
+:copyright: Creative Commons Attribution 4.0 International License
+:source: https://www.emilua.org/
 
 ifeval::["{doctype}" != "book"]
 :leveloffset: +1
 endif::[]
+
+include::modules/ROOT/all.adoc[]
 
 include::modules/tutorial/all.adoc[]
 

@@ -117,7 +117,7 @@ Whether the address is site local.
 
 Whether the address is a mapped IPv4 address.
 
-=== `scope_id: number`
+=== `scope_id: integer`
 
 The scope ID of the address. Read-write property.
 

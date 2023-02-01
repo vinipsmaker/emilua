@@ -13,7 +13,7 @@ endif::[]
 [source,lua]
 ----
 local ip = require "ip"
-ip.connect(sock, resolve_results: table[, condition: function]) -> ip.address, number
+ip.connect(sock, resolve_results: table[, condition: function]) -> ip.address, integer
 ----
 
 == Description

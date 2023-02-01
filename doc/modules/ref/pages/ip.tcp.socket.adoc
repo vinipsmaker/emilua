@@ -32,14 +32,14 @@ print(nwritten)
 
 Constructor.
 
-=== `open(self, address_family: string|ip.address)`
+=== `open(self, address_family: "v4"|"v6"|ip.address)`
 
 Open the socket.
 
 `address_family` can be either `"v4"` or `"v6"`. If you provide an `ip.address`
 object, the appropriate value will be inferred.
 
-=== `bind(self, addr: ip.address|string, port: number)`
+=== `bind(self, addr: ip.address|string, port: integer)`
 
 Bind the socket to the given local endpoint.
 
@@ -73,7 +73,7 @@ operations to finish immediately, and the handlers for cancelled operations will
 be passed the `boost::asio::error::operation_aborted` error.
 ____
 
-=== `assign(self, address_family: string|ip.address, fd: file_descriptor)`
+=== `assign(self, address_family: "v4"|"v6"|ip.address, fd: file_descriptor)`
 
 Assign an existing native socket to `self`.
 
@@ -105,7 +105,7 @@ Currently available commands are:
 `"bytes_readable"`:: Expects no arguments. Get the amount of data that can be
 read without blocking. Implements the `FIONREAD` IO control command.
 
-=== `shutdown(self, what: string)`
+=== `shutdown(self, what: "receive"|"send"|"both")`
 
 Disable sends or receives on the socket.
 
@@ -115,7 +115,7 @@ Disable sends or receives on the socket.
 `"send"`:: Shutdown the send side of the socket.
 `"both"`:: Shutdown both send and receive on the socket.
 
-=== `connect(self, addr: ip.address, port: number)`
+=== `connect(self, addr: ip.address, port: integer)`
 
 Initiate a connect operation and blocks current fiber until it completes or
 errs.
@@ -125,21 +125,21 @@ errs.
 Dissolve the socket's association by resetting the socket's peer address
 (i.e. connect(3) will be called with an `AF_UNSPEC` address).
 
-=== `read_some(self, buffer: byte_span) -> number`
+=== `read_some(self, buffer: byte_span) -> integer`
 
 Read data from the stream socket and blocks current fiber until it completes or
 errs.
 
 Returns the number of bytes read.
 
-=== `write_some(self, buffer: byte_span) -> number`
+=== `write_some(self, buffer: byte_span) -> integer`
 
 Write data to the stream socket and blocks current fiber until it completes or
 errs.
 
 Returns the number of bytes written.
 
-=== `receive(self, buffer: byte_span, flags: number) -> number`
+=== `receive(self, buffer: byte_span, flags: integer) -> integer`
 
 Read data from the stream socket and blocks current fiber until it completes or
 errs.
@@ -149,7 +149,7 @@ Returns the number of bytes read.
 `flags` is `0` or an or-combination of values from
 xref:ip.message_flag.adoc[ip.message_flag(3em)].
 
-=== `send(self, buffer: byte_span, flags: number) -> number`
+=== `send(self, buffer: byte_span, flags: integer) -> integer`
 
 Write data to the stream socket and blocks current fiber until it completes or
 errs.
@@ -159,7 +159,7 @@ Returns the number of bytes written.
 `flags` is `0` or an or-combination of values from
 xref:ip.message_flag.adoc[ip.message_flag(3em)].
 
-=== `send_file(self, file: file.random_access, offset: number, size_in_bytes: number, n_number_of_bytes_per_send: number[, head: byte_span[, tail: byte_span]]) -> number`
+=== `send_file(self, file: file.random_access, offset: integer, size_in_bytes: integer, n_number_of_bytes_per_send: integer[, head: byte_span[, tail: byte_span]]) -> integer`
 
 A wrapper for the
 https://docs.microsoft.com/en-us/windows/win32/api/mswsock/nf-mswsock-transmitfile[`TransmitFile()`
@@ -170,7 +170,7 @@ NOTE: Only available on Windows.
 IMPORTANT: Lua conventions on index starting at `1` are ignored. Indexes here
 are OS-mandated and start at `0`.
 
-=== `wait(self, wait_type: string)`
+=== `wait(self, wait_type: "read"|"write"|"error")`
 
 Wait for the socket to become ready to read, ready to write, or to have pending
 error conditions.
@@ -305,7 +305,7 @@ Whether the socket is open.
 
 The local address endpoint of the socket.
 
-=== `local_port: number`
+=== `local_port: integer`
 
 The local port endpoint of the socket.
 
@@ -313,7 +313,7 @@ The local port endpoint of the socket.
 
 The remote address endpoint of the socket.
 
-=== `remote_port: number`
+=== `remote_port: integer`
 
 The remote port endpoint of the socket.
 

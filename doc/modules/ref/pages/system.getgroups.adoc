@@ -13,7 +13,7 @@ endif::[]
 [source,lua]
 ----
 local system = require "system"
-system.getgroups() -> table[number]
+system.getgroups() -> integer[]
 ----
 
 == Description

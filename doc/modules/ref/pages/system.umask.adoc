@@ -13,7 +13,7 @@ endif::[]
 [source,lua]
 ----
 local system = require "system"
-system.umask(mask: number) -> number
+system.umask(mask: integer) -> integer
 ----
 
 == Description

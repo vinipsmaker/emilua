@@ -13,7 +13,7 @@ endif::[]
 [source,lua]
 ----
 local system = require "system"
-system.setsid() -> number
+system.setsid() -> integer
 ----
 
 == Description

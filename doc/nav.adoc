@@ -1,3 +1,5 @@
+* xref:ROOT:conventions.adoc[]
+* xref:ROOT:changelog.adoc[]
 * Tutorial
 ** xref:tutorial:actor.adoc[]
 ** xref:tutorial:alternatives.adoc[]

@@ -65,16 +65,17 @@ and its return is passed through.
 `field_separator` that defines what fields *are not*). It must be a regex. Check
 `regex.patsplit()` for details.
 
-`trim_record: boolean|string|nil = false`:: Whether to strip linear whitespace
+`trim_record: boolean|string = false`:: Whether to strip linear whitespace
 (if string is given, then it'll define the list of whitespace characters) from
 the beginning and end of each record.
 
-`buffer_size_hint: number|nil`:: The initial size for the buffer. As is the case
+`buffer_size_hint: integer|nil`:: The initial size for the buffer. As is the case
 for every hint, it might be ignored.
 
-`max_record_size: number`:: The maximum size for each record/buffer.
+`max_record_size: integer = unspecified`:: The maximum size for each
+record/buffer.
 
-=== `with_awk_defaults(stream) -> scanner`
+=== `with_awk_defaults(read_stream) -> scanner`
 
 Returns a scanner acting on `stream` that has the semantics from AWK defaults:
 
@@ -82,7 +83,7 @@ Returns a scanner acting on `stream` that has the semantics from AWK defaults:
 `trim_record`:: `true`
 `field_separator`:: A regex that describes a sequence of linear whitespace.
 
-=== `get_line(self) -> byte_span|fields`
+=== `get_line(self) -> byte_span|byte_span[]`
 
 Reads next record buffering any bytes as required and returns it. If
 `field_separator`, or `field_pattern` were set, the record's extracted fields
@@ -118,13 +119,13 @@ Removes current record from the buffer and sets `self.record_terminator` to
 A record must be present in the buffer from a previous call to `get_line()`.
 ====
 
-=== `buffer(self) -> byte_span, number`
+=== `buffer(self) -> byte_span, integer`
 
 Returns the buffer {plus} the offset where the read data begins.
 
 TIP: The returned buffer's capacity may be greater than its length.
 
-=== `set_buffer(self, buf: byte_span[, offset: number = 1])`
+=== `set_buffer(self, buf: byte_span[, offset: integer = 1])`
 
 Set `buf` as the new internal buffer.
 
