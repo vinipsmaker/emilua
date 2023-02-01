@@ -64,7 +64,7 @@ Use the file descriptor as the specified standard handle (`stdin`, `stdout`, or
 Create and use a closed pipe end as the specified standard handle (`stdin`,
 `stdout`, or `stderr`) for the spawned process.
 
-`signal_on_zombie: integer = system.SIGTERM`::
+`signal_on_gcreaper: integer = system.SIGTERM`::
 
 Each process is responsible for reaping its own children. A process that fails
 to reap its children will soon exhaust its OS-provided resources. For
@@ -73,7 +73,7 @@ children are re-parented to the next subreaper in the chain (usually the init
 process). However for a concurrency runtime such as Emilua we expect other
 concurrent tasks to remain unaffected by the one failing task (be it a single
 fiber or the whole VM).  Emilua will then transparently reap any child process
-for which its handle has been GC'ed. `signal_on_zombie` allows the user to
+for which its handle has been GC'ed. `signal_on_gcreaper` allows the user to
 specify a signal to be sent to the child that's about to be reaped at this
 occasion.
 +
@@ -87,7 +87,7 @@ want the Emilua reaper to send any signal before awaiting for the child.
 
 +
 NOTE: Ideally the system kernel would expose some re-parent syscall, but until
-then (if ever), `signal_on_zombie` will be necessary.
+then (if ever), `signal_on_gcreaper` will be necessary.
 
 `scheduler.policy: string|nil`::
 

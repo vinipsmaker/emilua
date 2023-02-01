@@ -96,16 +96,16 @@ struct spawn_arguments_t
 struct spawn_reaper
 {
     spawn_reaper(asio::io_context& ctx, int childpidfd, pid_t childpid,
-                 int signal_on_zombie)
+                 int signal_on_gcreaper)
         : waiter{
             std::make_shared<asio::posix::stream_descriptor>(ctx, childpidfd)}
         , childpid{childpid}
-        , signal_on_zombie{signal_on_zombie}
+        , signal_on_gcreaper{signal_on_gcreaper}
     {}
 
     std::shared_ptr<asio::posix::stream_descriptor> waiter;
     pid_t childpid;
-    int signal_on_zombie;
+    int signal_on_gcreaper;
 };
 
 struct subprocess
@@ -119,8 +119,8 @@ struct subprocess
         if (!reaper)
             return;
 
-        if (reaper->signal_on_zombie != 0) {
-            int res = kill(reaper->childpid, reaper->signal_on_zombie);
+        if (reaper->signal_on_gcreaper != 0) {
+            int res = kill(reaper->childpid, reaper->signal_on_gcreaper);
             boost::ignore_unused(res);
         }
         reaper->waiter->async_wait(
@@ -1854,16 +1854,16 @@ static int system_spawn_do(bool use_path, lua_State* L)
     std::string program{tostringview(L)};
     lua_pop(L, 1);
 
-    int signal_on_zombie = SIGTERM;
-    lua_getfield(L, 1, "signal_on_zombie");
+    int signal_on_gcreaper = SIGTERM;
+    lua_getfield(L, 1, "signal_on_gcreaper");
     switch (lua_type(L, -1)) {
     case LUA_TNIL:
         break;
     case LUA_TNUMBER:
-        signal_on_zombie = lua_tointeger(L, -1);
+        signal_on_gcreaper = lua_tointeger(L, -1);
         break;
     default:
-        push(L, std::errc::invalid_argument, "arg", "signal_on_zombie");
+        push(L, std::errc::invalid_argument, "arg", "signal_on_gcreaper");
         return lua_error(L);
     }
     lua_pop(L, 1);
@@ -2513,7 +2513,7 @@ static int system_spawn_do(bool use_path, lua_State* L)
     new (p) subprocess{};
 
     p->reaper.emplace(
-        vm_ctx.strand().context(), pidfd, childpid, signal_on_zombie);
+        vm_ctx.strand().context(), pidfd, childpid, signal_on_gcreaper);
     pidfd = -1;
 
     return 1;
