@@ -13,63 +13,79 @@ Emilua - Lua execution engine
 
 endif::[]
 
-== https://github.com/wahern/cqueues[cqueues]
+.General concurrency models
+|===
+| |Fibers |Threads |Local actors |Distributed actors |Sandboxed actors{_}footnote:[Linux namespaces]
 
-* Designed “to be unintrusive, composable, and embeddable within existing
-  applications” [sic].
-* Coroutines.
-* No fibers.
-* No actors.
+|cqueues{_}footnote:[link:https://github.com/wahern/cqueues[]: Designed “to be unintrusive, composable, and embeddable within existing applications” [sic\].] | |✔ | | |
+|Tarantool{_}footnote:[<https://www.tarantool.io/en/doc/2.1/reference/reference_lua/fiber/>] |✔ | | | |
+|Effil{_}footnote:[<https://github.com/effil/effil>] | |✔ | | |
+|Lanes{_}footnote:[<http://lualanes.github.io/lanes/>] | |✔ | | |
+|Löve{_}footnote:[link:https://love2d.org/wiki/love.thread[]: Focused on game development.] | |✔ | | |
+|ConcurrentLua{_}footnote:[link:https://github.com/lefcha/concurrentlua[]: You could rewrite ConcurrentLua on top of Emilua, but you couldn't rewrite Emilua on top of ConcurrentLua.] | | |✔ |✔ |
+|luaproc{_}footnote:[link:http://www.inf.puc-rio.br/~roberto/docs/ry08-05.pdf[]: It has a primitive model of what could become a full local actor system.] | |✔ | | |
+|Emilua |✔ |✔ |✔ | |✔
+|===
 
-== https://www.tarantool.io/en/doc/2.1/reference/reference_lua/fiber/[Tarantool's fibers]
+Do notice that the table won't go into many details. For instance, several
+projects allow you to use threads, but only Emilua is flexible enough that it
+actually allows you to create heterogeneous thread pools where some thread may
+be pinned to a single Lua VM while another thread is shared among several Lua
+VMs, and some work-stealing thread pool takes care of the rest. Too many tables
+would be needed to explore all the other differences.
 
-* Fibers.
-* https://www.tarantool.io/en/doc/2.1/reference/reference_lua/fiber/#fiber-testcancel[Fiber
-  interruption API].
-* https://www.tarantool.io/en/doc/2.1/reference/reference_lua/fiber/#fiber-object-storage[Fiber-local-storage].
-* https://www.tarantool.io/en/doc/2.1/book/box/atomic/#atomic-implicit-yields[There
-  is a builtin reactor to perform IO multiplexing (or at least the fiber
-  behaviour can be understood using this model)].
-* No actors.
+Integrated IO engine also belongs to the comparison of concurrency models, but a
+separate table solely focused on them will be presented later (only mentioning
+the projects that do have one).
 
-== https://github.com/effil/effil[Effil]
+.NodeJS wannabes
+|===
+| |Fibers |Threads |Local actors |Sandboxed actors
 
-* Threads.
-* Threads communicate through messaging.
-* No actors.
-* No IO reactor.
+|Luvit{_}footnote:[<https://luvit.io/>] | |✔ | |
+|LuaNode{_}footnote:[<https://github.com/ignacio/LuaNode>] | | | |
+|nodish{_}footnote:[<https://github.com/lipp/nodish>] | | | |
+|Emilua (not a NodeJS wannabe) |✔ |✔ |✔ |✔
+|===
 
-== http://lualanes.github.io/lanes/[Lanes]
+When you create a project that tries to bring together the best of two worlds,
+you're also actually bringing together the worst of two worlds. This sums up
+most of the attempts to mirror NodeJS API:
 
-* Threads.
-* No actors.
-* No IO reactor.
+* If everything is implemented correctly, it can only achieve being as bad as
+  NodeJS is.
+* Horrible back-pressure.
 
-== https://love2d.org/wiki/love.thread[Löve]
+.IO engines
+|===
+| |Linux (epoll) |Linux (io_uring) |BSD (kqueue) |Windows
 
-* Focused on game development.
-* Threads.
-* Threads communicate through messaging.
-* No actors.
-* No IO reactor.
+|cqueues |✔ | |✔ |
+|Tarantool |✔ | |✔ |
+|Luvit  |✔ |✔ |✔ |✔
+|LuaNode|✔ |✔ |✔ |✔
+|nodish |✔ | |✔ |ugly{_}footnote:[<http://pod.tst.eu/http://cvs.schmorp.de/libev/ev.pod#WIN32_PLATFORM_LIMITATIONS_AND_WORKA>]
+|Emilua |✔ |✔ |✔ |✔
+|===
 
-== https://github.com/lefcha/concurrentlua[ConcurrentLua]
+This document deliberately left some projects out of the comparison tables. The
+underlying reason is that it focuses on one problem space: the traditional
+userspace-in-a-modern-OS-box. Projects such as
+eLua{\_}footnote:[<https://eluaproject.net/>],
+NodeMCU{_}footnote:[<https://nodemcu.readthedocs.io/>],
+XDPLua{\_}footnote:[<https://victornogueirario.github.io/xdplua/>], and
+Snabb{_}footnote:[<https://github.com/snabbco/snabb>] will always have a space
+in the market. And the reason is quite simple: it's not possible to cater for
+very specific needs and be general at the same time. For instance, if you're
+trying to run something on the kernel side, there are specific restrictions and
+concerns that will further contaminate every dependant project down the
+line. It's not merely a question of porting the same API over. The mindset
+behind the whole program would need to change as well.
 
-* It focuses on distributed actor model.
-* Other models are left off (e.g. fibers).
-
-== http://www.inf.puc-rio.br/~roberto/docs/ry08-05.pdf[luaproc]
-
-* It has a primitive model of what could become a full actor system.
-** It can work with a fixed number of worker threads.
-** Spawns lua VMs.
-** Lua VMs can migrate threads (work-stealing).
-** With proper discipline, an actor system can be built on top (e.g. giving each
-   lua process an unique name and using these string identifiers to create new
-   channels and so on). It is at most an inconvenient that we don't have the
-   desired semantics by default.
-* It doesn't have a builtin reactor to perform IO multiplexing.
-* No fibers.
+Emilua is young and there are plans to explore part of use cases that stretch
+just a little over the traditional userspace-in-a-modern-OS-box. However it
+still is a general cross-platform solution for an execution engine. It's still
+not possible to tackle very specific use cases and be general at the same time.
 
 == https://openresty.org/[OpenResty]
 
@@ -111,30 +127,3 @@ OpenResty lib to easily allow porting apps over.
 * The actor model opens up some possibilities for Emilua's future
   (e.g. partition your app resources among multiple VMs and feel free to kill
   the bad VMs).
-
-== NodeJS wannabes
-
-When you create a project that tries to bring together the best of two worlds,
-you're also actually bringing together the worst of two worlds. This sums up
-most of the attempts to mirror NodeJS API (and I'm not free of guilty here as
-this includes a former {cpp} project of
-mine{_}footnote:[https://github.com/vinipsmaker/tufao]).
-
-* If everything is implemented correctly, it can only achieve being as bad as
-  NodeJS is.
-* Passive async style that matches up badly with back-pressure.
-
-=== https://luvit.io/[Luvit]
-
-* No fibers.
-* No actors.
-
-=== https://github.com/ignacio/LuaNode[LuaNode]
-
-* No fibers.
-* No threads.
-
-=== https://github.com/lipp/nodish[nodish]
-
-* No fibers.
-* No threads.
