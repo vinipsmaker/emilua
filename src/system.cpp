@@ -1614,7 +1614,7 @@ static int subprocess_mt_index(lua_State* L)
 
 static int system_spawn_child_main(void* a)
 {
-    auto args = reinterpret_cast<spawn_arguments_t*>(a);
+    auto args = static_cast<spawn_arguments_t*>(a);
     spawn_arguments_t::errno_reply_t reply;
 
     {
@@ -1658,15 +1658,13 @@ static int system_spawn_child_main(void* a)
         return 1;
     }
 
-    if (args->extra_groups) {
-        if (
-            setgroups(args->extra_groups->size(), args->extra_groups->data()) ==
-            -1
-        ) {
-            reply.code = errno;
-            write(args->closeonexecpipe, &reply, sizeof(reply));
-            return 1;
-        }
+    if (
+        args->extra_groups &&
+        setgroups(args->extra_groups->size(), args->extra_groups->data()) == -1
+    ) {
+        reply.code = errno;
+        write(args->closeonexecpipe, &reply, sizeof(reply));
+        return 1;
     }
 
     if (args->rgid != (gid_t)(-1) || args->egid != (gid_t)(-1)) {
