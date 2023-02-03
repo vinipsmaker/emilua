@@ -40,6 +40,8 @@ include::pages/ip.connect.adoc[]
 
 include::pages/ip.host_name.adoc[]
 
+include::pages/ip.tostring.adoc[]
+
 include::pages/ip.message_flag.adoc[]
 
 include::pages/ip.tcp.acceptor.adoc[]

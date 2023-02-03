@@ -12,6 +12,8 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/scope_exit.hpp>
 
+#include <charconv>
+
 #include <emilua/file_descriptor.hpp>
 #include <emilua/dispatch_table.hpp>
 #include <emilua/async_base.hpp>
@@ -132,6 +134,53 @@ static int ip_host_name(lua_State* L)
         return lua_error(L);
     }
     push(L, val);
+    return 1;
+}
+
+static int ip_tostring(lua_State* L)
+{
+    int nargs = lua_gettop(L);
+
+    auto a = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    if (!a || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto ret = a->to_string();
+
+    switch (nargs) {
+    case 1:
+        break;
+    case 2: {
+        std::uint16_t port = luaL_checkinteger(L, 2);
+        std::array<char, 5> buf;
+        auto s_size = std::to_chars(
+            buf.data(),
+            buf.data() + buf.size(),
+            port).ptr - buf.data();
+        if (a->is_v4()) {
+            ret.reserve(ret.size() + 1 + s_size);
+            ret.push_back(':');
+        } else {
+            ret.reserve(ret.size() + 3 + s_size);
+            ret.insert(ret.begin(), '[');
+            ret.append("]:");
+        }
+        ret.append(buf.data(), s_size);
+        break;
+    }
+    default:
+        push(L, std::errc::invalid_argument, "arg", 3);
+        return lua_error(L);
+    }
+
+    push(L, ret);
     return 1;
 }
 
@@ -6288,7 +6337,11 @@ void init_ip(lua_State* L)
 {
     lua_pushlightuserdata(L, &ip_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/7);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/8);
+
+        lua_pushliteral(L, "tostring");
+        lua_pushcfunction(L, ip_tostring);
+        lua_rawset(L, -3);
 
         lua_pushliteral(L, "host_name");
         lua_pushcfunction(L, ip_host_name);

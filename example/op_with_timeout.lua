@@ -22,8 +22,7 @@ acceptor:set_option('reuse_address', true)
 if not pcall(function() acceptor:bind(ip.address.loopback_v4(), 8080) end) then
     acceptor:bind(ip.address.loopback_v4(), 0)
 end
-print('Listening on ' .. tostring(acceptor.local_address) .. ':' ..
-      acceptor.local_port)
+print('Listening on ' .. ip.tostring(acceptor.local_address, acceptor.local_port))
 acceptor:listen()
 
 local sock = op_with_timeout(function() return acceptor:accept() end, 5000)

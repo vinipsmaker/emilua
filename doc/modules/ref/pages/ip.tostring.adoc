@@ -1,0 +1,23 @@
+= ip.tostring
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local ip = require "ip"
+ip.tostring(addr: ip.address[, port: integer]) -> string
+----
+
+== Description
+
+Convert a traditional network endpoint (IP address {plus} unsigned 16-bit
+integer) to its string representation. If `port` is `nil`, then perform the
+equivalent of `tostring(addr)`.

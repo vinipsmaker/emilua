@@ -59,9 +59,9 @@ local addr, port = ip.connect(
         if last_error then
             print("Error: " .. tostring(last_error))
         end
-        print("Trying: [" .. tostring(next_addr) .. "]:" .. next_port)
+        print("Trying: " .. ip.tostring(next_addr, next_port))
         return true
     end
 )
-print("Connected to: [" .. tostring(addr) .. "]:" .. port)
+print("Connected to: " .. ip.tostring(addr, port))
 ----

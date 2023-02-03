@@ -31,6 +31,7 @@
 *** xref:ref:ip.get_name_info.adoc[]
 *** xref:ref:ip.connect.adoc[]
 *** xref:ref:ip.host_name.adoc[]
+*** xref:ref:ip.tostring.adoc[]
 *** xref:ref:ip.message_flag.adoc[]
 *** xref:ref:ip.tcp.acceptor.adoc[]
 *** xref:ref:ip.tcp.socket.adoc[]
