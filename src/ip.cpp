@@ -2928,10 +2928,7 @@ static int tcp_get_address_info(lua_State* L)
     query_ctx->hCompletion.async_wait(
         asio::bind_executor(
             vm_ctx->strand_using_defer(),
-            [
-                vm_ctx,current_fiber,query_ctx,
-                host=static_cast<std::string>(host)
-            ](
+            [vm_ctx,current_fiber,query_ctx](
                 boost::system::error_code ec
             ) {
                 BOOST_SCOPE_EXIT_ALL(&) {
@@ -2959,7 +2956,7 @@ static int tcp_get_address_info(lua_State* L)
                     }
                 }
 
-                auto push_results = [&ec,&query_ctx,&host](lua_State* L) {
+                auto push_results = [&ec,&query_ctx](lua_State* L) {
                     if (ec) {
                         lua_pushnil(L);
                         return;
@@ -2968,7 +2965,7 @@ static int tcp_get_address_info(lua_State* L)
                     lua_newtable(L);
                     lua_pushliteral(L, "address");
                     lua_pushliteral(L, "port");
-                    lua_pushliteral(L, "host_name");
+                    lua_pushliteral(L, "canonical_name");
 
                     if (
                         query_ctx->results && query_ctx->results->ai_canonname
@@ -2976,7 +2973,7 @@ static int tcp_get_address_info(lua_State* L)
                         std::wstring_view w{query_ctx->results->ai_canonname};
                         push(L, nowide::narrow(w));
                     } else {
-                        push(L, host);
+                        lua_pushnil(L);
                     }
 
                     int i = 1;
@@ -3047,17 +3044,20 @@ static int tcp_get_address_info(lua_State* L)
         1);
     set_interrupter(L, *vm_ctx);
 
+    bool has_cname = (flags & asio::ip::resolver_base::canonical_name) ?
+        true : false;
+
     service->tcp_resolver.async_resolve(
         host,
         tostringview(L, 2),
         static_cast<asio::ip::tcp::resolver::flags>(flags),
         asio::bind_executor(
             vm_ctx->strand_using_defer(),
-            [vm_ctx,current_fiber](
+            [vm_ctx,current_fiber,has_cname](
                 const boost::system::error_code& ec,
                 asio::ip::tcp::resolver::results_type results
             ) {
-                auto push_results = [&ec,&results](lua_State* fib) {
+                auto push_results = [&ec,&results,has_cname](lua_State* fib) {
                     if (ec) {
                         lua_pushnil(fib);
                     } else {
@@ -3065,7 +3065,7 @@ static int tcp_get_address_info(lua_State* L)
                                         /*nrec=*/0);
                         lua_pushliteral(fib, "address");
                         lua_pushliteral(fib, "port");
-                        lua_pushliteral(fib, "host_name");
+                        lua_pushliteral(fib, "canonical_name");
 
                         int i = 1;
                         for (const auto& res: results) {
@@ -3084,9 +3084,11 @@ static int tcp_get_address_info(lua_State* L)
                             lua_pushinteger(fib, res.endpoint().port());
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -1);
-                            push(fib, res.host_name());
-                            lua_rawset(fib, -3);
+                            if (has_cname) {
+                                lua_pushvalue(fib, -1 -1);
+                                push(fib, res.host_name());
+                                lua_rawset(fib, -3);
+                            }
 
                             lua_rawseti(fib, -5, i++);
                         }
@@ -3235,10 +3237,7 @@ static int tcp_get_address_v4_info(lua_State* L)
     query_ctx->hCompletion.async_wait(
         asio::bind_executor(
             vm_ctx->strand_using_defer(),
-            [
-                vm_ctx,current_fiber,query_ctx,
-                host=static_cast<std::string>(host)
-            ](
+            [vm_ctx,current_fiber,query_ctx](
                 boost::system::error_code ec
             ) {
                 BOOST_SCOPE_EXIT_ALL(&) {
@@ -3266,7 +3265,7 @@ static int tcp_get_address_v4_info(lua_State* L)
                     }
                 }
 
-                auto push_results = [&ec,&query_ctx,&host](lua_State* L) {
+                auto push_results = [&ec,&query_ctx](lua_State* L) {
                     if (ec) {
                         lua_pushnil(L);
                         return;
@@ -3275,7 +3274,7 @@ static int tcp_get_address_v4_info(lua_State* L)
                     lua_newtable(L);
                     lua_pushliteral(L, "address");
                     lua_pushliteral(L, "port");
-                    lua_pushliteral(L, "host_name");
+                    lua_pushliteral(L, "canonical_name");
 
                     if (
                         query_ctx->results && query_ctx->results->ai_canonname
@@ -3283,7 +3282,7 @@ static int tcp_get_address_v4_info(lua_State* L)
                         std::wstring_view w{query_ctx->results->ai_canonname};
                         push(L, nowide::narrow(w));
                     } else {
-                        push(L, host);
+                        lua_pushnil(L);
                     }
 
                     int i = 1;
@@ -3354,6 +3353,9 @@ static int tcp_get_address_v4_info(lua_State* L)
         1);
     set_interrupter(L, *vm_ctx);
 
+    bool has_cname = (flags & asio::ip::resolver_base::canonical_name) ?
+        true : false;
+
     service->tcp_resolver.async_resolve(
         asio::ip::tcp::v4(),
         host,
@@ -3361,11 +3363,11 @@ static int tcp_get_address_v4_info(lua_State* L)
         static_cast<asio::ip::tcp::resolver::flags>(flags),
         asio::bind_executor(
             vm_ctx->strand_using_defer(),
-            [vm_ctx,current_fiber](
+            [vm_ctx,current_fiber,has_cname](
                 const boost::system::error_code& ec,
                 asio::ip::tcp::resolver::results_type results
             ) {
-                auto push_results = [&ec,&results](lua_State* fib) {
+                auto push_results = [&ec,&results,has_cname](lua_State* fib) {
                     if (ec) {
                         lua_pushnil(fib);
                     } else {
@@ -3373,7 +3375,7 @@ static int tcp_get_address_v4_info(lua_State* L)
                                         /*nrec=*/0);
                         lua_pushliteral(fib, "address");
                         lua_pushliteral(fib, "port");
-                        lua_pushliteral(fib, "host_name");
+                        lua_pushliteral(fib, "canonical_name");
 
                         int i = 1;
                         for (const auto& res: results) {
@@ -3392,9 +3394,11 @@ static int tcp_get_address_v4_info(lua_State* L)
                             lua_pushinteger(fib, res.endpoint().port());
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -1);
-                            push(fib, res.host_name());
-                            lua_rawset(fib, -3);
+                            if (has_cname) {
+                                lua_pushvalue(fib, -1 -1);
+                                push(fib, res.host_name());
+                                lua_rawset(fib, -3);
+                            }
 
                             lua_rawseti(fib, -5, i++);
                         }
@@ -3544,10 +3548,7 @@ static int tcp_get_address_v6_info(lua_State* L)
     query_ctx->hCompletion.async_wait(
         asio::bind_executor(
             vm_ctx->strand_using_defer(),
-            [
-                vm_ctx,current_fiber,query_ctx,
-                host=static_cast<std::string>(host)
-            ](
+            [vm_ctx,current_fiber,query_ctx](
                 boost::system::error_code ec
             ) {
                 BOOST_SCOPE_EXIT_ALL(&) {
@@ -3575,7 +3576,7 @@ static int tcp_get_address_v6_info(lua_State* L)
                     }
                 }
 
-                auto push_results = [&ec,&query_ctx,&host](lua_State* L) {
+                auto push_results = [&ec,&query_ctx](lua_State* L) {
                     if (ec) {
                         lua_pushnil(L);
                         return;
@@ -3584,7 +3585,7 @@ static int tcp_get_address_v6_info(lua_State* L)
                     lua_newtable(L);
                     lua_pushliteral(L, "address");
                     lua_pushliteral(L, "port");
-                    lua_pushliteral(L, "host_name");
+                    lua_pushliteral(L, "canonical_name");
 
                     if (
                         query_ctx->results && query_ctx->results->ai_canonname
@@ -3592,7 +3593,7 @@ static int tcp_get_address_v6_info(lua_State* L)
                         std::wstring_view w{query_ctx->results->ai_canonname};
                         push(L, nowide::narrow(w));
                     } else {
-                        push(L, host);
+                        lua_pushnil(L);
                     }
 
                     int i = 1;
@@ -3663,6 +3664,9 @@ static int tcp_get_address_v6_info(lua_State* L)
         1);
     set_interrupter(L, *vm_ctx);
 
+    bool has_cname = (flags & asio::ip::resolver_base::canonical_name) ?
+        true : false;
+
     service->tcp_resolver.async_resolve(
         asio::ip::tcp::v6(),
         host,
@@ -3670,11 +3674,11 @@ static int tcp_get_address_v6_info(lua_State* L)
         static_cast<asio::ip::tcp::resolver::flags>(flags),
         asio::bind_executor(
             vm_ctx->strand_using_defer(),
-            [vm_ctx,current_fiber](
+            [vm_ctx,current_fiber,has_cname](
                 const boost::system::error_code& ec,
                 asio::ip::tcp::resolver::results_type results
             ) {
-                auto push_results = [&ec,&results](lua_State* fib) {
+                auto push_results = [&ec,&results,has_cname](lua_State* fib) {
                     if (ec) {
                         lua_pushnil(fib);
                     } else {
@@ -3682,7 +3686,7 @@ static int tcp_get_address_v6_info(lua_State* L)
                                         /*nrec=*/0);
                         lua_pushliteral(fib, "address");
                         lua_pushliteral(fib, "port");
-                        lua_pushliteral(fib, "host_name");
+                        lua_pushliteral(fib, "canonical_name");
 
                         int i = 1;
                         for (const auto& res: results) {
@@ -3701,9 +3705,11 @@ static int tcp_get_address_v6_info(lua_State* L)
                             lua_pushinteger(fib, res.endpoint().port());
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -1);
-                            push(fib, res.host_name());
-                            lua_rawset(fib, -3);
+                            if (has_cname) {
+                                lua_pushvalue(fib, -1 -1);
+                                push(fib, res.host_name());
+                                lua_rawset(fib, -3);
+                            }
 
                             lua_rawseti(fib, -5, i++);
                         }
@@ -5378,10 +5384,7 @@ static int udp_get_address_info(lua_State* L)
     query_ctx->hCompletion.async_wait(
         asio::bind_executor(
             vm_ctx->strand_using_defer(),
-            [
-                vm_ctx,current_fiber,query_ctx,
-                host=static_cast<std::string>(host)
-            ](
+            [vm_ctx,current_fiber,query_ctx](
                 boost::system::error_code ec
             ) {
                 BOOST_SCOPE_EXIT_ALL(&) {
@@ -5409,7 +5412,7 @@ static int udp_get_address_info(lua_State* L)
                     }
                 }
 
-                auto push_results = [&ec,&query_ctx,&host](lua_State* L) {
+                auto push_results = [&ec,&query_ctx](lua_State* L) {
                     if (ec) {
                         lua_pushnil(L);
                         return;
@@ -5418,7 +5421,7 @@ static int udp_get_address_info(lua_State* L)
                     lua_newtable(L);
                     lua_pushliteral(L, "address");
                     lua_pushliteral(L, "port");
-                    lua_pushliteral(L, "host_name");
+                    lua_pushliteral(L, "canonical_name");
 
                     if (
                         query_ctx->results && query_ctx->results->ai_canonname
@@ -5426,7 +5429,7 @@ static int udp_get_address_info(lua_State* L)
                         std::wstring_view w{query_ctx->results->ai_canonname};
                         push(L, nowide::narrow(w));
                     } else {
-                        push(L, host);
+                        lua_pushnil(L);
                     }
 
                     int i = 1;
@@ -5497,17 +5500,20 @@ static int udp_get_address_info(lua_State* L)
         1);
     set_interrupter(L, *vm_ctx);
 
+    bool has_cname = (flags & asio::ip::resolver_base::canonical_name) ?
+        true : false;
+
     service->udp_resolver.async_resolve(
         host,
         tostringview(L, 2),
         static_cast<asio::ip::udp::resolver::flags>(flags),
         asio::bind_executor(
             vm_ctx->strand_using_defer(),
-            [vm_ctx,current_fiber](
+            [vm_ctx,current_fiber,has_cname](
                 const boost::system::error_code& ec,
                 asio::ip::udp::resolver::results_type results
             ) {
-                auto push_results = [&ec,&results](lua_State* fib) {
+                auto push_results = [&ec,&results,has_cname](lua_State* fib) {
                     if (ec) {
                         lua_pushnil(fib);
                     } else {
@@ -5515,7 +5521,7 @@ static int udp_get_address_info(lua_State* L)
                                         /*nrec=*/0);
                         lua_pushliteral(fib, "address");
                         lua_pushliteral(fib, "port");
-                        lua_pushliteral(fib, "host_name");
+                        lua_pushliteral(fib, "canonical_name");
 
                         int i = 1;
                         for (const auto& res: results) {
@@ -5534,9 +5540,11 @@ static int udp_get_address_info(lua_State* L)
                             lua_pushinteger(fib, res.endpoint().port());
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -1);
-                            push(fib, res.host_name());
-                            lua_rawset(fib, -3);
+                            if (has_cname) {
+                                lua_pushvalue(fib, -1 -1);
+                                push(fib, res.host_name());
+                                lua_rawset(fib, -3);
+                            }
 
                             lua_rawseti(fib, -5, i++);
                         }
@@ -5685,10 +5693,7 @@ static int udp_get_address_v4_info(lua_State* L)
     query_ctx->hCompletion.async_wait(
         asio::bind_executor(
             vm_ctx->strand_using_defer(),
-            [
-                vm_ctx,current_fiber,query_ctx,
-                host=static_cast<std::string>(host)
-            ](
+            [vm_ctx,current_fiber,query_ctx](
                 boost::system::error_code ec
             ) {
                 BOOST_SCOPE_EXIT_ALL(&) {
@@ -5716,7 +5721,7 @@ static int udp_get_address_v4_info(lua_State* L)
                     }
                 }
 
-                auto push_results = [&ec,&query_ctx,&host](lua_State* L) {
+                auto push_results = [&ec,&query_ctx](lua_State* L) {
                     if (ec) {
                         lua_pushnil(L);
                         return;
@@ -5725,7 +5730,7 @@ static int udp_get_address_v4_info(lua_State* L)
                     lua_newtable(L);
                     lua_pushliteral(L, "address");
                     lua_pushliteral(L, "port");
-                    lua_pushliteral(L, "host_name");
+                    lua_pushliteral(L, "canonical_name");
 
                     if (
                         query_ctx->results && query_ctx->results->ai_canonname
@@ -5733,7 +5738,7 @@ static int udp_get_address_v4_info(lua_State* L)
                         std::wstring_view w{query_ctx->results->ai_canonname};
                         push(L, nowide::narrow(w));
                     } else {
-                        push(L, host);
+                        lua_pushnil(L);
                     }
 
                     int i = 1;
@@ -5804,6 +5809,9 @@ static int udp_get_address_v4_info(lua_State* L)
         1);
     set_interrupter(L, *vm_ctx);
 
+    bool has_cname = (flags & asio::ip::resolver_base::canonical_name) ?
+        true : false;
+
     service->udp_resolver.async_resolve(
         asio::ip::udp::v4(),
         host,
@@ -5811,11 +5819,11 @@ static int udp_get_address_v4_info(lua_State* L)
         static_cast<asio::ip::udp::resolver::flags>(flags),
         asio::bind_executor(
             vm_ctx->strand_using_defer(),
-            [vm_ctx,current_fiber](
+            [vm_ctx,current_fiber,has_cname](
                 const boost::system::error_code& ec,
                 asio::ip::udp::resolver::results_type results
             ) {
-                auto push_results = [&ec,&results](lua_State* fib) {
+                auto push_results = [&ec,&results,has_cname](lua_State* fib) {
                     if (ec) {
                         lua_pushnil(fib);
                     } else {
@@ -5823,7 +5831,7 @@ static int udp_get_address_v4_info(lua_State* L)
                                         /*nrec=*/0);
                         lua_pushliteral(fib, "address");
                         lua_pushliteral(fib, "port");
-                        lua_pushliteral(fib, "host_name");
+                        lua_pushliteral(fib, "canonical_name");
 
                         int i = 1;
                         for (const auto& res: results) {
@@ -5842,9 +5850,11 @@ static int udp_get_address_v4_info(lua_State* L)
                             lua_pushinteger(fib, res.endpoint().port());
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -1);
-                            push(fib, res.host_name());
-                            lua_rawset(fib, -3);
+                            if (has_cname) {
+                                lua_pushvalue(fib, -1 -1);
+                                push(fib, res.host_name());
+                                lua_rawset(fib, -3);
+                            }
 
                             lua_rawseti(fib, -5, i++);
                         }
@@ -5993,10 +6003,7 @@ static int udp_get_address_v6_info(lua_State* L)
     query_ctx->hCompletion.async_wait(
         asio::bind_executor(
             vm_ctx->strand_using_defer(),
-            [
-                vm_ctx,current_fiber,query_ctx,
-                host=static_cast<std::string>(host)
-            ](
+            [vm_ctx,current_fiber,query_ctx](
                 boost::system::error_code ec
             ) {
                 BOOST_SCOPE_EXIT_ALL(&) {
@@ -6024,7 +6031,7 @@ static int udp_get_address_v6_info(lua_State* L)
                     }
                 }
 
-                auto push_results = [&ec,&query_ctx,&host](lua_State* L) {
+                auto push_results = [&ec,&query_ctx](lua_State* L) {
                     if (ec) {
                         lua_pushnil(L);
                         return;
@@ -6033,7 +6040,7 @@ static int udp_get_address_v6_info(lua_State* L)
                     lua_newtable(L);
                     lua_pushliteral(L, "address");
                     lua_pushliteral(L, "port");
-                    lua_pushliteral(L, "host_name");
+                    lua_pushliteral(L, "canonical_name");
 
                     if (
                         query_ctx->results && query_ctx->results->ai_canonname
@@ -6041,7 +6048,7 @@ static int udp_get_address_v6_info(lua_State* L)
                         std::wstring_view w{query_ctx->results->ai_canonname};
                         push(L, nowide::narrow(w));
                     } else {
-                        push(L, host);
+                        lua_pushnil(L);
                     }
 
                     int i = 1;
@@ -6112,6 +6119,9 @@ static int udp_get_address_v6_info(lua_State* L)
         1);
     set_interrupter(L, *vm_ctx);
 
+    bool has_cname = (flags & asio::ip::resolver_base::canonical_name) ?
+        true : false;
+
     service->udp_resolver.async_resolve(
         asio::ip::udp::v6(),
         host,
@@ -6119,11 +6129,11 @@ static int udp_get_address_v6_info(lua_State* L)
         static_cast<asio::ip::udp::resolver::flags>(flags),
         asio::bind_executor(
             vm_ctx->strand_using_defer(),
-            [vm_ctx,current_fiber](
+            [vm_ctx,current_fiber,has_cname](
                 const boost::system::error_code& ec,
                 asio::ip::udp::resolver::results_type results
             ) {
-                auto push_results = [&ec,&results](lua_State* fib) {
+                auto push_results = [&ec,&results,has_cname](lua_State* fib) {
                     if (ec) {
                         lua_pushnil(fib);
                     } else {
@@ -6131,7 +6141,7 @@ static int udp_get_address_v6_info(lua_State* L)
                                         /*nrec=*/0);
                         lua_pushliteral(fib, "address");
                         lua_pushliteral(fib, "port");
-                        lua_pushliteral(fib, "host_name");
+                        lua_pushliteral(fib, "canonical_name");
 
                         int i = 1;
                         for (const auto& res: results) {
@@ -6150,9 +6160,11 @@ static int udp_get_address_v6_info(lua_State* L)
                             lua_pushinteger(fib, res.endpoint().port());
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -1);
-                            push(fib, res.host_name());
-                            lua_rawset(fib, -3);
+                            if (has_cname) {
+                                lua_pushvalue(fib, -1 -1);
+                                push(fib, res.host_name());
+                                lua_rawset(fib, -3);
+                            }
 
                             lua_rawseti(fib, -5, i++);
                         }
