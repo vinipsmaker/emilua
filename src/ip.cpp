@@ -2930,8 +2930,7 @@ static int tcp_get_address_info(lua_State* L)
             vm_ctx->strand_using_defer(),
             [
                 vm_ctx,current_fiber,query_ctx,
-                host=static_cast<std::string>(host),
-                service=static_cast<std::string>(service)
+                host=static_cast<std::string>(host)
             ](
                 boost::system::error_code ec
             ) {
@@ -2960,9 +2959,7 @@ static int tcp_get_address_info(lua_State* L)
                     }
                 }
 
-                auto push_results = [&ec,&query_ctx,&host,&service](
-                    lua_State* L
-                ) {
+                auto push_results = [&ec,&query_ctx,&host](lua_State* L) {
                     if (ec) {
                         lua_pushnil(L);
                         return;
@@ -2972,7 +2969,6 @@ static int tcp_get_address_info(lua_State* L)
                     lua_pushliteral(L, "address");
                     lua_pushliteral(L, "port");
                     lua_pushliteral(L, "host_name");
-                    lua_pushliteral(L, "service_name");
 
                     if (
                         query_ctx->results && query_ctx->results->ai_canonname
@@ -2982,19 +2978,18 @@ static int tcp_get_address_info(lua_State* L)
                     } else {
                         push(L, host);
                     }
-                    push(L, service);
 
                     int i = 1;
                     for (
                         auto it = query_ctx->results ; it ; it = it->ai_next
                     ) {
-                        lua_createtable(L, /*narr=*/0, /*nrec=*/4);
+                        lua_createtable(L, /*narr=*/0, /*nrec=*/3);
 
                         asio::ip::tcp::endpoint ep;
                         ep.resize(it->ai_addrlen);
                         std::memcpy(ep.data(), it->ai_addr, ep.size());
 
-                        lua_pushvalue(L, -1 -6);
+                        lua_pushvalue(L, -1 -4);
                         auto a = static_cast<asio::ip::address*>(
                             lua_newuserdata(L, sizeof(asio::ip::address))
                         );
@@ -3003,21 +2998,17 @@ static int tcp_get_address_info(lua_State* L)
                         new (a) asio::ip::address{ep.address()};
                         lua_rawset(L, -3);
 
-                        lua_pushvalue(L, -1 -5);
+                        lua_pushvalue(L, -1 -3);
                         lua_pushinteger(L, ep.port());
                         lua_rawset(L, -3);
 
-                        lua_pushvalue(L, -1 -4);
-                        lua_pushvalue(L, -2 -2);
+                        lua_pushvalue(L, -1 -2);
+                        lua_pushvalue(L, -1 -1);
                         lua_rawset(L, -3);
 
-                        lua_pushvalue(L, -1 -3);
-                        lua_pushvalue(L, -2 -1);
-                        lua_rawset(L, -3);
-
-                        lua_rawseti(L, -8, i++);
+                        lua_rawseti(L, -6, i++);
                     }
-                    lua_pop(L, 6);
+                    lua_pop(L, 4);
                 };
 
                 vm_ctx->fiber_resume(
@@ -3075,13 +3066,12 @@ static int tcp_get_address_info(lua_State* L)
                         lua_pushliteral(fib, "address");
                         lua_pushliteral(fib, "port");
                         lua_pushliteral(fib, "host_name");
-                        lua_pushliteral(fib, "service_name");
 
                         int i = 1;
                         for (const auto& res: results) {
-                            lua_createtable(fib, /*narr=*/0, /*nrec=*/4);
+                            lua_createtable(fib, /*narr=*/0, /*nrec=*/3);
 
-                            lua_pushvalue(fib, -1 -4);
+                            lua_pushvalue(fib, -1 -3);
                             auto a = static_cast<asio::ip::address*>(
                                 lua_newuserdata(fib, sizeof(asio::ip::address))
                             );
@@ -3090,21 +3080,17 @@ static int tcp_get_address_info(lua_State* L)
                             new (a) asio::ip::address{res.endpoint().address()};
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -3);
+                            lua_pushvalue(fib, -1 -2);
                             lua_pushinteger(fib, res.endpoint().port());
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -2);
+                            lua_pushvalue(fib, -1 -1);
                             push(fib, res.host_name());
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -1);
-                            push(fib, res.service_name());
-                            lua_rawset(fib, -3);
-
-                            lua_rawseti(fib, -6, i++);
+                            lua_rawseti(fib, -5, i++);
                         }
-                        lua_pop(fib, 4);
+                        lua_pop(fib, 3);
                     }
                 };
 
@@ -3251,8 +3237,7 @@ static int tcp_get_address_v4_info(lua_State* L)
             vm_ctx->strand_using_defer(),
             [
                 vm_ctx,current_fiber,query_ctx,
-                host=static_cast<std::string>(host),
-                service=static_cast<std::string>(service)
+                host=static_cast<std::string>(host)
             ](
                 boost::system::error_code ec
             ) {
@@ -3281,9 +3266,7 @@ static int tcp_get_address_v4_info(lua_State* L)
                     }
                 }
 
-                auto push_results = [&ec,&query_ctx,&host,&service](
-                    lua_State* L
-                ) {
+                auto push_results = [&ec,&query_ctx,&host](lua_State* L) {
                     if (ec) {
                         lua_pushnil(L);
                         return;
@@ -3293,7 +3276,6 @@ static int tcp_get_address_v4_info(lua_State* L)
                     lua_pushliteral(L, "address");
                     lua_pushliteral(L, "port");
                     lua_pushliteral(L, "host_name");
-                    lua_pushliteral(L, "service_name");
 
                     if (
                         query_ctx->results && query_ctx->results->ai_canonname
@@ -3303,19 +3285,18 @@ static int tcp_get_address_v4_info(lua_State* L)
                     } else {
                         push(L, host);
                     }
-                    push(L, service);
 
                     int i = 1;
                     for (
                         auto it = query_ctx->results ; it ; it = it->ai_next
                     ) {
-                        lua_createtable(L, /*narr=*/0, /*nrec=*/4);
+                        lua_createtable(L, /*narr=*/0, /*nrec=*/3);
 
                         asio::ip::tcp::endpoint ep;
                         ep.resize(it->ai_addrlen);
                         std::memcpy(ep.data(), it->ai_addr, ep.size());
 
-                        lua_pushvalue(L, -1 -6);
+                        lua_pushvalue(L, -1 -4);
                         auto a = static_cast<asio::ip::address*>(
                             lua_newuserdata(L, sizeof(asio::ip::address))
                         );
@@ -3324,21 +3305,17 @@ static int tcp_get_address_v4_info(lua_State* L)
                         new (a) asio::ip::address{ep.address()};
                         lua_rawset(L, -3);
 
-                        lua_pushvalue(L, -1 -5);
+                        lua_pushvalue(L, -1 -3);
                         lua_pushinteger(L, ep.port());
                         lua_rawset(L, -3);
 
-                        lua_pushvalue(L, -1 -4);
-                        lua_pushvalue(L, -2 -2);
+                        lua_pushvalue(L, -1 -2);
+                        lua_pushvalue(L, -1 -1);
                         lua_rawset(L, -3);
 
-                        lua_pushvalue(L, -1 -3);
-                        lua_pushvalue(L, -2 -1);
-                        lua_rawset(L, -3);
-
-                        lua_rawseti(L, -8, i++);
+                        lua_rawseti(L, -6, i++);
                     }
-                    lua_pop(L, 6);
+                    lua_pop(L, 4);
                 };
 
                 vm_ctx->fiber_resume(
@@ -3397,13 +3374,12 @@ static int tcp_get_address_v4_info(lua_State* L)
                         lua_pushliteral(fib, "address");
                         lua_pushliteral(fib, "port");
                         lua_pushliteral(fib, "host_name");
-                        lua_pushliteral(fib, "service_name");
 
                         int i = 1;
                         for (const auto& res: results) {
-                            lua_createtable(fib, /*narr=*/0, /*nrec=*/4);
+                            lua_createtable(fib, /*narr=*/0, /*nrec=*/3);
 
-                            lua_pushvalue(fib, -1 -4);
+                            lua_pushvalue(fib, -1 -3);
                             auto a = static_cast<asio::ip::address*>(
                                 lua_newuserdata(fib, sizeof(asio::ip::address))
                             );
@@ -3412,21 +3388,17 @@ static int tcp_get_address_v4_info(lua_State* L)
                             new (a) asio::ip::address{res.endpoint().address()};
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -3);
+                            lua_pushvalue(fib, -1 -2);
                             lua_pushinteger(fib, res.endpoint().port());
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -2);
+                            lua_pushvalue(fib, -1 -1);
                             push(fib, res.host_name());
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -1);
-                            push(fib, res.service_name());
-                            lua_rawset(fib, -3);
-
-                            lua_rawseti(fib, -6, i++);
+                            lua_rawseti(fib, -5, i++);
                         }
-                        lua_pop(fib, 4);
+                        lua_pop(fib, 3);
                     }
                 };
 
@@ -3574,8 +3546,7 @@ static int tcp_get_address_v6_info(lua_State* L)
             vm_ctx->strand_using_defer(),
             [
                 vm_ctx,current_fiber,query_ctx,
-                host=static_cast<std::string>(host),
-                service=static_cast<std::string>(service)
+                host=static_cast<std::string>(host)
             ](
                 boost::system::error_code ec
             ) {
@@ -3604,9 +3575,7 @@ static int tcp_get_address_v6_info(lua_State* L)
                     }
                 }
 
-                auto push_results = [&ec,&query_ctx,&host,&service](
-                    lua_State* L
-                ) {
+                auto push_results = [&ec,&query_ctx,&host](lua_State* L) {
                     if (ec) {
                         lua_pushnil(L);
                         return;
@@ -3616,7 +3585,6 @@ static int tcp_get_address_v6_info(lua_State* L)
                     lua_pushliteral(L, "address");
                     lua_pushliteral(L, "port");
                     lua_pushliteral(L, "host_name");
-                    lua_pushliteral(L, "service_name");
 
                     if (
                         query_ctx->results && query_ctx->results->ai_canonname
@@ -3626,19 +3594,18 @@ static int tcp_get_address_v6_info(lua_State* L)
                     } else {
                         push(L, host);
                     }
-                    push(L, service);
 
                     int i = 1;
                     for (
                         auto it = query_ctx->results ; it ; it = it->ai_next
                     ) {
-                        lua_createtable(L, /*narr=*/0, /*nrec=*/4);
+                        lua_createtable(L, /*narr=*/0, /*nrec=*/3);
 
                         asio::ip::tcp::endpoint ep;
                         ep.resize(it->ai_addrlen);
                         std::memcpy(ep.data(), it->ai_addr, ep.size());
 
-                        lua_pushvalue(L, -1 -6);
+                        lua_pushvalue(L, -1 -4);
                         auto a = static_cast<asio::ip::address*>(
                             lua_newuserdata(L, sizeof(asio::ip::address))
                         );
@@ -3647,21 +3614,17 @@ static int tcp_get_address_v6_info(lua_State* L)
                         new (a) asio::ip::address{ep.address()};
                         lua_rawset(L, -3);
 
-                        lua_pushvalue(L, -1 -5);
+                        lua_pushvalue(L, -1 -3);
                         lua_pushinteger(L, ep.port());
                         lua_rawset(L, -3);
 
-                        lua_pushvalue(L, -1 -4);
-                        lua_pushvalue(L, -2 -2);
+                        lua_pushvalue(L, -1 -2);
+                        lua_pushvalue(L, -1 -1);
                         lua_rawset(L, -3);
 
-                        lua_pushvalue(L, -1 -3);
-                        lua_pushvalue(L, -2 -1);
-                        lua_rawset(L, -3);
-
-                        lua_rawseti(L, -8, i++);
+                        lua_rawseti(L, -6, i++);
                     }
-                    lua_pop(L, 6);
+                    lua_pop(L, 4);
                 };
 
                 vm_ctx->fiber_resume(
@@ -3720,13 +3683,12 @@ static int tcp_get_address_v6_info(lua_State* L)
                         lua_pushliteral(fib, "address");
                         lua_pushliteral(fib, "port");
                         lua_pushliteral(fib, "host_name");
-                        lua_pushliteral(fib, "service_name");
 
                         int i = 1;
                         for (const auto& res: results) {
-                            lua_createtable(fib, /*narr=*/0, /*nrec=*/4);
+                            lua_createtable(fib, /*narr=*/0, /*nrec=*/3);
 
-                            lua_pushvalue(fib, -1 -4);
+                            lua_pushvalue(fib, -1 -3);
                             auto a = static_cast<asio::ip::address*>(
                                 lua_newuserdata(fib, sizeof(asio::ip::address))
                             );
@@ -3735,21 +3697,17 @@ static int tcp_get_address_v6_info(lua_State* L)
                             new (a) asio::ip::address{res.endpoint().address()};
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -3);
+                            lua_pushvalue(fib, -1 -2);
                             lua_pushinteger(fib, res.endpoint().port());
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -2);
+                            lua_pushvalue(fib, -1 -1);
                             push(fib, res.host_name());
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -1);
-                            push(fib, res.service_name());
-                            lua_rawset(fib, -3);
-
-                            lua_rawseti(fib, -6, i++);
+                            lua_rawseti(fib, -5, i++);
                         }
-                        lua_pop(fib, 4);
+                        lua_pop(fib, 3);
                     }
                 };
 
@@ -5422,8 +5380,7 @@ static int udp_get_address_info(lua_State* L)
             vm_ctx->strand_using_defer(),
             [
                 vm_ctx,current_fiber,query_ctx,
-                host=static_cast<std::string>(host),
-                service=static_cast<std::string>(service)
+                host=static_cast<std::string>(host)
             ](
                 boost::system::error_code ec
             ) {
@@ -5452,9 +5409,7 @@ static int udp_get_address_info(lua_State* L)
                     }
                 }
 
-                auto push_results = [&ec,&query_ctx,&host,&service](
-                    lua_State* L
-                ) {
+                auto push_results = [&ec,&query_ctx,&host](lua_State* L) {
                     if (ec) {
                         lua_pushnil(L);
                         return;
@@ -5464,7 +5419,6 @@ static int udp_get_address_info(lua_State* L)
                     lua_pushliteral(L, "address");
                     lua_pushliteral(L, "port");
                     lua_pushliteral(L, "host_name");
-                    lua_pushliteral(L, "service_name");
 
                     if (
                         query_ctx->results && query_ctx->results->ai_canonname
@@ -5474,19 +5428,18 @@ static int udp_get_address_info(lua_State* L)
                     } else {
                         push(L, host);
                     }
-                    push(L, service);
 
                     int i = 1;
                     for (
                         auto it = query_ctx->results ; it ; it = it->ai_next
                     ) {
-                        lua_createtable(L, /*narr=*/0, /*nrec=*/4);
+                        lua_createtable(L, /*narr=*/0, /*nrec=*/3);
 
                         asio::ip::tcp::endpoint ep;
                         ep.resize(it->ai_addrlen);
                         std::memcpy(ep.data(), it->ai_addr, ep.size());
 
-                        lua_pushvalue(L, -1 -6);
+                        lua_pushvalue(L, -1 -4);
                         auto a = static_cast<asio::ip::address*>(
                             lua_newuserdata(L, sizeof(asio::ip::address))
                         );
@@ -5495,21 +5448,17 @@ static int udp_get_address_info(lua_State* L)
                         new (a) asio::ip::address{ep.address()};
                         lua_rawset(L, -3);
 
-                        lua_pushvalue(L, -1 -5);
+                        lua_pushvalue(L, -1 -3);
                         lua_pushinteger(L, ep.port());
                         lua_rawset(L, -3);
 
-                        lua_pushvalue(L, -1 -4);
-                        lua_pushvalue(L, -2 -2);
+                        lua_pushvalue(L, -1 -2);
+                        lua_pushvalue(L, -1 -1);
                         lua_rawset(L, -3);
 
-                        lua_pushvalue(L, -1 -3);
-                        lua_pushvalue(L, -2 -1);
-                        lua_rawset(L, -3);
-
-                        lua_rawseti(L, -8, i++);
+                        lua_rawseti(L, -6, i++);
                     }
-                    lua_pop(L, 6);
+                    lua_pop(L, 4);
                 };
 
                 vm_ctx->fiber_resume(
@@ -5567,13 +5516,12 @@ static int udp_get_address_info(lua_State* L)
                         lua_pushliteral(fib, "address");
                         lua_pushliteral(fib, "port");
                         lua_pushliteral(fib, "host_name");
-                        lua_pushliteral(fib, "service_name");
 
                         int i = 1;
                         for (const auto& res: results) {
-                            lua_createtable(fib, /*narr=*/0, /*nrec=*/4);
+                            lua_createtable(fib, /*narr=*/0, /*nrec=*/3);
 
-                            lua_pushvalue(fib, -1 -4);
+                            lua_pushvalue(fib, -1 -3);
                             auto a = static_cast<asio::ip::address*>(
                                 lua_newuserdata(fib, sizeof(asio::ip::address))
                             );
@@ -5582,21 +5530,17 @@ static int udp_get_address_info(lua_State* L)
                             new (a) asio::ip::address{res.endpoint().address()};
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -3);
+                            lua_pushvalue(fib, -1 -2);
                             lua_pushinteger(fib, res.endpoint().port());
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -2);
+                            lua_pushvalue(fib, -1 -1);
                             push(fib, res.host_name());
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -1);
-                            push(fib, res.service_name());
-                            lua_rawset(fib, -3);
-
-                            lua_rawseti(fib, -6, i++);
+                            lua_rawseti(fib, -5, i++);
                         }
-                        lua_pop(fib, 4);
+                        lua_pop(fib, 3);
                     }
                 };
 
@@ -5743,8 +5687,7 @@ static int udp_get_address_v4_info(lua_State* L)
             vm_ctx->strand_using_defer(),
             [
                 vm_ctx,current_fiber,query_ctx,
-                host=static_cast<std::string>(host),
-                service=static_cast<std::string>(service)
+                host=static_cast<std::string>(host)
             ](
                 boost::system::error_code ec
             ) {
@@ -5773,9 +5716,7 @@ static int udp_get_address_v4_info(lua_State* L)
                     }
                 }
 
-                auto push_results = [&ec,&query_ctx,&host,&service](
-                    lua_State* L
-                ) {
+                auto push_results = [&ec,&query_ctx,&host](lua_State* L) {
                     if (ec) {
                         lua_pushnil(L);
                         return;
@@ -5785,7 +5726,6 @@ static int udp_get_address_v4_info(lua_State* L)
                     lua_pushliteral(L, "address");
                     lua_pushliteral(L, "port");
                     lua_pushliteral(L, "host_name");
-                    lua_pushliteral(L, "service_name");
 
                     if (
                         query_ctx->results && query_ctx->results->ai_canonname
@@ -5795,19 +5735,18 @@ static int udp_get_address_v4_info(lua_State* L)
                     } else {
                         push(L, host);
                     }
-                    push(L, service);
 
                     int i = 1;
                     for (
                         auto it = query_ctx->results ; it ; it = it->ai_next
                     ) {
-                        lua_createtable(L, /*narr=*/0, /*nrec=*/4);
+                        lua_createtable(L, /*narr=*/0, /*nrec=*/3);
 
                         asio::ip::tcp::endpoint ep;
                         ep.resize(it->ai_addrlen);
                         std::memcpy(ep.data(), it->ai_addr, ep.size());
 
-                        lua_pushvalue(L, -1 -6);
+                        lua_pushvalue(L, -1 -4);
                         auto a = static_cast<asio::ip::address*>(
                             lua_newuserdata(L, sizeof(asio::ip::address))
                         );
@@ -5816,21 +5755,17 @@ static int udp_get_address_v4_info(lua_State* L)
                         new (a) asio::ip::address{ep.address()};
                         lua_rawset(L, -3);
 
-                        lua_pushvalue(L, -1 -5);
+                        lua_pushvalue(L, -1 -3);
                         lua_pushinteger(L, ep.port());
                         lua_rawset(L, -3);
 
-                        lua_pushvalue(L, -1 -4);
-                        lua_pushvalue(L, -2 -2);
+                        lua_pushvalue(L, -1 -2);
+                        lua_pushvalue(L, -1 -1);
                         lua_rawset(L, -3);
 
-                        lua_pushvalue(L, -1 -3);
-                        lua_pushvalue(L, -2 -1);
-                        lua_rawset(L, -3);
-
-                        lua_rawseti(L, -8, i++);
+                        lua_rawseti(L, -6, i++);
                     }
-                    lua_pop(L, 6);
+                    lua_pop(L, 4);
                 };
 
                 vm_ctx->fiber_resume(
@@ -5889,13 +5824,12 @@ static int udp_get_address_v4_info(lua_State* L)
                         lua_pushliteral(fib, "address");
                         lua_pushliteral(fib, "port");
                         lua_pushliteral(fib, "host_name");
-                        lua_pushliteral(fib, "service_name");
 
                         int i = 1;
                         for (const auto& res: results) {
-                            lua_createtable(fib, /*narr=*/0, /*nrec=*/4);
+                            lua_createtable(fib, /*narr=*/0, /*nrec=*/3);
 
-                            lua_pushvalue(fib, -1 -4);
+                            lua_pushvalue(fib, -1 -3);
                             auto a = static_cast<asio::ip::address*>(
                                 lua_newuserdata(fib, sizeof(asio::ip::address))
                             );
@@ -5904,21 +5838,17 @@ static int udp_get_address_v4_info(lua_State* L)
                             new (a) asio::ip::address{res.endpoint().address()};
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -3);
+                            lua_pushvalue(fib, -1 -2);
                             lua_pushinteger(fib, res.endpoint().port());
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -2);
+                            lua_pushvalue(fib, -1 -1);
                             push(fib, res.host_name());
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -1);
-                            push(fib, res.service_name());
-                            lua_rawset(fib, -3);
-
-                            lua_rawseti(fib, -6, i++);
+                            lua_rawseti(fib, -5, i++);
                         }
-                        lua_pop(fib, 4);
+                        lua_pop(fib, 3);
                     }
                 };
 
@@ -6065,8 +5995,7 @@ static int udp_get_address_v6_info(lua_State* L)
             vm_ctx->strand_using_defer(),
             [
                 vm_ctx,current_fiber,query_ctx,
-                host=static_cast<std::string>(host),
-                service=static_cast<std::string>(service)
+                host=static_cast<std::string>(host)
             ](
                 boost::system::error_code ec
             ) {
@@ -6095,9 +6024,7 @@ static int udp_get_address_v6_info(lua_State* L)
                     }
                 }
 
-                auto push_results = [&ec,&query_ctx,&host,&service](
-                    lua_State* L
-                ) {
+                auto push_results = [&ec,&query_ctx,&host](lua_State* L) {
                     if (ec) {
                         lua_pushnil(L);
                         return;
@@ -6107,7 +6034,6 @@ static int udp_get_address_v6_info(lua_State* L)
                     lua_pushliteral(L, "address");
                     lua_pushliteral(L, "port");
                     lua_pushliteral(L, "host_name");
-                    lua_pushliteral(L, "service_name");
 
                     if (
                         query_ctx->results && query_ctx->results->ai_canonname
@@ -6117,19 +6043,18 @@ static int udp_get_address_v6_info(lua_State* L)
                     } else {
                         push(L, host);
                     }
-                    push(L, service);
 
                     int i = 1;
                     for (
                         auto it = query_ctx->results ; it ; it = it->ai_next
                     ) {
-                        lua_createtable(L, /*narr=*/0, /*nrec=*/4);
+                        lua_createtable(L, /*narr=*/0, /*nrec=*/3);
 
                         asio::ip::tcp::endpoint ep;
                         ep.resize(it->ai_addrlen);
                         std::memcpy(ep.data(), it->ai_addr, ep.size());
 
-                        lua_pushvalue(L, -1 -6);
+                        lua_pushvalue(L, -1 -4);
                         auto a = static_cast<asio::ip::address*>(
                             lua_newuserdata(L, sizeof(asio::ip::address))
                         );
@@ -6138,21 +6063,17 @@ static int udp_get_address_v6_info(lua_State* L)
                         new (a) asio::ip::address{ep.address()};
                         lua_rawset(L, -3);
 
-                        lua_pushvalue(L, -1 -5);
+                        lua_pushvalue(L, -1 -3);
                         lua_pushinteger(L, ep.port());
                         lua_rawset(L, -3);
 
-                        lua_pushvalue(L, -1 -4);
-                        lua_pushvalue(L, -2 -2);
+                        lua_pushvalue(L, -1 -2);
+                        lua_pushvalue(L, -1 -1);
                         lua_rawset(L, -3);
 
-                        lua_pushvalue(L, -1 -3);
-                        lua_pushvalue(L, -2 -1);
-                        lua_rawset(L, -3);
-
-                        lua_rawseti(L, -8, i++);
+                        lua_rawseti(L, -6, i++);
                     }
-                    lua_pop(L, 6);
+                    lua_pop(L, 4);
                 };
 
                 vm_ctx->fiber_resume(
@@ -6211,13 +6132,12 @@ static int udp_get_address_v6_info(lua_State* L)
                         lua_pushliteral(fib, "address");
                         lua_pushliteral(fib, "port");
                         lua_pushliteral(fib, "host_name");
-                        lua_pushliteral(fib, "service_name");
 
                         int i = 1;
                         for (const auto& res: results) {
-                            lua_createtable(fib, /*narr=*/0, /*nrec=*/4);
+                            lua_createtable(fib, /*narr=*/0, /*nrec=*/3);
 
-                            lua_pushvalue(fib, -1 -4);
+                            lua_pushvalue(fib, -1 -3);
                             auto a = static_cast<asio::ip::address*>(
                                 lua_newuserdata(fib, sizeof(asio::ip::address))
                             );
@@ -6226,21 +6146,17 @@ static int udp_get_address_v6_info(lua_State* L)
                             new (a) asio::ip::address{res.endpoint().address()};
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -3);
+                            lua_pushvalue(fib, -1 -2);
                             lua_pushinteger(fib, res.endpoint().port());
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -2);
+                            lua_pushvalue(fib, -1 -1);
                             push(fib, res.host_name());
                             lua_rawset(fib, -3);
 
-                            lua_pushvalue(fib, -1 -1);
-                            push(fib, res.service_name());
-                            lua_rawset(fib, -3);
-
-                            lua_rawseti(fib, -6, i++);
+                            lua_rawseti(fib, -5, i++);
                         }
-                        lua_pop(fib, 4);
+                        lua_pop(fib, 3);
                     }
                 };
 

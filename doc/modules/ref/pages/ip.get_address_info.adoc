@@ -22,7 +22,7 @@ ip.udp.get_address_v4_info()
 ip.udp.get_address_v6_info()
 
 function(host: string|ip.address, service: string|integer[, flags: integer])
-    -> { address: ip.address, port: integer, host_name: string, service_name: string }[]
+    -> { address: ip.address, port: integer, host_name: string }[]
 ----
 
 == Description
@@ -43,7 +43,6 @@ members:
 * `address: ip.address`.
 * `port: integer`.
 * `host_name: string`.
-* `service_name: string`.
 
 https://www.boost.org/doc/libs/1_70_0/doc/html/boost_asio/reference/ip__basic_resolver/async_resolve/overload3.html[More
 info on Boost.Asio documentation].
