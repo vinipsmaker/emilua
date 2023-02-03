@@ -18,19 +18,17 @@ ip.tcp.get_name_info()
 ip.udp.get_name_info()
 
 function(a: ip.address, port: integer)
-    -> { address: ip.address, port: integer, host_name: string, service_name: string }[]
+    -> { host_name: string, service_name: string }[]
 ----
 
 == Description
 
-Reverse-resolves the endpoint into a list of endpoint entries. Current fiber is
-suspended until operation finishes.
+Reverse-resolves the endpoint into a list of entries. Current fiber is suspended
+until operation finishes.
 
 Returns a list of entries. Each entry will be a table with the following
 members:
 
-* `address: ip.address`.
-* `port: integer`.
 * `host_name: string`.
 * `service_name: string`.
 

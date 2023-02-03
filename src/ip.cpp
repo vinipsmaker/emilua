@@ -3829,27 +3829,12 @@ static int tcp_get_name_info(lua_State* L)
                     } else {
                         lua_createtable(fib, /*narr=*/results.size(),
                                         /*nrec=*/0);
-                        lua_pushliteral(fib, "address");
-                        lua_pushliteral(fib, "port");
                         lua_pushliteral(fib, "host_name");
                         lua_pushliteral(fib, "service_name");
 
                         int i = 1;
                         for (const auto& res: results) {
-                            lua_createtable(fib, /*narr=*/0, /*nrec=*/4);
-
-                            lua_pushvalue(fib, -1 -4);
-                            auto a = static_cast<asio::ip::address*>(
-                                lua_newuserdata(fib, sizeof(asio::ip::address))
-                            );
-                            rawgetp(fib, LUA_REGISTRYINDEX, &ip_address_mt_key);
-                            setmetatable(fib, -2);
-                            new (a) asio::ip::address{res.endpoint().address()};
-                            lua_rawset(fib, -3);
-
-                            lua_pushvalue(fib, -1 -3);
-                            lua_pushinteger(fib, res.endpoint().port());
-                            lua_rawset(fib, -3);
+                            lua_createtable(fib, /*narr=*/0, /*nrec=*/2);
 
                             lua_pushvalue(fib, -1 -2);
                             push(fib, res.host_name());
@@ -3859,9 +3844,9 @@ static int tcp_get_name_info(lua_State* L)
                             push(fib, res.service_name());
                             lua_rawset(fib, -3);
 
-                            lua_rawseti(fib, -6, i++);
+                            lua_rawseti(fib, -4, i++);
                         }
-                        lua_pop(fib, 4);
+                        lua_pop(fib, 2);
                     }
                 };
 
@@ -6335,27 +6320,12 @@ static int udp_get_name_info(lua_State* L)
                     } else {
                         lua_createtable(fib, /*narr=*/results.size(),
                                         /*nrec=*/0);
-                        lua_pushliteral(fib, "address");
-                        lua_pushliteral(fib, "port");
                         lua_pushliteral(fib, "host_name");
                         lua_pushliteral(fib, "service_name");
 
                         int i = 1;
                         for (const auto& res: results) {
-                            lua_createtable(fib, /*narr=*/0, /*nrec=*/4);
-
-                            lua_pushvalue(fib, -1 -4);
-                            auto a = static_cast<asio::ip::address*>(
-                                lua_newuserdata(fib, sizeof(asio::ip::address))
-                            );
-                            rawgetp(fib, LUA_REGISTRYINDEX, &ip_address_mt_key);
-                            setmetatable(fib, -2);
-                            new (a) asio::ip::address{res.endpoint().address()};
-                            lua_rawset(fib, -3);
-
-                            lua_pushvalue(fib, -1 -3);
-                            lua_pushinteger(fib, res.endpoint().port());
-                            lua_rawset(fib, -3);
+                            lua_createtable(fib, /*narr=*/0, /*nrec=*/2);
 
                             lua_pushvalue(fib, -1 -2);
                             push(fib, res.host_name());
@@ -6365,9 +6335,9 @@ static int udp_get_name_info(lua_State* L)
                             push(fib, res.service_name());
                             lua_rawset(fib, -3);
 
-                            lua_rawseti(fib, -6, i++);
+                            lua_rawseti(fib, -4, i++);
                         }
-                        lua_pop(fib, 4);
+                        lua_pop(fib, 2);
                     }
                 };
 
