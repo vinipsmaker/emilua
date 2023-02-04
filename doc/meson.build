@@ -25,6 +25,7 @@ src3 = [
     'modules/ref/pages/ip.get_name_info.adoc',
     'modules/ref/pages/ip.host_name.adoc',
     'modules/ref/pages/ip.tostring.adoc',
+    'modules/ref/pages/ip.toendpoint.adoc',
     'modules/ref/pages/ip.message_flag.adoc',
     'modules/ref/pages/ip.tcp.acceptor.adoc',
     'modules/ref/pages/ip.tcp.socket.adoc',

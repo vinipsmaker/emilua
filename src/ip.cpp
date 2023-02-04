@@ -184,6 +184,72 @@ static int ip_tostring(lua_State* L)
     return 1;
 }
 
+static int ip_toendpoint(lua_State* L)
+{
+    luaL_checktype(L, 1, LUA_TSTRING);
+
+    std::string_view host = tostringview(L, 1);
+    std::uint16_t port;
+
+    {
+        auto idx = host.rfind(':');
+        if (idx == std::string_view::npos) {
+            push(L, std::errc::invalid_argument, "arg", 1);
+            return lua_error(L);
+        }
+
+        std::string_view p = host.substr(idx + 1);
+        if (p.starts_with("0") && p.size() != 1) {
+            push(L, std::errc::invalid_argument, "arg", 1);
+            return lua_error(L);
+        }
+
+        auto res = std::from_chars(p.data(), p.data() + p.size(), port);
+        if (res.ec != std::errc{}) {
+            push(L, res.ec, "arg", 1);
+            return lua_error(L);
+        } else if (res.ptr != p.data() + p.size()) {
+            push(L, std::errc::invalid_argument, "arg", 1);
+            return lua_error(L);
+        }
+
+        host.remove_suffix(p.size() + 1);
+    }
+
+    bool is_ipv6 = false;
+    if (host.starts_with("[")) {
+        if (host.back() != ']') {
+            push(L, std::errc::invalid_argument, "arg", 1);
+            return lua_error(L);
+        }
+        host.remove_suffix(1);
+        host.remove_prefix(1);
+        is_ipv6 = true;
+    }
+
+    auto addr = static_cast<asio::ip::address*>(
+        lua_newuserdata(L, sizeof(asio::ip::address))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+    setmetatable(L, -2);
+
+    boost::system::error_code ec;
+    new (addr) asio::ip::address{asio::ip::make_address(host, ec)};
+    if (ec) {
+        push(L, static_cast<std::error_code>(ec));
+        return lua_error(L);
+    }
+
+    if ((is_ipv6 && addr->is_v4()) || (!is_ipv6 && addr->is_v6())) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    lua_pushinteger(L, port);
+
+    return 2;
+}
+
 static int address_new(lua_State* L)
 {
     lua_settop(L, 1);
@@ -6337,10 +6403,14 @@ void init_ip(lua_State* L)
 {
     lua_pushlightuserdata(L, &ip_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/8);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/9);
 
         lua_pushliteral(L, "tostring");
         lua_pushcfunction(L, ip_tostring);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "toendpoint");
+        lua_pushcfunction(L, ip_toendpoint);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "host_name");

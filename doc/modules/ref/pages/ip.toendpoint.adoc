@@ -1,0 +1,22 @@
+= ip.toendpoint
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local ip = require "ip"
+ip.toendpoint(ep: string) -> ip.address, integer
+----
+
+== Description
+
+Convert a traditional network endpoint (IP address {plus} unsigned 16-bit
+integer) from its string representation to its decoupled members.
