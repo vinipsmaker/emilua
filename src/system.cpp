@@ -11,6 +11,7 @@
 #include <cstdlib>
 
 #include <boost/preprocessor/control/iif.hpp>
+#include <boost/container/small_vector.hpp>
 #include <boost/predef/os/windows.h>
 #include <boost/asio/signal_set.hpp>
 #include <boost/vmd/is_number.hpp>
@@ -75,6 +76,7 @@ struct spawn_arguments_t
     int proc_stdin;
     int proc_stdout;
     int proc_stderr;
+    boost::container::small_vector<std::pair<int, int>, 7> extra_fds;
 
     std::optional<int> scheduler_policy;
     std::optional<int> scheduler_priority;
@@ -1699,6 +1701,9 @@ static int system_spawn_child_main(void* a)
         return 1;
     }
 
+    // operations on file descriptors that will not change the file descriptor
+    // table for the process {{{
+
     if (args->nsenter_user != -1) {
         if (setns(args->nsenter_user, CLONE_NEWUSER) == -1) {
             reply.code = errno;
@@ -1738,6 +1743,14 @@ static int system_spawn_child_main(void* a)
             return 1;
         }
     }
+
+    // }}}
+
+    // operations on file descriptors that will change the file descriptor table
+    // for the process {{{
+
+    // first operations that only mutate the safe range (destination will not
+    // override source file descriptors that may be used later)
 
     switch (args->proc_stdin) {
     case -1: {
@@ -1814,15 +1827,102 @@ static int system_spawn_child_main(void* a)
         }
     }
 
-    if (dup3(args->closeonexecpipe, 3, O_CLOEXEC) == -1) {
-        reply.code = errno;
-        write(args->closeonexecpipe, &reply, sizeof(reply));
-        return 1;
+    // now operations that might override fds that we would use later if we're
+    // not careful
+
+    // return a number > 9 that is not used by any source fd
+    auto nextfd = [idx=10,&args]() mutable {
+        for (;;++idx) {
+            if (idx == args->closeonexecpipe)
+                continue;
+
+            bool is_busy = false;
+            for (const auto& [_, src] : args->extra_fds) {
+                if (idx == src) {
+                    is_busy = true;
+                    break;
+                }
+            }
+            if (is_busy)
+                continue;
+
+            break;
+        }
+        return idx++;
+    };
+
+    // destination is reserved for fds<10, so start by relocating any source
+    // file descriptor in the range [3,10)
+
+    if (args->closeonexecpipe < 10) {
+        int dst = nextfd();
+        if (dup2(args->closeonexecpipe, dst) == -1) {
+            reply.code = errno;
+            write(args->closeonexecpipe, &reply, sizeof(reply));
+            return 1;
+        }
+        args->closeonexecpipe = dst;
     }
 
-    if (close_range(/*first=*/4, /*last=*/~0U, /*flags=*/0) == -1) {
+    for (auto& [_, src] : args->extra_fds) {
+        if (src > 9)
+            continue;
+
+        int src2 = nextfd();
+        if (dup2(src, src2) == -1) {
+            reply.code = errno;
+            write(args->closeonexecpipe, &reply, sizeof(reply));
+            return 1;
+        }
+        src = src2;
+    }
+
+    // finally perform the operations that will destroy old fds in the range
+    // [3,10)
+
+    for (int i = 3 ; i != 10 ; ++i) {
+        bool inherit = false;
+        for (auto& [dst, src] : args->extra_fds) {
+            if (dst != i)
+                continue;
+
+            if (dup2(src, dst) == -1) {
+                reply.code = errno;
+                write(args->closeonexecpipe, &reply, sizeof(reply));
+                return 1;
+            }
+
+            inherit = true;
+            break;
+        }
+        if (!inherit)
+            close(i);
+    }
+
+    // }}}
+
+    // do all necessary bookkeeping to close range [10,inf) on exec()
+
+    if (args->closeonexecpipe != 10) {
+        if (dup2(args->closeonexecpipe, 10) == -1) {
+            reply.code = errno;
+            write(args->closeonexecpipe, &reply, sizeof(reply));
+            return 1;
+        }
+    }
+
+    {
+        int oldflags = fcntl(10, F_GETFD);
+        if (fcntl(10, F_SETFD, oldflags | FD_CLOEXEC) == -1) {
+            reply.code = errno;
+            write(10, &reply, sizeof(reply));
+            return 1;
+        }
+    }
+
+    if (close_range(/*first=*/11, /*last=*/UINT_MAX, /*flags=*/0) == -1) {
         reply.code = errno;
-        write(3, &reply, sizeof(reply));
+        write(10, &reply, sizeof(reply));
         return 1;
     }
 
@@ -1832,7 +1932,7 @@ static int system_spawn_child_main(void* a)
         execve(args->program, args->argv, args->envp);
 
     reply.code = errno;
-    write(3, &reply, sizeof(reply));
+    write(10, &reply, sizeof(reply));
     return 1;
 }
 
@@ -2041,6 +2141,50 @@ static int system_spawn_do(bool use_path, lua_State* L)
     }
     default:
         push(L, std::errc::invalid_argument, "arg", "stderr");
+        return lua_error(L);
+    }
+    lua_pop(L, 1);
+
+    boost::container::small_vector<std::pair<int, int>, 7> extra_fds;
+    lua_getfield(L, 1, "extra_fds");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TTABLE:
+        for (int i = 3 ; i != 10 ; ++i) {
+            lua_rawgeti(L, -1, i);
+            switch (lua_type(L, -1)) {
+            case LUA_TNIL:
+                lua_pop(L, 1);
+                break;
+            case LUA_TUSERDATA: {
+                auto handle = static_cast<file_descriptor_handle*>(
+                    lua_touserdata(L, -1));
+                if (!lua_getmetatable(L, -1)) {
+                    push(L, std::errc::invalid_argument, "arg", "extra_fds");
+                    return lua_error(L);
+                }
+                if (!lua_rawequal(L, -1, FILE_DESCRIPTOR_MT_INDEX)) {
+                    push(L, std::errc::invalid_argument, "arg", "extra_fds");
+                    return lua_error(L);
+                }
+                if (*handle == INVALID_FILE_DESCRIPTOR) {
+                    push(L, std::errc::device_or_resource_busy,
+                         "arg", "extra_fds");
+                    return lua_error(L);
+                }
+                extra_fds.emplace_back(i, *handle);
+                lua_pop(L, 2);
+                break;
+            }
+            default:
+                push(L, std::errc::invalid_argument, "arg", "extra_fds");
+                return lua_error(L);
+            }
+        }
+        break;
+    default:
+        push(L, std::errc::invalid_argument, "arg", "extra_fds");
         return lua_error(L);
     }
     lua_pop(L, 1);
@@ -2456,6 +2600,7 @@ static int system_spawn_do(bool use_path, lua_State* L)
     args.proc_stdin = proc_stdin;
     args.proc_stdout = proc_stdout;
     args.proc_stderr = proc_stderr;
+    args.extra_fds = extra_fds;
     args.scheduler_policy = scheduler_policy;
     args.scheduler_priority = scheduler_priority;
     args.start_new_session = start_new_session;

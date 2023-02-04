@@ -64,6 +64,17 @@ Use the file descriptor as the specified standard handle (`stdin`, `stdout`, or
 Create and use a closed pipe end as the specified standard handle (`stdin`,
 `stdout`, or `stderr`) for the spawned process.
 
+`extra_fds: { [integer]: file_descriptor }|nil`::
+
+Extra file descriptors for the child to inherit. Parent and child processes
+don't need to share the same numeric value reference for a given file
+description. The file descriptor number used in the child process will be the
+one specified in the key portion of the dictionary argument. Only file
+descriptors numbered from `3` to `9` are acceptable (i.e. the same limitations
+of low fds that you're likely to face on older UNIX shells). If you need to pass
+more than 10 file descriptors -- stdin, stdout, stderr, plus these extra 7 file
+descriptors -- use another interface (e.g. `SCM_RIGHTS`).
+
 `signal_on_gcreaper: integer = system.SIGTERM`::
 
 Each process is responsible for reaping its own children. A process that fails
