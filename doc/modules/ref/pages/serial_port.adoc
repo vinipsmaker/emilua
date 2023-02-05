@@ -28,6 +28,18 @@ new(fd: file_descriptor) -- <2>
 <1> Default constructor.
 <2> Converts a file descriptor into a `serial_port` object.
 
+=== `ptypair() -> serial_port, file_descriptor`
+
+Open a pair of connected pseudoterminal devices. Returns the master and the
+slave ends, respectively.
+
+NOTE: The flag `O_NOCTTY` will be used to open the slave end so it doesn't
+accidentally become the controlling terminal for the session of the calling
+process.
+
+TIP: Use the returned `file_descriptor` object in ``system.spawn()``'s
+`set_ctty`.
+
 === `open(self, device: string)`
 
 Open the serial port using the specified device name.

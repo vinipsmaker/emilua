@@ -856,15 +856,80 @@ static int serial_port_new(lua_State* L)
 #endif // BOOST_OS_UNIX
 }
 
+#if BOOST_OS_UNIX
+static int serial_ptypair(lua_State* L)
+{
+    auto& vm_ctx = get_vm_context(L);
+
+    int masterfd = posix_openpt(O_RDWR | O_NOCTTY);
+    if (masterfd == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    BOOST_SCOPE_EXIT_ALL(&) { if (masterfd != -1) { close(masterfd); } };
+
+    if (grantpt(masterfd) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+
+    if (unlockpt(masterfd) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+
+    char* slavepath = ptsname(masterfd);
+    if (slavepath == NULL) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+
+    int slavefd = open(slavepath, O_RDWR | O_NONBLOCK | O_NOCTTY);
+    if (slavefd == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    BOOST_SCOPE_EXIT_ALL(&) { if (slavefd != -1) { close(slavefd); } };
+
+    auto master = static_cast<asio::serial_port*>(
+        lua_newuserdata(L, sizeof(asio::serial_port))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &serial_port_mt_key);
+    setmetatable(L, -2);
+    new (master) asio::serial_port{vm_ctx.strand().context()};
+
+    boost::system::error_code ec;
+    master->assign(masterfd, ec);
+    assert(!ec); boost::ignore_unused(ec);
+    masterfd = -1;
+
+    auto slave = static_cast<file_descriptor_handle*>(
+        lua_newuserdata(L, sizeof(file_descriptor_handle))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
+    setmetatable(L, -2);
+    *slave = slavefd;
+    slavefd = -1;
+
+    return 2;
+}
+#endif // BOOST_OS_UNIX
+
 void init_serial_port(lua_State* L)
 {
     lua_pushlightuserdata(L, &serial_port_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/1);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/2);
 
         lua_pushliteral(L, "new");
         lua_pushcfunction(L, serial_port_new);
         lua_rawset(L, -3);
+
+#if BOOST_OS_UNIX
+        lua_pushliteral(L, "ptypair");
+        lua_pushcfunction(L, serial_ptypair);
+        lua_rawset(L, -3);
+#endif // BOOST_OS_UNIX
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
