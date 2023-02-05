@@ -35,6 +35,22 @@ static int serial_port_open(lua_State* L)
         return lua_error(L);
     }
 
+#if BOOST_OS_UNIX
+    // Boost.Asio unfortunately ruins the state of whatever serial port you try
+    // to open by setting "default serial port options" without ever asking the
+    // user whether he wanted that. We skip all this crap by opening the device
+    // ourselves.
+    int fd = open(lua_tostring(L, 2), O_RDWR | O_NONBLOCK | O_NOCTTY);
+    if (fd == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+
+    boost::system::error_code ec;
+    port->assign(fd, ec);
+    assert(!ec); boost::ignore_unused(ec);
+    return 0;
+#else
     boost::system::error_code ec;
     port->open(static_cast<std::string>(tostringview(L, 2)), ec);
     if (ec) {
@@ -42,6 +58,7 @@ static int serial_port_open(lua_State* L)
         return lua_error(L);
     }
     return 0;
+#endif // BOOST_OS_UNIX
 }
 
 static int serial_port_close(lua_State* L)
