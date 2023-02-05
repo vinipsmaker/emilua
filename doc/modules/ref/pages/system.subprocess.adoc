@@ -135,10 +135,28 @@ set `scheduler.policy`.
 Whether to create a new session and become the session leader. On `true`, calls
 `setsid()` on the child.
 
+`set_ctty: file_descriptor|nil`::
+
+Set the controlling terminal for the child. It is an error to specify
+`set_ctty`, but omit `start_new_session`.
++
+NOTE: It's an error to specify both `set_ctty` and `foreground`.
+
 `process_group: integer|nil`::
 
 Set the process group (it calls `setpgid()` on the child). On 0, the child's
 process group ID is made the same as its process ID.
+
+`foreground: "stdin"|"stdout"|"stderr"|file_descriptor|nil`::
+
+Make the child be the foreground job for the specified controlling terminal by
+calling `tcsetpgrp()` (`SIGTTOU` will be blocked for the duration of the call).
+It is an error to specify `foreground`, but omit `process_group`.
++
+NOTE: `"stdin"`, `"stdout"`, and `"stderr"` can only be specified if parent and
+child share the same file for the specified standard handle.
++
+NOTE: It's an error to specify both `foreground` and `set_ctty`.
 
 `ruid: integer|nil`::
 

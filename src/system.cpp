@@ -81,7 +81,9 @@ struct spawn_arguments_t
     std::optional<int> scheduler_policy;
     std::optional<int> scheduler_priority;
     bool start_new_session;
+    int set_ctty;
     std::optional<pid_t> process_group;
+    int foreground;
     uid_t ruid;
     uid_t euid;
     gid_t rgid;
@@ -1704,6 +1706,35 @@ static int system_spawn_child_main(void* a)
     // operations on file descriptors that will not change the file descriptor
     // table for the process {{{
 
+    if (args->set_ctty != -1) {
+        if (ioctl(args->set_ctty, TIOCSCTTY, /*force=*/0) == -1) {
+            reply.code = errno;
+            write(args->closeonexecpipe, &reply, sizeof(reply));
+            return 1;
+        }
+    } else if (args->foreground != -1) {
+        pid_t pgrp;
+        assert(args->process_group);
+        if (*args->process_group != 0) {
+            pgrp = *args->process_group;
+        } else {
+            pgrp = getpgrp();
+        }
+
+        sigset_t set;
+        sigemptyset(&set);
+        sigaddset(&set, SIGTTOU);
+        sigprocmask(SIG_BLOCK, &set, /*oldset=*/NULL);
+
+        if (tcsetpgrp(args->foreground, pgrp) == -1) {
+            reply.code = errno;
+            write(args->closeonexecpipe, &reply, sizeof(reply));
+            return 1;
+        }
+
+        sigprocmask(SIG_UNBLOCK, &set, /*oldset=*/NULL);
+    }
+
     if (args->nsenter_user != -1) {
         if (setns(args->nsenter_user, CLONE_NEWUSER) == -1) {
             reply.code = errno;
@@ -2313,6 +2344,41 @@ static int system_spawn_do(bool use_path, lua_State* L)
     }
     lua_pop(L, 1);
 
+    int set_ctty = -1;
+    lua_getfield(L, 1, "set_ctty");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TUSERDATA: {
+        if (!start_new_session) {
+            push(L, std::errc::invalid_argument, "arg", "set_ctty");
+            return lua_error(L);
+        }
+
+        auto handle = static_cast<file_descriptor_handle*>(
+            lua_touserdata(L, -1));
+        if (!lua_getmetatable(L, -1)) {
+            push(L, std::errc::invalid_argument, "arg", "set_ctty");
+            return lua_error(L);
+        }
+        if (!lua_rawequal(L, -1, FILE_DESCRIPTOR_MT_INDEX)) {
+            push(L, std::errc::invalid_argument, "arg", "set_ctty");
+            return lua_error(L);
+        }
+        lua_pop(L, 1);
+        if (*handle == INVALID_FILE_DESCRIPTOR) {
+            push(L, std::errc::device_or_resource_busy, "arg", "set_ctty");
+            return lua_error(L);
+        }
+        set_ctty = *handle;
+        break;
+    }
+    default:
+        push(L, std::errc::invalid_argument, "arg", "set_ctty");
+        return lua_error(L);
+    }
+    lua_pop(L, 1);
+
     std::optional<pid_t> process_group;
     lua_getfield(L, 1, "process_group");
     switch (lua_type(L, -1)) {
@@ -2326,6 +2392,80 @@ static int system_spawn_do(bool use_path, lua_State* L)
         return lua_error(L);
     }
     lua_pop(L, 1);
+
+    int foreground = -1;
+    lua_getfield(L, 1, "foreground");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TSTRING: {
+        if (!process_group) {
+            push(L, std::errc::invalid_argument, "arg", "foreground");
+            return lua_error(L);
+        }
+
+        auto value = tostringview(L);
+        if (value == "stdin") {
+            if (proc_stdin != STDIN_FILENO) {
+                push(L, std::errc::invalid_argument, "arg", "foreground");
+                return lua_error(L);
+            }
+
+            foreground = STDIN_FILENO;
+        } else if (value == "stdout") {
+            if (proc_stdout != STDOUT_FILENO) {
+                push(L, std::errc::invalid_argument, "arg", "foreground");
+                return lua_error(L);
+            }
+
+            foreground = STDOUT_FILENO;
+        } else if (value == "stderr") {
+            if (proc_stderr != STDERR_FILENO) {
+                push(L, std::errc::invalid_argument, "arg", "foreground");
+                return lua_error(L);
+            }
+
+            foreground = STDERR_FILENO;
+        } else {
+            push(L, std::errc::invalid_argument, "arg", "foreground");
+            return lua_error(L);
+        }
+        break;
+    }
+    case LUA_TUSERDATA: {
+        if (!process_group) {
+            push(L, std::errc::invalid_argument, "arg", "foreground");
+            return lua_error(L);
+        }
+
+        auto handle = static_cast<file_descriptor_handle*>(
+            lua_touserdata(L, -1));
+        if (!lua_getmetatable(L, -1)) {
+            push(L, std::errc::invalid_argument, "arg", "foreground");
+            return lua_error(L);
+        }
+        if (!lua_rawequal(L, -1, FILE_DESCRIPTOR_MT_INDEX)) {
+            push(L, std::errc::invalid_argument, "arg", "foreground");
+            return lua_error(L);
+        }
+        lua_pop(L, 1);
+        if (*handle == INVALID_FILE_DESCRIPTOR) {
+            push(L, std::errc::device_or_resource_busy, "arg", "foreground");
+            return lua_error(L);
+        }
+        foreground = *handle;
+        break;
+    }
+    default:
+        push(L, std::errc::invalid_argument, "arg", "foreground");
+        return lua_error(L);
+    }
+    lua_pop(L, 1);
+
+    if (set_ctty != -1 && foreground != -1) {
+        push(L, std::errc::invalid_argument, "arg", "set_ctty/foreground");
+        return lua_error(L);
+    }
 
     uid_t ruid = -1;
     lua_getfield(L, 1, "ruid");
@@ -2604,7 +2744,9 @@ static int system_spawn_do(bool use_path, lua_State* L)
     args.scheduler_policy = scheduler_policy;
     args.scheduler_priority = scheduler_priority;
     args.start_new_session = start_new_session;
+    args.set_ctty = set_ctty;
     args.process_group = process_group;
+    args.foreground = foreground;
     args.ruid = ruid;
     args.euid = euid;
     args.rgid = rgid;
