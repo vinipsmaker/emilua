@@ -125,25 +125,13 @@ Whether the port is open.
 
 Read or write current baud rate setting.
 
-=== `flow_control: string`
+=== `flow_control: "software"|"hardware"|nil`
 
 Read or write current flow control setting.
 
-It can be one of:
-
-* `"none"`.
-* `"software"`.
-* `"hardware"`.
-
-=== `parity: string`
+=== `parity: "odd"|"even"|nil`
 
 Read or write current parity setting.
-
-It can be one of:
-
-* `"none"`.
-* `"odd"`.
-* `"even"`.
 
 === `stop_bits: string`
 
