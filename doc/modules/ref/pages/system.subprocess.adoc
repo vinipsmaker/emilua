@@ -184,6 +184,18 @@ Set the supplementary group IDs.
 
 Sets the working directory for the spawned program.
 
+`pdeathsig: integer|nil`::
+
+Signal that the process will get when its parent dies. If the executable file
+contains set-user-ID, set-group-ID, or contains associated capabilities,
+`pdeathsig` will be cleared.
++
+NOTE: “Parent” is a difficult term to define here. For Linux, that's not the
+process, but the thread. For Emilua, the thread will exist for at least as long
+as the calling Lua VM exists (even if the Lua VM might jump between
+threads). The thread will also exist for even longer, for as long as other Lua
+VMs are using it.
+
 `nsenter_user: file_descriptor|nil`::
 
 Enter in this Linux user namespace. When `nsenter_user` is specified, Emilua

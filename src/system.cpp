@@ -37,6 +37,7 @@
 #if BOOST_OS_LINUX
 #include <linux/close_range.h>
 #include <sys/capability.h>
+#include <sys/prctl.h>
 #include <sys/wait.h>
 #include <grp.h>
 #endif // BOOST_OS_LINUX
@@ -90,6 +91,7 @@ struct spawn_arguments_t
     gid_t egid;
     std::optional<std::vector<gid_t>> extra_groups;
     std::optional<std::string> working_directory;
+    std::optional<unsigned long> pdeathsig;
     int nsenter_user;
     int nsenter_mount;
     int nsenter_uts;
@@ -1703,6 +1705,12 @@ static int system_spawn_child_main(void* a)
         return 1;
     }
 
+    if (args->pdeathsig && prctl(PR_SET_PDEATHSIG, *args->pdeathsig) == -1) {
+        reply.code = errno;
+        write(args->closeonexecpipe, &reply, sizeof(reply));
+        return 1;
+    }
+
     // operations on file descriptors that will not change the file descriptor
     // table for the process {{{
 
@@ -2567,6 +2575,20 @@ static int system_spawn_do(bool use_path, lua_State* L)
     }
     lua_pop(L, 1);
 
+    std::optional<unsigned long> pdeathsig;
+    lua_getfield(L, 1, "pdeathsig");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TNUMBER:
+        pdeathsig.emplace(lua_tointeger(L, -1));
+        break;
+    default:
+        push(L, std::errc::invalid_argument, "arg", "pdeathsig");
+        return lua_error(L);
+    }
+    lua_pop(L, 1);
+
     int nsenter_user = -1;
     lua_getfield(L, 1, "nsenter_user");
     switch (lua_type(L, -1)) {
@@ -2753,6 +2775,7 @@ static int system_spawn_do(bool use_path, lua_State* L)
     args.egid = egid;
     args.extra_groups = std::move(extra_groups);
     args.working_directory = working_directory;
+    args.pdeathsig = pdeathsig;
     args.nsenter_user = nsenter_user;
     args.nsenter_mount = nsenter_mount;
     args.nsenter_uts = nsenter_uts;
