@@ -180,6 +180,10 @@ executable file, its effect will override this setting (see execve(2)).
 
 Set the supplementary group IDs.
 
+`umask: integer|nil`::
+
+See umask(3p).
+
 `working_directory: string|nil`::
 
 Sets the working directory for the spawned program.

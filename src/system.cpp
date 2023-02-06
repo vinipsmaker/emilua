@@ -90,6 +90,7 @@ struct spawn_arguments_t
     gid_t rgid;
     gid_t egid;
     std::optional<std::vector<gid_t>> extra_groups;
+    std::optional<mode_t> umask;
     std::optional<std::string> working_directory;
     std::optional<unsigned long> pdeathsig;
     int nsenter_user;
@@ -1697,6 +1698,8 @@ static int system_spawn_child_main(void* a)
         }
     }
 
+    if (args->umask) umask(*args->umask);
+
     if (
         args->working_directory && chdir(args->working_directory->data()) == -1
     ) {
@@ -2561,6 +2564,20 @@ static int system_spawn_do(bool use_path, lua_State* L)
     }
     lua_pop(L, 1);
 
+    std::optional<mode_t> umask;
+    lua_getfield(L, 1, "umask");
+    switch (lua_type(L, -1)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TNUMBER:
+        umask.emplace(lua_tointeger(L, -1));
+        break;
+    default:
+        push(L, std::errc::invalid_argument, "arg", "umask");
+        return lua_error(L);
+    }
+    lua_pop(L, 1);
+
     std::optional<std::string> working_directory;
     lua_getfield(L, 1, "working_directory");
     switch (lua_type(L, -1)) {
@@ -2774,6 +2791,7 @@ static int system_spawn_do(bool use_path, lua_State* L)
     args.rgid = rgid;
     args.egid = egid;
     args.extra_groups = std::move(extra_groups);
+    args.umask = umask;
     args.working_directory = working_directory;
     args.pdeathsig = pdeathsig;
     args.nsenter_user = nsenter_user;
