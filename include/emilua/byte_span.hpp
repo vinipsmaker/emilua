@@ -25,9 +25,8 @@ struct byte_span_handle
         , capacity(o.capacity)
     {}
 
-    // TODO (C++20): use make_shared_for_overwrite()
     byte_span_handle(lua_Integer size, lua_Integer capacity)
-        : data(new unsigned char[capacity])
+        : data{std::make_shared_for_overwrite<unsigned char[]>(capacity)}
         , size(size)
         , capacity(capacity)
     {}
