@@ -207,13 +207,6 @@ static int mark_module_as_loaded(lua_State* L)
 
 static int require(lua_State* L)
 {
-    // std::string_view::starts_with() only appeared in C++20
-    static constexpr auto starts_with = [](
-        std::string_view base, std::string_view prefix) {
-        base = base.substr(0, prefix.size());
-        return base == prefix;
-    };
-
     auto vm_ctx = get_vm_context(L).shared_from_this();
     luaL_checktype(L, 1, LUA_TSTRING);
     auto module_id = tostringview(L, 1);
@@ -234,7 +227,7 @@ static int require(lua_State* L)
     lua_Integer lua_context;
     switch (lua_tointeger(L, CTXIDX)) {
     case ContextType::test:
-        lua_context = starts_with(module_id, ".") ?
+        lua_context = module_id.starts_with(".") ?
             ContextType::test : ContextType::regular_context;
         break;
     default:
@@ -408,8 +401,8 @@ static int require(lua_State* L)
     re2c:indent:string = "    ";
     */
     /*!include:re2c "emilua/modules.re" */
-    if (starts_with(module_id, ".")) {
-        if (starts_with(module_id, "./"))
+    if (module_id.starts_with(".")) {
+        if (module_id.starts_with("./"))
             module_id.remove_prefix(2);
 
         const char* YYCURSOR = module_id.data();
@@ -518,7 +511,7 @@ static int require(lua_State* L)
             module_source->get(),
             module_is_leaf,
             nullptr);
-    } else if (starts_with(module_id, "/")) {
+    } else if (module_id.starts_with("/")) {
         // TODO: detect cycles
 
         lua_rawgeti(L, STACKIDX, 1);

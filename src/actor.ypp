@@ -1057,13 +1057,6 @@ static int inbox_gc(lua_State* L)
 
 static int spawn_vm(lua_State* L)
 {
-    // std::string_view::starts_with() only appeared in C++20
-    static constexpr auto starts_with = [](
-        std::string_view base, std::string_view prefix) {
-        base = base.substr(0, prefix.size());
-        return base == prefix;
-    };
-
     luaL_checktype(L, 1, LUA_TSTRING);
     lua_settop(L, 2);
 
@@ -1708,8 +1701,8 @@ static int spawn_vm(lua_State* L)
     /*!include:re2c "emilua/modules.re" */
     if (module == ".") {
         module_path = source_path;
-    } else if (starts_with(module, ".")) {
-        if (starts_with(module, "./"))
+    } else if (module.starts_with(".")) {
+        if (module.starts_with("./"))
             module.remove_prefix(2);
 
         const char* YYCURSOR = module.data();

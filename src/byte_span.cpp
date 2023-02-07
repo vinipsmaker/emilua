@@ -396,9 +396,7 @@ static int byte_span_starts_with(lua_State* L)
     }
     }
 
-    lua_pushboolean(
-        L,
-        static_cast<std::string_view>(*bs).substr(0, src.size()) == src);
+    lua_pushboolean(L, static_cast<std::string_view>(*bs).starts_with(src));
     return 1;
 }
 
@@ -435,11 +433,7 @@ static int byte_span_ends_with(lua_State* L)
     }
     }
 
-    auto self = static_cast<std::string_view>(*bs);
-    bool ret =
-        self.size() >= src.size() &&
-        self.substr(self.size() - src.size()) == src;
-    lua_pushboolean(L, ret ? 1 : 0);
+    lua_pushboolean(L, static_cast<std::string_view>(*bs).ends_with(src));
     return 1;
 }
 
