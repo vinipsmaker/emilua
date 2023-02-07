@@ -726,7 +726,7 @@ inline void push(lua_State* L, const std::string& str)
 inline void push(lua_State* L, const std::filesystem::path& path)
 {
     auto p = path.u8string();
-    lua_pushlstring(L, p.data(), p.size());
+    lua_pushlstring(L, reinterpret_cast<char*>(p.data()), p.size());
 }
 
 template<class F>
