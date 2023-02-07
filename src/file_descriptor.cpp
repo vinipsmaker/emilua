@@ -14,7 +14,6 @@
 #include <boost/hana/div.hpp>
 
 #include <boost/scope_exit.hpp>
-#include <boost/config.hpp>
 
 #if BOOST_OS_LINUX
 #include <sys/capability.h>
@@ -204,7 +203,7 @@ static int file_descriptor_mt_tostring(lua_State* L)
     // file descriptor's underlying type (cf. close_range(2)) so negative values
     // could be possible (very unlikely as EMFILE should still hinder them
     // anyway).
-    if (BOOST_UNLIKELY(handle < 0)) {
+    if (handle < 0) [[unlikely]] {
         lua_pushfstring(L, "/dev/fd/%i", handle);
         return 1;
     }
