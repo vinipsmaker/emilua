@@ -32,11 +32,11 @@ local m = mutex.new()
 
 local f = spawn(function()
     m:lock()
-    sleep_for(2)
+    sleep(2)
     m:unlock()
 end)
 
-sleep_for(1)
+sleep(1)
 f:interrupt()
 m:lock()
 ----
@@ -475,7 +475,7 @@ code:
 [source,lua]
 ----
 while true do
-    sleep_for(20)
+    sleep(20)
     write_mutex:lock()
     scope_cleanup_push(function() write_mutex:unlock() end)
     local ok = pcall(function() ws:ping() end)
@@ -537,7 +537,7 @@ scope_cleanup_push(function()
     my_sctp_sock:write(checksum.shutdown_msg)
 end)
 while true do
-    sleep_for(20)
+    sleep(20)
     my_sctp_sock:write(broadcast_msg)
     checksum:update(broadcast_msg)
 end
@@ -644,7 +644,7 @@ local sleeper = spawn(function()
     end)
     for _, n in pairs(numbers) do
         children[#children + 1] = spawn(function()
-            sleep_for(n)
+            sleep(n)
             print(n)
         end)
     end

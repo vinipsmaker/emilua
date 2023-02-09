@@ -15,7 +15,7 @@ endif::[]
 local mutex = require('mutex')
 
 local function ping_sender()
-    sleep_for(30)
+    sleep(30)
     scope(function()
         scope_cleanup_push(function() ws_write_mtx:unlock() end)
         ws_write_mtx:lock()

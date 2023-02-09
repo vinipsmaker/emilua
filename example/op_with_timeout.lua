@@ -1,9 +1,9 @@
-local sleep_for = require('sleep_for')
+local sleep = require('sleep')
 
 function op_with_timeout(op, timeout)
     local f_op = spawn(op)
     local f_timer = spawn(function()
-        sleep_for(timeout)
+        sleep(timeout)
         f_op:interrupt()
     end)
 

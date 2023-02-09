@@ -1,6 +1,6 @@
 -- serialization/good
 local spawn_vm = require('./linux_namespaces_libspawn').spawn_vm
-local sleep_for = require 'sleep_for'
+local sleep = require 'sleep'
 local stream = require 'stream'
 local pipe = require 'pipe'
 
@@ -18,7 +18,7 @@ pout = pout:release()
 
 local my_channel = spawn_vm(guest_code)
 
-sleep_for(0.1)
+sleep(0.1)
 my_channel:send(pout)
 pout:close()
 local buf = byte_span.new(4)

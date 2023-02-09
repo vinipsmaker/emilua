@@ -1,11 +1,11 @@
 local ip = require 'ip'
-local sleep_for = require 'sleep_for'
+local sleep = require 'sleep'
 
 local sock = ip.tcp.socket.new()
 sock:connect(ip.address.loopback_v4(), 1234)
 
-sleep_for(0.5)
+sleep(0.5)
 sock:send(byte_span.append('a'), ip.message_flag.out_of_band)
 
-sleep_for(2)
+sleep(2)
 sock:write_some(byte_span.append('test'))

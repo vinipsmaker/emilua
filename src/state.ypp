@@ -771,7 +771,7 @@ static int require(lua_State* L)
                     }
                 ),
                 hana::make_pair(
-                    BOOST_HANA_STRING("sleep_for"),
+                    BOOST_HANA_STRING("sleep"),
                     [](lua_State* L) -> int {
                         lua_pushboolean(L, 1);
                         rawgetp(L, LUA_REGISTRYINDEX, &sleep_for_key);

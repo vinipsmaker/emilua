@@ -1,10 +1,10 @@
 -- receive() called on empty incoming
 
-local sleep_for = require('sleep_for')
+local sleep = require('sleep')
 
 if _CONTEXT == 'main' then
     local ch = spawn_vm('.')
-    sleep_for(0.1)
+    sleep(0.1)
     ch:send('foo')
     print('bar')
 else

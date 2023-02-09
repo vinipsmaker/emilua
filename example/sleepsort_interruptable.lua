@@ -1,4 +1,4 @@
-local sleep_for = require('sleep_for')
+local sleep = require('sleep')
 local system = require('system')
 
 local numbers = {8, 42, 38, 111, 2, 39, 1}
@@ -12,7 +12,7 @@ local sleeper = spawn(function()
     end)
     for _, n in pairs(numbers) do
         children[#children + 1] = spawn(function()
-            sleep_for(n)
+            sleep(n)
             print(n)
         end)
     end

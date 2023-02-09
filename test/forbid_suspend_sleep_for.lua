@@ -1,4 +1,4 @@
-local sleep_for = require('sleep_for')
+local sleep = require('sleep')
 
 this_fiber.forbid_suspend()
-sleep_for(0.001)
+sleep(0.001)

@@ -1,6 +1,6 @@
 -- Multiple waiters
 
-local sleep_for = require('sleep_for')
+local sleep = require('sleep')
 local mutex = require('mutex')
 local cond = require('cond')
 
@@ -48,5 +48,5 @@ m:unlock()
 print('103')
 c:notify_one()
 print('104')
-sleep_for(0.05)
+sleep(0.05)
 f:interrupt()

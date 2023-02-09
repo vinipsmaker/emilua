@@ -1,6 +1,6 @@
 -- serialization/good
 local spawn_vm2 = require('./linux_namespaces_libspawn').spawn_vm
-local sleep_for = require 'sleep_for'
+local sleep = require 'sleep'
 local inbox = require 'inbox'
 
 local guest_code = [[
@@ -16,7 +16,7 @@ if _CONTEXT == 'main' then
 
     actor:send(inbox)
     inbox:receive() --< sync
-    sleep_for(0.1)
+    sleep(0.1)
     container:send(actor)
     actor:close()
     print(inbox:receive())

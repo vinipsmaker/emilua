@@ -1,4 +1,4 @@
-local sleep_for = require('sleep_for')
+local sleep = require('sleep')
 
 if _CONTEXT == 'main' then
     local inbox = require('inbox')
@@ -9,12 +9,12 @@ if _CONTEXT == 'main' then
     local f = spawn(function()
         inbox:receive()
     end)
-    sleep_for(0.1)
+    sleep(0.1)
     f:interrupt()
     f:join()
     print('A')
     print(f.interruption_caught)
 else assert(_CONTEXT == 'worker')
-    sleep_for(0.2)
+    sleep(0.2)
     print('B')
 end

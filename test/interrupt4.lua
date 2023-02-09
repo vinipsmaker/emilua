@@ -1,9 +1,9 @@
 -- interrupt() while join()'ing
 
-local sleep_for = require('sleep_for')
+local sleep = require('sleep')
 
 f = spawn(function()
-    sleep_for(0.01)
+    sleep(0.01)
     print('foo')
 end)
 
