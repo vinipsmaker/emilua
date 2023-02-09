@@ -21,6 +21,8 @@ char timer_key;
 static char timer_mt_key;
 static char timer_wait_key;
 
+using lua_Milliseconds = std::chrono::duration<lua_Number, std::milli>;
+
 struct sleep_for_operation: public pending_operation
 {
     sleep_for_operation(asio::io_context& ctx)
@@ -49,7 +51,19 @@ struct handle_type
 
 static int sleep_for(lua_State* L)
 {
-    lua_Integer msecs = luaL_checkinteger(L, 1);
+    lua_Number msecs = luaL_checknumber(L, 1);
+    if (std::isnan(msecs) || std::isinf(msecs) || msecs < 0) {
+        push(L, std::errc::argument_out_of_domain, "arg", 1);
+        return lua_error(L);
+    }
+
+    lua_Milliseconds dur{msecs};
+    if (dur > asio::steady_timer::duration::max()) {
+        push(L, std::errc::value_too_large);
+        return lua_error(L);
+    }
+
+    auto dur2 = std::chrono::ceil<asio::steady_timer::duration>(dur);
 
     auto vm_ctx = get_vm_context(L).shared_from_this();
     auto current_fiber = vm_ctx->current_fiber();
@@ -57,7 +71,7 @@ static int sleep_for(lua_State* L)
 
     auto handle = std::make_shared<sleep_for_operation>(
         vm_ctx->strand().context());
-    handle->timer.expires_after(std::chrono::milliseconds(msecs));
+    handle->timer.expires_after(dur2);
 
     lua_pushlightuserdata(L, handle.get());
     lua_pushcclosure(
@@ -143,10 +157,22 @@ static int timer_expires_after(lua_State* L)
         return lua_error(L);
     }
 
-    std::chrono::milliseconds::rep msecs = luaL_checknumber(L, 2);
+    lua_Number msecs = luaL_checknumber(L, 2);
+    if (std::isnan(msecs) || std::isinf(msecs) || msecs < 0) {
+        push(L, std::errc::argument_out_of_domain, "arg", 2);
+        return lua_error(L);
+    }
+
+    lua_Milliseconds dur{msecs};
+    if (dur > asio::steady_timer::duration::max()) {
+        push(L, std::errc::value_too_large);
+        return lua_error(L);
+    }
+
+    auto dur2 = std::chrono::ceil<asio::steady_timer::duration>(dur);
 
     try {
-        auto n = handle->timer.expires_after(std::chrono::milliseconds(msecs));
+        auto n = handle->timer.expires_after(dur2);
         lua_pushinteger(L, n);
         return 1;
     } catch (const boost::system::system_error& e) {

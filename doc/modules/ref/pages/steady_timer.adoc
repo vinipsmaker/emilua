@@ -54,7 +54,7 @@ local t = steady_timer.new()
 
 Constructor. Returns a new `steady_timer` object.
 
-=== `expires_after(self, msecs: integer) -> integer`
+=== `expires_after(self, msecs: number) -> integer`
 
 Forward the call to
 https://www.boost.org/doc/libs/1_66_0/doc/html/boost_asio/reference/basic_waitable_timer/expires_after.html[the
