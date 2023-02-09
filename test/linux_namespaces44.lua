@@ -1,6 +1,6 @@
 -- serialization/good
 local spawn_vm2 = require('./linux_namespaces_libspawn').spawn_vm
-local sleep = require 'sleep'
+local sleep = require('time').sleep
 local inbox = require 'inbox'
 
 local guest_code = [[

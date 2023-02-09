@@ -1,4 +1,4 @@
-local sleep = require('sleep')
+local sleep = require('time').sleep
 
 local numbers = {8, 42, 38, 111, 2, 39, 1}
 

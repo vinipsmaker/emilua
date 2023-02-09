@@ -1,5 +1,5 @@
 local mutex = require('mutex')
-local sleep = require('sleep')
+local sleep = require('time').sleep
 
 m = mutex.new()
 

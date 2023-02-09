@@ -1,4 +1,4 @@
-= steady_timer
+= time.steady_timer
 
 ifeval::["{doctype}" == "manpage"]
 
@@ -12,7 +12,7 @@ endif::[]
 
 [source,lua]
 ----
-local timer = require('steady_timer')
+local timer = require('time').steady_timer
 local t = timer.new()
 
 spawn(function() print('Hello') end)

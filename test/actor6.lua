@@ -1,6 +1,6 @@
 -- receive() called on filled incoming
 
-local sleep = require('sleep')
+local sleep = require('time').sleep
 
 if _CONTEXT == 'main' then
     local ch = spawn_vm('.')

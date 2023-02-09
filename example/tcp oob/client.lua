@@ -1,5 +1,5 @@
 local ip = require 'ip'
-local sleep = require 'sleep'
+local sleep = require('time').sleep
 
 local sock = ip.tcp.socket.new()
 sock:connect(ip.address.loopback_v4(), 1234)

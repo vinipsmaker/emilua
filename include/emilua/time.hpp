@@ -9,9 +9,8 @@
 
 namespace emilua {
 
-extern char sleep_for_key;
-extern char timer_key;
+extern char time_key;
 
-void init_timer(lua_State* L);
+void init_time(lua_State* L);
 
 } // namespace emilua

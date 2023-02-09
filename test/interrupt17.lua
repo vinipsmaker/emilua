@@ -1,7 +1,7 @@
 -- This test ensures joiner's interrupter has been cleared by the join algorithm
 -- and won't be reused again as an interrupter for another operation
 
-local sleep = require('sleep')
+local sleep = require('time').sleep
 
 fib = spawn(function()
     spawn(function() end):join()

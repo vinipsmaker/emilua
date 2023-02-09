@@ -189,7 +189,7 @@ src = [
     'src/fiber.cpp',
     'src/mutex.cpp',
     'src/regex.cpp',
-    'src/timer.cpp',
+    'src/time.cpp',
     'src/cond.cpp',
     'src/core.cpp',
     'src/json.cpp',

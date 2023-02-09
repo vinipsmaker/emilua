@@ -1,4 +1,4 @@
-local sleep = require('sleep')
+local sleep = require('time').sleep
 
 if _CONTEXT == 'main' then
     ch = spawn_vm('.')

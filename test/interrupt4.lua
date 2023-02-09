@@ -1,6 +1,6 @@
 -- interrupt() while join()'ing
 
-local sleep = require('sleep')
+local sleep = require('time').sleep
 
 f = spawn(function()
     sleep(0.01)

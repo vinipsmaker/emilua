@@ -1,11 +1,11 @@
 -- serialization/good
 local spawn_vm = require('./linux_namespaces_libspawn').spawn_vm
-local sleep = require 'sleep'
+local sleep = require('time').sleep
 local stream = require 'stream'
 local pipe = require 'pipe'
 
 local guest_code = [[
-    local sleep = require 'sleep'
+    local sleep = require('time').sleep
     local stream = require 'stream'
     local inbox = require 'inbox'
     local pipe = require 'pipe'

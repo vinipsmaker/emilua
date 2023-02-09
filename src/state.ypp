@@ -23,7 +23,7 @@
 #include <emilua/mutex.hpp>
 #include <emilua/regex.hpp>
 #include <emilua/state.hpp>
-#include <emilua/timer.hpp>
+#include <emilua/time.hpp>
 #include <emilua/cond.hpp>
 #include <emilua/json.hpp>
 #include <emilua/pipe.hpp>
@@ -771,14 +771,6 @@ static int require(lua_State* L)
                     }
                 ),
                 hana::make_pair(
-                    BOOST_HANA_STRING("sleep"),
-                    [](lua_State* L) -> int {
-                        lua_pushboolean(L, 1);
-                        rawgetp(L, LUA_REGISTRYINDEX, &sleep_for_key);
-                        return 2;
-                    }
-                ),
-                hana::make_pair(
                     BOOST_HANA_STRING("mutex"),
                     [](lua_State* L) -> int {
                         lua_pushboolean(L, 1);
@@ -812,10 +804,10 @@ static int require(lua_State* L)
                     }
                 ),
                 hana::make_pair(
-                    BOOST_HANA_STRING("steady_timer"),
+                    BOOST_HANA_STRING("time"),
                     [](lua_State* L) -> int {
                         lua_pushboolean(L, 1);
-                        rawgetp(L, LUA_REGISTRYINDEX, &timer_key);
+                        rawgetp(L, LUA_REGISTRYINDEX, &time_key);
                         return 2;
                     }
                 ),
@@ -1247,7 +1239,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     // }}}
 
     // extra modules {{{
-    init_timer(L);
+    init_time(L);
     init_json_module(L);
     init_ip(L);
     init_tls(L);

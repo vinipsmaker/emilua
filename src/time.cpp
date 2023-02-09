@@ -12,14 +12,13 @@
 
 #include <emilua/dispatch_table.hpp>
 #include <emilua/async_base.hpp>
-#include <emilua/timer.hpp>
+#include <emilua/time.hpp>
 
 namespace emilua {
 
-char sleep_for_key;
-char timer_key;
-static char timer_mt_key;
-static char timer_wait_key;
+char time_key;
+static char steady_timer_mt_key;
+static char steady_timer_wait_key;
 
 using lua_Seconds = std::chrono::duration<lua_Number>;
 
@@ -108,7 +107,7 @@ static int sleep_for(lua_State* L)
     return lua_yield(L, 0);
 }
 
-static int timer_wait(lua_State* L)
+static int steady_timer_wait(lua_State* L)
 {
     auto vm_ctx = get_vm_context(L).shared_from_this();
     auto current_fiber = vm_ctx->current_fiber();
@@ -119,7 +118,7 @@ static int timer_wait(lua_State* L)
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
-    rawgetp(L, LUA_REGISTRYINDEX, &timer_mt_key);
+    rawgetp(L, LUA_REGISTRYINDEX, &steady_timer_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -144,14 +143,14 @@ static int timer_wait(lua_State* L)
     return lua_yield(L, 0);
 }
 
-static int timer_expires_after(lua_State* L)
+static int steady_timer_expires_after(lua_State* L)
 {
     auto handle = static_cast<handle_type*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
-    rawgetp(L, LUA_REGISTRYINDEX, &timer_mt_key);
+    rawgetp(L, LUA_REGISTRYINDEX, &steady_timer_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -181,14 +180,14 @@ static int timer_expires_after(lua_State* L)
     }
 }
 
-static int timer_cancel(lua_State* L)
+static int steady_timer_cancel(lua_State* L)
 {
     auto handle = static_cast<handle_type*>(lua_touserdata(L, 1));
     if (!handle || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
     }
-    rawgetp(L, LUA_REGISTRYINDEX, &timer_mt_key);
+    rawgetp(L, LUA_REGISTRYINDEX, &steady_timer_mt_key);
     if (!lua_rawequal(L, -1, -2)) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -204,28 +203,28 @@ static int timer_cancel(lua_State* L)
     }
 }
 
-static int timer_mt_index(lua_State* L)
+static int steady_timer_mt_index(lua_State* L)
 {
     return dispatch_table::dispatch(
         hana::make_tuple(
             hana::make_pair(
                 BOOST_HANA_STRING("wait"),
                 [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &timer_wait_key);
+                    rawgetp(L, LUA_REGISTRYINDEX, &steady_timer_wait_key);
                     return 1;
                 }
             ),
             hana::make_pair(
                 BOOST_HANA_STRING("expires_after"),
                 [](lua_State* L) -> int {
-                    lua_pushcfunction(L, timer_expires_after);
+                    lua_pushcfunction(L, steady_timer_expires_after);
                     return 1;
                 }
             ),
             hana::make_pair(
                 BOOST_HANA_STRING("cancel"),
                 [](lua_State* L) -> int {
-                    lua_pushcfunction(L, timer_cancel);
+                    lua_pushcfunction(L, steady_timer_cancel);
                     return 1;
                 }
             )
@@ -239,62 +238,70 @@ static int timer_mt_index(lua_State* L)
     );
 }
 
-static int timer_new(lua_State* L)
+static int steady_timer_new(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
     auto buf = static_cast<handle_type*>(
         lua_newuserdata(L, sizeof(handle_type))
     );
-    rawgetp(L, LUA_REGISTRYINDEX, &timer_mt_key);
+    rawgetp(L, LUA_REGISTRYINDEX, &steady_timer_mt_key);
     setmetatable(L, -2);
     new (buf) handle_type{vm_ctx.strand().context()};
     return 1;
 }
 
-void init_timer(lua_State* L)
+void init_time(lua_State* L)
 {
-    lua_pushlightuserdata(L, &timer_wait_key);
-    rawgetp(L, LUA_REGISTRYINDEX,
-            &var_args__retval1_to_error__fwd_retval2__key);
-    lua_pushvalue(L, -1);
-    lua_insert(L, -3);
-    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
-    lua_pushcfunction(L, timer_wait);
-    lua_call(L, 2, 1);
-    lua_rawset(L, LUA_REGISTRYINDEX);
-
-    lua_pushlightuserdata(L, &sleep_for_key);
-    lua_insert(L, -2);
-    rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
-    lua_pushcfunction(L, sleep_for);
-    lua_call(L, 2, 1);
-    lua_rawset(L, LUA_REGISTRYINDEX);
-
-    lua_pushlightuserdata(L, &timer_key);
-    {
-        lua_newtable(L);
-
-        lua_pushliteral(L, "new");
-        lua_pushcfunction(L, timer_new);
-        lua_rawset(L, -3);
-    }
-    lua_rawset(L, LUA_REGISTRYINDEX);
-
-    lua_pushlightuserdata(L, &timer_mt_key);
+    lua_pushlightuserdata(L, &steady_timer_mt_key);
     {
         lua_createtable(L, /*narr=*/0, /*nrec=*/3);
 
         lua_pushliteral(L, "__metatable");
-        lua_pushliteral(L, "steady-timer");
+        lua_pushliteral(L, "steady_timer");
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__index");
-        lua_pushcfunction(L, timer_mt_index);
+        lua_pushcfunction(L, steady_timer_mt_index);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__gc");
         lua_pushcfunction(L, finalizer<handle_type>);
         lua_rawset(L, -3);
+    }
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &time_key);
+    {
+        lua_createtable(L, /*narr=*/0, /*nrec=*/2);
+
+        lua_pushliteral(L, "steady_timer");
+        {
+            lua_createtable(L, /*narr=*/0, /*nrec=*/1);
+
+            lua_pushliteral(L, "new");
+            lua_pushcfunction(L, steady_timer_new);
+            lua_rawset(L, -3);
+        }
+        lua_rawset(L, -3);
+
+        {
+            lua_pushlightuserdata(L, &steady_timer_wait_key);
+            rawgetp(L, LUA_REGISTRYINDEX,
+                    &var_args__retval1_to_error__fwd_retval2__key);
+            lua_pushvalue(L, -1);
+            lua_insert(L, -3);
+            rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+            lua_pushcfunction(L, steady_timer_wait);
+            lua_call(L, 2, 1);
+            lua_rawset(L, LUA_REGISTRYINDEX);
+
+            lua_pushliteral(L, "sleep");
+            lua_insert(L, -2);
+            rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
+            lua_pushcfunction(L, sleep_for);
+            lua_call(L, 2, 1);
+            lua_rawset(L, -3);
+        }
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 }

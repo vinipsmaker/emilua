@@ -1,6 +1,6 @@
 -- Test if `inbox:close()` works on active VMs
 
-local sleep = require('sleep')
+local sleep = require('time').sleep
 
 if _CONTEXT == 'main' then
     local ch = spawn_vm('.')

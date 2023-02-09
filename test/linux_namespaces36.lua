@@ -3,7 +3,7 @@ local spawn_vm = require('./linux_namespaces_libspawn').spawn_vm
 local inbox = require 'inbox'
 
 local guest_code = [[
-    local sleep = require 'sleep'
+    local sleep = require('time').sleep
     local inbox = require 'inbox'
 
     local msg = inbox:receive()

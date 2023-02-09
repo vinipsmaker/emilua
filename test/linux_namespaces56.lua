@@ -1,6 +1,6 @@
 -- close() doesn't discard data already sent
 local spawn_vm = require('./linux_namespaces_libspawn').spawn_vm
-local sleep = require 'sleep'
+local sleep = require('time').sleep
 
 local guest_code = [[
     local inbox = require 'inbox'

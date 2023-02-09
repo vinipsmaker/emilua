@@ -1,6 +1,6 @@
 -- Multiple waiters
 
-local sleep = require('sleep')
+local sleep = require('time').sleep
 local mutex = require('mutex')
 local cond = require('cond')
 

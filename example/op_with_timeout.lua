@@ -1,4 +1,4 @@
-local sleep = require('sleep')
+local sleep = require('time').sleep
 
 function op_with_timeout(op, timeout)
     local f_op = spawn(op)
