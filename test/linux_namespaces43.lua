@@ -16,7 +16,7 @@ if _CONTEXT == 'main' then
 
     actor:send(inbox)
     inbox:receive() --< sync
-    sleep_for(100)
+    sleep_for(0.1)
     container:send(actor)
     actor:close()
     print(inbox:receive())

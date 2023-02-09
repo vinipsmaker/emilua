@@ -18,7 +18,7 @@ pout = pout:release()
 
 local my_channel = spawn_vm(guest_code)
 
-sleep_for(100)
+sleep_for(0.1)
 my_channel:send{ value = pout }
 pout:close()
 local buf = byte_span.new(4)

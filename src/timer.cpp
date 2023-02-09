@@ -21,7 +21,7 @@ char timer_key;
 static char timer_mt_key;
 static char timer_wait_key;
 
-using lua_Milliseconds = std::chrono::duration<lua_Number, std::milli>;
+using lua_Seconds = std::chrono::duration<lua_Number>;
 
 struct sleep_for_operation: public pending_operation
 {
@@ -51,13 +51,13 @@ struct handle_type
 
 static int sleep_for(lua_State* L)
 {
-    lua_Number msecs = luaL_checknumber(L, 1);
-    if (std::isnan(msecs) || std::isinf(msecs) || msecs < 0) {
+    lua_Number secs = luaL_checknumber(L, 1);
+    if (std::isnan(secs) || std::isinf(secs) || secs < 0) {
         push(L, std::errc::argument_out_of_domain, "arg", 1);
         return lua_error(L);
     }
 
-    lua_Milliseconds dur{msecs};
+    lua_Seconds dur{secs};
     if (dur > asio::steady_timer::duration::max()) {
         push(L, std::errc::value_too_large);
         return lua_error(L);
@@ -157,13 +157,13 @@ static int timer_expires_after(lua_State* L)
         return lua_error(L);
     }
 
-    lua_Number msecs = luaL_checknumber(L, 2);
-    if (std::isnan(msecs) || std::isinf(msecs) || msecs < 0) {
+    lua_Number secs = luaL_checknumber(L, 2);
+    if (std::isnan(secs) || std::isinf(secs) || secs < 0) {
         push(L, std::errc::argument_out_of_domain, "arg", 2);
         return lua_error(L);
     }
 
-    lua_Milliseconds dur{msecs};
+    lua_Seconds dur{secs};
     if (dur > asio::steady_timer::duration::max()) {
         push(L, std::errc::value_too_large);
         return lua_error(L);

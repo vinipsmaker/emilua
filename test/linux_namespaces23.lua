@@ -8,7 +8,7 @@ local guest_code = [[
     local ip = require 'ip'
 
     local ch = inbox:receive()
-    sleep_for(100)
+    sleep_for(0.1)
     ch:send(ip.host_name())
 ]]
 

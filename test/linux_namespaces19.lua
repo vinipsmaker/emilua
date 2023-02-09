@@ -13,11 +13,11 @@ local guest_code = [[
     local f = spawn(function()
         inbox:receive()
     end)
-    sleep_for(100)
+    sleep_for(0.1)
     f:interrupt()
     f:join()
 
-    sleep_for(200)
+    sleep_for(0.2)
     local pout = pipe.write_stream.new(inbox:receive())
     stream.write_all(pout, 'test')
 ]]
@@ -27,7 +27,7 @@ pout = pout:release()
 
 local my_channel = spawn_vm(guest_code)
 
-sleep_for(200)
+sleep_for(0.2)
 my_channel:send(pout)
 pout:close()
 local buf = byte_span.new(4)

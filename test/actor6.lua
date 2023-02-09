@@ -9,6 +9,6 @@ if _CONTEXT == 'main' then
 else
     assert(_CONTEXT == 'worker')
     local inbox = require('inbox')
-    sleep_for(100)
+    sleep_for(0.1)
     print(inbox:receive())
 end

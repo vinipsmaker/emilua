@@ -3,7 +3,7 @@
 local sleep_for = require('sleep_for')
 
 f = spawn(function()
-    sleep_for(10)
+    sleep_for(0.01)
     print('foo')
 end)
 

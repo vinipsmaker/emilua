@@ -9,7 +9,7 @@ local guest_code = [[
     local ip = require 'ip'
 
     local ch = inbox:receive()
-    sleep_for(200)
+    sleep_for(0.2)
     ch:send{ value = ip.host_name() }
 ]]
 
@@ -20,9 +20,9 @@ my_channel:send(inbox)
 local f = spawn(function()
     inbox:receive()
 end)
-sleep_for(100)
+sleep_for(0.1)
 f:interrupt()
 f:join()
 
-sleep_for(200)
+sleep_for(0.2)
 print(inbox:receive().value)

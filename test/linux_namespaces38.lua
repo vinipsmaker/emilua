@@ -8,7 +8,7 @@ local guest_code = [[
 
     local msg = inbox:receive()
     local ch = msg.dest
-    sleep_for(100)
+    sleep_for(0.1)
     ch:send{ value = msg.value }
 ]]
 

@@ -9,7 +9,7 @@ local guest_code = [[
 ]]
 
 local my_channel = spawn_vm(guest_code)
-sleep_for(100)
+sleep_for(0.1)
 badinjector.send_overflow_root_str(my_channel)
 my_channel:close()
-sleep_for(300) --< wait for some time before we kill the container
+sleep_for(0.3) --< wait for some time before we kill the container

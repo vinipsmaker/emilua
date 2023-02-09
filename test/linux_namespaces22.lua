@@ -10,11 +10,11 @@ local guest_code = [[
     local f = spawn(function()
         inbox:receive()
     end)
-    sleep_for(100)
+    sleep_for(0.1)
     f:interrupt()
     f:join()
 
-    sleep_for(200)
+    sleep_for(0.2)
     local ch = inbox:receive().value
     ch:send('hello')
 ]]
@@ -25,7 +25,7 @@ if _CONTEXT == 'main' then
 
     actor:send(inbox)
     inbox:receive() --< sync
-    sleep_for(200)
+    sleep_for(0.2)
     container:send{ value = actor }
     actor:close()
     print(inbox:receive())

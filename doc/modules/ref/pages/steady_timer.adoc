@@ -17,14 +17,14 @@ local t = timer.new()
 
 spawn(function() print('Hello') end)
 
-t:expires_after(2000) --< 2 seconds
+t:expires_after(2) --< 2 seconds
 t:wait()
 print('World')
 ----
 
 A monotonic timer (i.e. the time points of the underlying clock cannot decrease
-as physical time moves forward) with millisecond-based
-precision. https://www.boost.org/doc/libs/1_66_0/doc/html/boost_asio/reference/steady_timer.html[As
+as physical time moves
+forward). https://www.boost.org/doc/libs/1_66_0/doc/html/boost_asio/reference/steady_timer.html[As
 in Boost.Asio]:
 
 [quote]
@@ -54,7 +54,7 @@ local t = steady_timer.new()
 
 Constructor. Returns a new `steady_timer` object.
 
-=== `expires_after(self, msecs: number) -> integer`
+=== `expires_after(self, secs: number) -> integer`
 
 Forward the call to
 https://www.boost.org/doc/libs/1_66_0/doc/html/boost_asio/reference/basic_waitable_timer/expires_after.html[the
@@ -71,7 +71,7 @@ invoked with the `boost::asio::error::operation_aborted` error code.
 The number of asynchronous operations that were cancelled.
 ____
 
-Expiry time is given in milliseconds.
+Expiry time is given in seconds.
 
 === `wait(self)`
 

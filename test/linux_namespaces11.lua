@@ -8,7 +8,7 @@ local guest_code = [[
     local inbox = require 'inbox'
 
     local msg = inbox:receive()
-    sleep_for(200)
+    sleep_for(0.2)
     local ch = msg.dest
     ch:send(msg.value)
 ]]
@@ -20,9 +20,9 @@ my_channel:send{ dest = inbox, value = 42 }
 local f = spawn(function()
     inbox:receive()
 end)
-sleep_for(100)
+sleep_for(0.1)
 f:interrupt()
 f:join()
 
-sleep_for(200)
+sleep_for(0.2)
 print(inbox:receive())
