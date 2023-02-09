@@ -1,0 +1,23 @@
+= time.sleep
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local time = require "time"
+time.sleep(secs: number)
+----
+
+== Description
+
+Blocks the fiber until `secs` seconds have passed.
+
+TIP: Floating point numbers give room for subsecond precision.

@@ -68,6 +68,8 @@ include::pages/regex.adoc[]
 
 include::pages/serial_port.adoc[]
 
+include::pages/time.sleep.adoc[]
+
 include::pages/time.steady_timer.adoc[]
 
 include::pages/stream.write_all.adoc[]
