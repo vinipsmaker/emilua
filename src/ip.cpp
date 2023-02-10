@@ -645,7 +645,27 @@ static int address_mt_eq(lua_State* L)
 static int address_mt_lt(lua_State* L)
 {
     auto a1 = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    if (!a1 || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
     auto a2 = static_cast<asio::ip::address*>(lua_touserdata(L, 2));
+    if (!a2 || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
     lua_pushboolean(L, *a1 < *a2);
     return 1;
 }
@@ -653,7 +673,27 @@ static int address_mt_lt(lua_State* L)
 static int address_mt_le(lua_State* L)
 {
     auto a1 = static_cast<asio::ip::address*>(lua_touserdata(L, 1));
+    if (!a1 || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
     auto a2 = static_cast<asio::ip::address*>(lua_touserdata(L, 2));
+    if (!a2 || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &ip_address_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
     lua_pushboolean(L, *a1 <= *a2);
     return 1;
 }
