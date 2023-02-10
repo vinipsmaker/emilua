@@ -36,6 +36,7 @@ src3 = [
     'modules/ref/pages/regex.adoc',
     'modules/ref/pages/serial_port.adoc',
     'modules/ref/pages/time.sleep.adoc',
+    'modules/ref/pages/time.steady_clock.adoc',
     'modules/ref/pages/time.steady_timer.adoc',
     'modules/ref/pages/stream.write_all.adoc',
     'modules/ref/pages/stream.write_at_least.adoc',

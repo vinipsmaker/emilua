@@ -1,0 +1,62 @@
+= time.steady_clock
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+== Description
+
+endif::[]
+
+[source,lua]
+----
+local clock = require('time').steady_clock
+local timepoint = clock.now()
+----
+
+A monotonic clock (i.e. its time points cannot decrease as physical time moves
+forward).
+
+== Functions
+
+=== `now() -> steady_clock.time_point`
+
+Returns a new time point representing the current value of the clock.
+
+=== `epoch() -> steady_clock.time_point`
+
+Returns a new time point representing the epoch of the clock.
+
+== `time_point` functions
+
+=== `add(self, secs: number)`
+
+Modifies the time point by the given duration.
+
+NOTE: When the duration is converted to the native tick representation of the
+clock, it'll be rounded to the nearest time point rounding to even in halfway
+cases.
+
+=== `sub(self, secs: number)`
+
+Modifies the time point by the given duration.
+
+NOTE: When the duration is converted to the native tick representation of the
+clock, it'll be rounded to the nearest time point rounding to even in halfway
+cases.
+
+== `time_point` properties
+
+=== `seconds_since_epoch: number`
+
+The number of elapsed seconds since the clock's epoch.
+
+== `time_point` metamethods
+
+* `__add()`
+* `__sub()`
+* `__eq()`
+* `__lt()`
+* `__le()`

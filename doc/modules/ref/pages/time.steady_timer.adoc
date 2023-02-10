@@ -39,10 +39,6 @@ Changing the expiry time of a timer while there are pending asynchronous waits
 causes those wait operations to be cancelled.
 ____
 
-Unfortunately the interface is rather simple/poor (e.g. only relative timeouts
-are supported). It won't be enough to satisfy users that need anything other
-than the basics.
-
 == Functions
 
 === `new() -> steady_timer`
@@ -53,6 +49,23 @@ local t = steady_timer.new()
 ----
 
 Constructor. Returns a new `steady_timer` object.
+
+=== `expires_at(self, tp: time.steady_clock.time_point) -> integer`
+
+Forward the call to
+https://www.boost.org/doc/libs/1_66_0/doc/html/boost_asio/reference/basic_waitable_timer/expires_at.html[the
+function with same name in Boost.Asio]:
+
+[quote]
+____
+Set the timer's expiry time as an absolute time. Any pending asynchronous wait
+operations will be cancelled. The handler for each cancelled operation will be
+invoked with the `boost::asio::error::operation_aborted` error code.
+
+.Return Value
+
+The number of asynchronous operations that were cancelled.
+____
 
 === `expires_after(self, secs: number) -> integer`
 
@@ -86,3 +99,11 @@ events occur:
 
 Cancel any operations that are waiting on the timer. Returns the number of
 asynchronous operations that were cancelled.
+
+== Properties
+
+=== `expiry: time.steady_clock.time_point`
+
+The timer's expiry time as an absolute time.
+
+Whether the timer has expired or not does not affect this value.
