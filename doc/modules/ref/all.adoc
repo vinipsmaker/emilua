@@ -74,6 +74,8 @@ include::pages/time.steady_clock.adoc[]
 
 include::pages/time.steady_timer.adoc[]
 
+include::pages/time.high_resolution_clock.adoc[]
+
 include::pages/stream.write_all.adoc[]
 
 include::pages/stream.write_at_least.adoc[]

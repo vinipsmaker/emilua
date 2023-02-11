@@ -1,0 +1,52 @@
+= time.high_resolution_clock
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+== Description
+
+endif::[]
+
+[source,lua]
+----
+local clock = require('time').high_resolution_clock
+local timepoint = clock.now()
+----
+
+The clock with the smallest tick period provided by the system.
+
+TIP: This clock is useful for microbenchmarking purposes.
+
+== Functions
+
+=== `now() -> high_resolution_clock.time_point`
+
+Returns a new time point representing the current value of the clock.
+
+=== `epoch() -> high_resolution_clock.time_point`
+
+Returns a new time point representing the epoch of the clock.
+
+== Attributes
+
+=== `is_steady: boolean`
+
+Whether the time between ticks is always constant (i.e. calls to `now()` return
+values that increase monotonically even in case of some external clock
+adjustment).
+
+== `time_point` properties
+
+=== `seconds_since_epoch: number`
+
+The number of elapsed seconds since the clock's epoch.
+
+== `time_point` metamethods
+
+* `__sub()`
+* `__eq()`
+* `__lt()`
+* `__le()`
