@@ -6,6 +6,8 @@ include::pages/byte_span.adoc[]
 
 include::pages/cond.adoc[]
 
+include::pages/filesystem.path.adoc[]
+
 include::pages/file.open_flag.adoc[]
 
 include::pages/file.random_access.adoc[]

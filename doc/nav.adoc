@@ -11,6 +11,8 @@
 ** xref:tutorial:linux_namespaces.adoc[]
 * Reference
 ** xref:ref:byte_span.adoc[]
+** filesystem
+*** xref:ref:filesystem.path.adoc[]
 ** file
 *** xref:ref:file.open_flag.adoc[]
 *** xref:ref:file.random_access.adoc[]

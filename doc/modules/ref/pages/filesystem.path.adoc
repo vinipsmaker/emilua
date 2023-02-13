@@ -1,0 +1,179 @@
+= filesystem.path
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+== Description
+
+endif::[]
+
+Objects of this class abstract path-manipulation algorithms for the host
+operating system.
+
+Methods from this class are purely computational and never trigger any
+syscall. They only operate on the in-memory representation of a path. They do
+not perform any operation on the filesytem. They do not initiate any I/O
+request.
+
+Paths are immutable. Any operation on a path will return a new path with the
+result.
+
+== Functions
+
+=== `new() -> path`
+
+[source,lua]
+----
+new()    -- <1>
+new(str) -- <2>
+----
+<1> Default constructor.
+<2> Create a path from an UTF-8 encoded string (in the host system format).
+
+=== `from_generic(source: string) -> path`
+
+Creates a path from the generic non-native format.
+
+=== `to_generic(self) -> string`
+
+Returns the path in the generic format encoded in UTF-8.
+
+=== `iterator(self) -> function`
+
+Returns an iterator to the path components. The iteration order follows:
+
+1. The root name, if any.
+2. The root directory, if any.
+3. The sequence of file names, omitting directory separators.
+4. If there is a directory separator after the last file name in the path, the
+   last element is an empty element.
+
+=== `make_preferred(self) -> path`
+
+Returns a new path where all directory separators are converted to the preferred
+directory separator.
+
+TIP: On Windows, where `"\"` is the preferred separator, the path `"foo/bar"`
+will be converted to `"foo\bar"`.
+
+=== `remove_filename(self) -> path`
+
+Returns a new path where the filename component is removed.
+
+=== `replace_filename(self, replacement: string|path) -> path`
+
+Returns a new path where the filename component is replaced.
+
+=== `replace_extension(self[, replacement: string|path]) -> path`
+
+Returns a new path where the extension is replaced (or removed on `nil`).
+
+=== `lexically_normal(self) -> path`
+
+Returns a new path converted to normal form.
+
+=== `lexically_relative(self, base: string|path) -> path`
+
+Returns a new path where `self` is made relative to `base`.
+
+=== `lexically_proximate(self, base: string|path) -> path`
+
+Same as above if the return is non empty. Same as `self`, otherwise.
+
+=== `root_name(self) -> path`
+
+Returns the root name, or an empty path.
+
+=== `root_directory(self) -> path`
+
+Returns the root directory, or an empty path.
+
+=== `root_path(self) -> path`
+
+Returns `root_name(self) / root_directory(self)`.
+
+=== `relative_path(self) -> path`
+
+Returns path relative to `root_path()`.
+
+=== `parent_path(self) -> path`
+
+Returns the path to the parent directory.
+
+=== `filename(self) -> path`
+
+Returns filename component.
+
+=== `stem(self) -> path`
+
+Returns filename component stripped of its extension.
+
+=== `extension(self) -> path`
+
+Returns the extension of the filename component.
+
+== Properties
+
+=== `empty: boolean`
+
+Whether the path is empty.
+
+=== `has_root_path: boolean`
+
+Whether the root path is non-empty.
+
+=== `has_root_name: boolean`
+
+Whether the root name is non-empty.
+
+=== `has_root_directory: boolean`
+
+Whether the root directory is non-empty.
+
+=== `has_relative_path: boolean`
+
+Whether relative path is non-empty.
+
+=== `has_parent_path: boolean`
+
+Whether the parent path is non-empty.
+
+=== `has_filename: boolean`
+
+Whether the filename is non-empty.
+
+=== `has_stem: boolean`
+
+Whether the stem is non-empty.
+
+=== `has_extension: boolean`
+
+Whether the extension is non-empty.
+
+=== `is_absolute: boolean`
+
+Whether the path is absolute.
+
+=== `is_relative: boolean`
+
+Whether the path is relative.
+
+== Metamethods
+
+* `__tostring()`: Encodes the native representation as UTF-8 and returns it.
+* `__eq()`: Compares two paths lexicographically.
+* `__lt()`: Compares two paths lexicographically.
+* `__le()`: Compares two paths lexicographically.
+* `__div()`: Concatenates two paths with a directory separator.
+* `__concat()`: Concatenates the underlying native representation of the paths
+  (i.e. no additional directory separators are introduced). This operation may
+  not be portable between operating systems.
+
+== Module attributes
+
+=== `preferred_separator: string`
+
+The preferred directory separator on the host operating system encoded in UTF-8.
