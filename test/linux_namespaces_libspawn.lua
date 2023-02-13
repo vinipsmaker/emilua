@@ -89,7 +89,7 @@ function spawn_vm(guest_code)
 
     local userns = ({shost:receive_with_fds(ignored_buf, 1)})[2][1]
     local netns = ({shost:receive_with_fds(ignored_buf, 1)})[2][1]
-    system.spawnp{
+    system.spawn{
         program = 'ip',
         arguments = {'ip', 'link', 'set', 'dev', 'lo', 'up'},
         nsenter_user = userns,

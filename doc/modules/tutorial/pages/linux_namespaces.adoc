@@ -248,7 +248,7 @@ sguest:close()
 local ignored_buf = byte_span.new(1)
 local userns = ({shost:receive_with_fds(ignored_buf, 1)})[2][1]
 local netns = ({shost:receive_with_fds(ignored_buf, 1)})[2][1]
-system.spawnp{
+system.spawn{
     program = 'ip',
     arguments = {'ip', 'link', 'set', 'dev', 'lo', 'up'},
     nsenter_user = userns,
@@ -308,7 +308,7 @@ understand the details):
 
 [source,lua]
 ----
-system.spawnp{
+system.spawn{
     program = 'newuidmap',
     stdout = 'share',
     stderr = 'share',
@@ -652,7 +652,7 @@ shost:send(ignored_buf)
 
 local userns = ({shost:receive_with_fds(ignored_buf, 1)})[2][1]
 local netns = ({shost:receive_with_fds(ignored_buf, 1)})[2][1]
-system.spawnp{
+system.spawn{
     program = 'ip',
     arguments = {'ip', 'link', 'set', 'dev', 'lo', 'up'},
     nsenter_user = userns,

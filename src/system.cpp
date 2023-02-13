@@ -21,6 +21,7 @@
 
 #include <emilua/file_descriptor.hpp>
 #include <emilua/dispatch_table.hpp>
+#include <emilua/filesystem.hpp>
 
 #if BOOST_OS_WINDOWS
 # if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
@@ -1978,7 +1979,7 @@ static int system_spawn_child_main(void* a)
     return 1;
 }
 
-static int system_spawn_do(bool use_path, lua_State* L)
+static int system_spawn(lua_State* L)
 {
     lua_settop(L, 1);
     luaL_checktype(L, 1, LUA_TTABLE);
@@ -1986,12 +1987,43 @@ static int system_spawn_do(bool use_path, lua_State* L)
     rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
     const int FILE_DESCRIPTOR_MT_INDEX = lua_gettop(L);
 
+    std::string program;
+    bool use_path;
     lua_getfield(L, 1, "program");
-    if (lua_type(L, -1) != LUA_TSTRING) {
+    switch (lua_type(L, -1)) {
+    case LUA_TSTRING:
+        program = tostringview(L);
+        use_path = true;
+        break;
+    case LUA_TUSERDATA: {
+        auto path = static_cast<std::filesystem::path*>(lua_touserdata(L, -1));
+        if (!lua_getmetatable(L, -1)) {
+            push(L, std::errc::invalid_argument, "arg", "program");
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", "program");
+            return lua_error(L);
+        }
+        lua_pop(L, 2);
+
+        try {
+            program = path->string();;
+        } catch (const std::system_error& e) {
+            push(L, e.code());
+            return lua_error(L);
+        } catch (const std::exception& e) {
+            lua_pushstring(L, e.what());
+            return lua_error(L);
+        }
+        use_path = false;
+        break;
+    }
+    default:
         push(L, std::errc::invalid_argument, "arg", "program");
         return lua_error(L);
     }
-    std::string program{tostringview(L)};
     lua_pop(L, 1);
 
     int signal_on_gcreaper = SIGTERM;
@@ -2845,16 +2877,6 @@ static int system_spawn_do(bool use_path, lua_State* L)
     return 1;
 }
 
-static int system_spawn(lua_State* L)
-{
-    return system_spawn_do(/*use_path=*/false, L);
-}
-
-static int system_spawnp(lua_State* L)
-{
-    return system_spawn_do(/*use_path=*/true, L);
-}
-
 static int linux_capabilities_dup(lua_State* L)
 {
     auto caps = static_cast<cap_t*>(lua_touserdata(L, 1));
@@ -3516,12 +3538,6 @@ static int system_mt_index(lua_State* L)
                 BOOST_HANA_STRING("spawn"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, system_spawn);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("spawnp"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_spawnp);
                     return 1;
                 }),
             hana::make_pair(

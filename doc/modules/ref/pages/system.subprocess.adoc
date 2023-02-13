@@ -19,28 +19,17 @@ local system = require "system"
 
 === `system.spawn(opts: table) -> subprocess`
 
-[source,lua]
-----
-system.spawn(opts: table)
-system.spawnp(opts: table)
-----
-
 Creates a new process.
 
 .Named parameters (i.e. attributes from its single table parameter)
 
-`program: string`::
-+
---
-`system.spawn()`::: The path (which can be absolute or relative) of the
- executable.
+`program: string|filesystem.path`::
 
-`system.spawnp()`::: A simple filename. The system searches for this file in the
-list of directories specified by PATH (in the same way as for execvp(3)).
---
-+
-That's the only argument where meaning changes between `system.spawn()` and
-`system.spawnp()`.
+`string`::: A simple filename. The system searches for this file in the list of
+directories specified by PATH (in the same way as for execvp(3)).
+
+`filesystem.path`::: The path (which can be absolute or relative) of the
+ executable.
 
 `arguments: string[]|nil`:: A table of strings that will be used as the created
 process' `argv`. On `nil`, an empty `argv` will be used.
