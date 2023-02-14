@@ -10,6 +10,7 @@
 namespace emilua {
 
 extern char time_key;
+extern char system_clock_time_point_mt_key;
 
 void init_time(lua_State* L);
 

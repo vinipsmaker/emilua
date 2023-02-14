@@ -51,6 +51,8 @@
 *** xref:ref:time.sleep.adoc[]
 *** xref:ref:time.steady_clock.adoc[]
 *** xref:ref:time.steady_timer.adoc[]
+*** xref:ref:time.system_clock.adoc[]
+*** xref:ref:time.system_timer.adoc[]
 *** xref:ref:time.high_resolution_clock.adoc[]
 ** stream
 *** xref:ref:stream.write_all.adoc[]

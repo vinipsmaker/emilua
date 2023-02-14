@@ -39,6 +39,8 @@ src3 = [
     'modules/ref/pages/time.sleep.adoc',
     'modules/ref/pages/time.steady_clock.adoc',
     'modules/ref/pages/time.steady_timer.adoc',
+    'modules/ref/pages/time.system_clock.adoc',
+    'modules/ref/pages/time.system_timer.adoc',
     'modules/ref/pages/time.high_resolution_clock.adoc',
     'modules/ref/pages/stream.write_all.adoc',
     'modules/ref/pages/stream.write_at_least.adoc',
