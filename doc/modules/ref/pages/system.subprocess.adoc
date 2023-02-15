@@ -64,7 +64,7 @@ of low fds that you're likely to face on older UNIX shells). If you need to pass
 more than 10 file descriptors -- stdin, stdout, stderr, plus these extra 7 file
 descriptors -- use another interface (e.g. `SCM_RIGHTS`).
 
-`signal_on_gcreaper: integer = system.SIGTERM`::
+`signal_on_gcreaper: integer = system.signal.SIGTERM`::
 
 Each process is responsible for reaping its own children. A process that fails
 to reap its children will soon exhaust its OS-provided resources. For
@@ -78,12 +78,13 @@ specify a signal to be sent to the child that's about to be reaped at this
 occasion.
 +
 
-By default, the `system.SIGTERM` signal will be sent to the child and then the
-main Emilua process will -- indefinitely, non-blockingly, and non-pollingly --
-await for all of its children to finish even if there's no longer any Lua
-program being executed. Use the more dangerous `system.SIGKILL` if you don't
-want the main Emilua process to wait long for the child. Use `0` if you don't
-want the Emilua reaper to send any signal before awaiting for the child.
+By default, the signal `system.signal.SIGTERM` will be sent to the child and
+then the main Emilua process will -- indefinitely, non-blockingly, and
+non-pollingly -- await for all of its children to finish even if there's no
+longer any Lua program being executed. Use the more dangerous
+`system.signal.SIGKILL` if you don't want the main Emilua process to wait long
+for the child. Use `0` if you don't want the Emilua reaper to send any signal
+before awaiting for the child.
 
 +
 NOTE: Ideally the system kernel would expose some re-parent syscall, but until
