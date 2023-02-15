@@ -14,6 +14,8 @@ include::pages/filesystem.clock.adoc[]
 
 include::pages/filesystem.last_write_time.adoc[]
 
+include::pages/filesystem.is_empty.adoc[]
+
 include::pages/file.open_flag.adoc[]
 
 include::pages/file.random_access.adoc[]

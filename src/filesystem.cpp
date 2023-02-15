@@ -1916,6 +1916,32 @@ static int create_directories(lua_State* L)
     return 1;
 }
 
+static int is_empty(lua_State* L)
+{
+    auto path = static_cast<fs::path*>(lua_touserdata(L, 1));
+    if (!path || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    std::error_code ec;
+    bool ret = fs::is_empty(*path, ec);
+    if (ec) {
+        push(L, ec);
+        lua_pushliteral(L, "path1");
+        lua_pushvalue(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+    lua_pushboolean(L, ret);
+    return 1;
+}
+
 void init_filesystem(lua_State* L)
 {
     lua_pushlightuserdata(L, &filesystem_path_mt_key);
@@ -2009,7 +2035,7 @@ void init_filesystem(lua_State* L)
 
     lua_pushlightuserdata(L, &filesystem_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/5);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/6);
 
         lua_pushliteral(L, "path");
         {
@@ -2052,6 +2078,10 @@ void init_filesystem(lua_State* L)
 
         lua_pushliteral(L, "create_directories");
         lua_pushcfunction(L, create_directories);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "is_empty");
+        lua_pushcfunction(L, is_empty);
         lua_rawset(L, -3);
     }
     lua_rawset(L, LUA_REGISTRYINDEX);

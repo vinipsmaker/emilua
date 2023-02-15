@@ -1,0 +1,21 @@
+= filesystem.is_empty
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.is_empty(p: fs.path) -> boolean
+----
+
+== Description
+
+Checks whether the given path refers to an empty file or directory.
