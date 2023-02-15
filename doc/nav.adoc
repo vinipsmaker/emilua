@@ -13,6 +13,7 @@
 ** xref:ref:byte_span.adoc[]
 ** filesystem
 *** xref:ref:filesystem.path.adoc[]
+*** xref:ref:filesystem.create_directory.adoc[]
 *** xref:ref:filesystem.clock.adoc[]
 *** xref:ref:filesystem.last_write_time.adoc[]
 ** file

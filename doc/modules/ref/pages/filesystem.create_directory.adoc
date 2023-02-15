@@ -1,0 +1,32 @@
+= filesystem.create_directory
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.create_directory(p: fs.path[, existing_p: fs.path]) -> boolean
+fs.create_directories(p: fs.path) -> boolean
+----
+
+== Description
+
+Creates the directory `p` as if by POSIX `mkdir()` with a second argument of
+`0777`. If the function fails because `p` resolves to an existing directory, no
+error is reported.
+
+If `existing_p` is given, then the attributes of the new directory are copied
+from `existing_p`.
+
+`filesystem.create_directories()` calls `filesystem.create_directory()` for
+every element of `p` that does not already exist.
+
+Returns whether a directory was created for the directory `p` resolves to.
