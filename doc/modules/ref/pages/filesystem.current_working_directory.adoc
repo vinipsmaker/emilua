@@ -1,0 +1,26 @@
+= filesystem.current_working_directory
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.current_working_directory() -> fs.path -- <1>
+fs.current_working_directory(p: fs.path) -- <2>
+----
+<1> Get the current working directory.
+<2> Set the current working directory.
+
+== Description
+
+Get or set the current working directory for the calling process.
+
+NOTE: Only the master VM is allowed to change the current working directory.

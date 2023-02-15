@@ -8,6 +8,8 @@ include::pages/cond.adoc[]
 
 include::pages/filesystem.path.adoc[]
 
+include::pages/filesystem.current_working_directory.adoc[]
+
 include::pages/filesystem.create_directory.adoc[]
 
 include::pages/filesystem.clock.adoc[]
