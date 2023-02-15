@@ -22,13 +22,15 @@ Creates a new process.
 
 === Named parameters
 
-`program: string|filesystem.path`::
+`program: string|filesystem.path|file_descriptor`::
 
 `string`::: A simple filename. The system searches for this file in the list of
 directories specified by PATH (in the same way as for execvp(3)).
 
 `filesystem.path`::: The path (which can be absolute or relative) of the
  executable.
+
+`file_descriptor`::: A file descriptor to the executable. See fexecve(3).
 
 `arguments: string[]|nil`:: A table of strings that will be used as the created
 process' `argv`. On `nil`, an empty `argv` will be used.

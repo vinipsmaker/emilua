@@ -73,6 +73,7 @@ struct spawn_arguments_t
     bool use_path;
     int closeonexecpipe;
     const char* program;
+    int programfd;
     char** argv;
     char** envp;
     int proc_stdin;
@@ -1879,6 +1880,9 @@ static int system_spawn_child_main(void* a)
             if (idx == args->closeonexecpipe)
                 continue;
 
+            if (idx == args->programfd)
+                continue;
+
             bool is_busy = false;
             for (const auto& [_, src] : args->extra_fds) {
                 if (idx == src) {
@@ -1905,6 +1909,16 @@ static int system_spawn_child_main(void* a)
             return 1;
         }
         args->closeonexecpipe = dst;
+    }
+
+    if (args->programfd != -1 && args->programfd < 10) {
+        int dst = nextfd();
+        if (dup2(args->programfd, dst) == -1) {
+            reply.code = errno;
+            write(args->closeonexecpipe, &reply, sizeof(reply));
+            return 1;
+        }
+        args->programfd = dst;
     }
 
     for (auto& [_, src] : args->extra_fds) {
@@ -1963,13 +1977,31 @@ static int system_spawn_child_main(void* a)
         }
     }
 
-    if (close_range(/*first=*/11, /*last=*/UINT_MAX, /*flags=*/0) == -1) {
+    if (args->programfd != -1) {
+        if (args->programfd != 11 && dup2(args->programfd, 11) == -1) {
+            reply.code = errno;
+            write(10, &reply, sizeof(reply));
+            return 1;
+        }
+
+        int oldflags = fcntl(11, F_GETFD);
+        if (fcntl(11, F_SETFD, oldflags | FD_CLOEXEC) == -1) {
+            reply.code = errno;
+            write(10, &reply, sizeof(reply));
+            return 1;
+        }
+    }
+
+    unsigned int first = (args->programfd == -1) ? 11 : 12;
+    if (close_range(first, /*last=*/UINT_MAX, /*flags=*/0) == -1) {
         reply.code = errno;
         write(10, &reply, sizeof(reply));
         return 1;
     }
 
-    if (args->use_path)
+    if (args->programfd != -1)
+        fexecve(args->programfd, args->argv, args->envp);
+    else if (args->use_path)
         execvpe(args->program, args->argv, args->envp);
     else
         execve(args->program, args->argv, args->envp);
@@ -1988,6 +2020,7 @@ static int system_spawn(lua_State* L)
     const int FILE_DESCRIPTOR_MT_INDEX = lua_gettop(L);
 
     std::string program;
+    int programfd = -1;
     bool use_path;
     lua_getfield(L, 1, "program");
     switch (lua_type(L, -1)) {
@@ -1996,11 +2029,23 @@ static int system_spawn(lua_State* L)
         use_path = true;
         break;
     case LUA_TUSERDATA: {
-        auto path = static_cast<std::filesystem::path*>(lua_touserdata(L, -1));
+        auto fd = static_cast<file_descriptor_handle*>(lua_touserdata(L, -1));
         if (!lua_getmetatable(L, -1)) {
             push(L, std::errc::invalid_argument, "arg", "program");
             return lua_error(L);
         }
+        if (lua_rawequal(L, -1, FILE_DESCRIPTOR_MT_INDEX)) {
+            if (*fd == INVALID_FILE_DESCRIPTOR) {
+                push(L, std::errc::device_or_resource_busy, "arg", "program");
+                return lua_error(L);
+            }
+
+            lua_pop(L, 1);
+            programfd = *fd;
+            break;
+        }
+
+        auto path = static_cast<std::filesystem::path*>(lua_touserdata(L, -2));
         rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
         if (!lua_rawequal(L, -1, -2)) {
             push(L, std::errc::invalid_argument, "arg", "program");
@@ -2806,6 +2851,7 @@ static int system_spawn(lua_State* L)
     args.use_path = use_path;
     args.closeonexecpipe = pipefd[1];
     args.program = program.data();
+    args.programfd = programfd;
     args.argv = argumentsb.data();
     args.envp = environmentb.data();
     args.proc_stdin = proc_stdin;
