@@ -1,0 +1,61 @@
+= filesystem.clock
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+== Description
+
+endif::[]
+
+[source,lua]
+----
+local clock = require('filesystem').clock
+----
+
+A clock to represent file time. Its epoch is unspecified.
+
+== Functions
+
+=== `from_system(tp: time.system_clock.time_point) -> clock.time_point`
+
+Converts `tp` to a clock.time_point representing the same point in time.
+
+== `time_point` functions
+
+=== `add(self, secs: number)`
+
+Modifies the time point by the given duration.
+
+NOTE: When the duration is converted to the native tick representation of the
+clock, it'll be rounded to the nearest time point rounding to even in halfway
+cases.
+
+=== `sub(self, secs: number)`
+
+Modifies the time point by the given duration.
+
+NOTE: When the duration is converted to the native tick representation of the
+clock, it'll be rounded to the nearest time point rounding to even in halfway
+cases.
+
+=== `to_system(self) -> time.system_clock.time_point`
+
+Converts `self` to a time.system_clock.time_point representing the same point in
+time.
+
+== `time_point` properties
+
+=== `seconds_since_epoch: number`
+
+The number of elapsed seconds since the clock's epoch.
+
+== `time_point` metamethods
+
+* `__add()`
+* `__sub()`
+* `__eq()`
+* `__lt()`
+* `__le()`

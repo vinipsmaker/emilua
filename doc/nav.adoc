@@ -13,6 +13,8 @@
 ** xref:ref:byte_span.adoc[]
 ** filesystem
 *** xref:ref:filesystem.path.adoc[]
+*** xref:ref:filesystem.clock.adoc[]
+*** xref:ref:filesystem.last_write_time.adoc[]
 ** file
 *** xref:ref:file.open_flag.adoc[]
 *** xref:ref:file.random_access.adoc[]

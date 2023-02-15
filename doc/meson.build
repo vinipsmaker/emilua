@@ -8,6 +8,8 @@ src3 = [
     'modules/ref/pages/byte_span.adoc',
     'modules/ref/pages/cond.adoc',
     'modules/ref/pages/filesystem.path.adoc',
+    'modules/ref/pages/filesystem.clock.adoc',
+    'modules/ref/pages/filesystem.last_write_time.adoc',
     'modules/ref/pages/file.open_flag.adoc',
     'modules/ref/pages/file.random_access.adoc',
     'modules/ref/pages/file.stream.adoc',

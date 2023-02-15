@@ -6,6 +6,7 @@
 #include <emilua/dispatch_table.hpp>
 #include <emilua/filesystem.hpp>
 #include <emilua/windows.hpp>
+#include <emilua/time.hpp>
 
 namespace emilua {
 
@@ -14,6 +15,9 @@ namespace fs = std::filesystem;
 char filesystem_key;
 char filesystem_path_mt_key;
 static char filesystem_path_iterator_mt_key;
+static char file_clock_time_point_mt_key;
+
+using lua_Seconds = std::chrono::duration<lua_Number>;
 
 static int path_to_generic(lua_State* L)
 {
@@ -1373,6 +1377,454 @@ static int path_from_generic(lua_State* L)
     }
 }
 
+static int file_clock_time_point_add(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto tp = static_cast<std::chrono::file_clock::time_point*>(
+        lua_touserdata(L, 1));
+    if (!tp || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_clock_time_point_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    lua_Number secs = luaL_checknumber(L, 2);
+    if (std::isnan(secs) || std::isinf(secs)) {
+        push(L, std::errc::argument_out_of_domain, "arg", 2);
+        return lua_error(L);
+    }
+
+    lua_Seconds dur{secs};
+    if (
+        dur > std::chrono::file_clock::duration::max() ||
+        dur < std::chrono::file_clock::duration::min()
+    ) {
+        push(L, std::errc::value_too_large);
+        return lua_error(L);
+    }
+
+    try {
+        *tp += std::chrono::round<std::chrono::file_clock::duration>(dur);
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+    return 0;
+}
+
+static int file_clock_time_point_sub(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto tp = static_cast<std::chrono::file_clock::time_point*>(
+        lua_touserdata(L, 1));
+    if (!tp || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_clock_time_point_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    lua_Number secs = luaL_checknumber(L, 2);
+    if (std::isnan(secs) || std::isinf(secs)) {
+        push(L, std::errc::argument_out_of_domain, "arg", 2);
+        return lua_error(L);
+    }
+
+    lua_Seconds dur{secs};
+    if (
+        dur > std::chrono::file_clock::duration::max() ||
+        dur < std::chrono::file_clock::duration::min()
+    ) {
+        push(L, std::errc::value_too_large);
+        return lua_error(L);
+    }
+
+    try {
+        *tp -= std::chrono::round<std::chrono::file_clock::duration>(dur);
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+    return 0;
+}
+
+static int file_clock_time_point_to_system(lua_State* L)
+{
+    auto tp = static_cast<std::chrono::file_clock::time_point*>(
+        lua_touserdata(L, 1));
+    if (!tp || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_clock_time_point_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto ret = static_cast<std::chrono::system_clock::time_point*>(
+        lua_newuserdata(L, sizeof(std::chrono::system_clock::time_point))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &system_clock_time_point_mt_key);
+    setmetatable(L, -2);
+    new (ret) std::chrono::system_clock::time_point{};
+    // TODO (ifdefs or SFINAE magic): current libstdc++ hasn't got clock_cast
+    // yet
+    *ret = std::chrono::file_clock::to_sys(*tp);
+    return 1;
+}
+
+inline int file_clock_time_point_seconds_since_epoch(lua_State* L)
+{
+    auto tp = static_cast<std::chrono::file_clock::time_point*>(
+        lua_touserdata(L, 1));
+    lua_pushnumber(L, lua_Seconds{tp->time_since_epoch()}.count());
+    return 1;
+}
+
+static int file_clock_time_point_mt_index(lua_State* L)
+{
+    return dispatch_table::dispatch(
+        hana::make_tuple(
+            hana::make_pair(
+                BOOST_HANA_STRING("add"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, file_clock_time_point_add);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("sub"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, file_clock_time_point_sub);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("to_system"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, file_clock_time_point_to_system);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("seconds_since_epoch"),
+                file_clock_time_point_seconds_since_epoch
+            )
+        ),
+        [](std::string_view /*key*/, lua_State* L) -> int {
+            push(L, errc::bad_index, "index", 2);
+            return lua_error(L);
+        },
+        tostringview(L, 2),
+        L
+    );
+}
+
+static int file_clock_time_point_mt_eq(lua_State* L)
+{
+    auto tp1 = static_cast<std::chrono::file_clock::time_point*>(
+        lua_touserdata(L, 1));
+    auto tp2 = static_cast<std::chrono::file_clock::time_point*>(
+        lua_touserdata(L, 2));
+    lua_pushboolean(L, *tp1 == *tp2);
+    return 1;
+}
+
+static int file_clock_time_point_mt_lt(lua_State* L)
+{
+    auto tp1 = static_cast<std::chrono::file_clock::time_point*>(
+        lua_touserdata(L, 1));
+    if (!tp1 || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_clock_time_point_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto tp2 = static_cast<std::chrono::file_clock::time_point*>(
+        lua_touserdata(L, 2));
+    if (!tp2 || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_clock_time_point_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    lua_pushboolean(L, *tp1 < *tp2);
+    return 1;
+}
+
+static int file_clock_time_point_mt_le(lua_State* L)
+{
+    auto tp1 = static_cast<std::chrono::file_clock::time_point*>(
+        lua_touserdata(L, 1));
+    if (!tp1 || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_clock_time_point_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto tp2 = static_cast<std::chrono::file_clock::time_point*>(
+        lua_touserdata(L, 2));
+    if (!tp2 || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_clock_time_point_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    lua_pushboolean(L, *tp1 <= *tp2);
+    return 1;
+}
+
+static int file_clock_time_point_mt_add(lua_State* L)
+{
+    auto tp = static_cast<std::chrono::file_clock::time_point*>(
+        lua_touserdata(L, 1));
+    if (!tp || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_clock_time_point_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    lua_Number secs = luaL_checknumber(L, 2);
+    if (std::isnan(secs) || std::isinf(secs)) {
+        push(L, std::errc::argument_out_of_domain, "arg", 2);
+        return lua_error(L);
+    }
+
+    lua_Seconds dur{secs};
+    if (
+        dur > std::chrono::file_clock::duration::max() ||
+        dur < std::chrono::file_clock::duration::min()
+    ) {
+        push(L, std::errc::value_too_large);
+        return lua_error(L);
+    }
+
+    auto ret = static_cast<std::chrono::file_clock::time_point*>(
+        lua_newuserdata(L, sizeof(std::chrono::file_clock::time_point))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &file_clock_time_point_mt_key);
+    setmetatable(L, -2);
+    new (ret) std::chrono::file_clock::time_point{};
+
+    try {
+        *ret = *tp +
+            std::chrono::round<std::chrono::file_clock::duration>(dur);
+        return 1;
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+}
+
+static int file_clock_time_point_mt_sub(lua_State* L)
+{
+    auto tp = static_cast<std::chrono::file_clock::time_point*>(
+        lua_touserdata(L, 1));
+    if (!tp || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &file_clock_time_point_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    switch (lua_type(L, 2)) {
+    case LUA_TNUMBER: {
+        lua_Number secs = lua_tonumber(L, 2);
+        if (std::isnan(secs) || std::isinf(secs)) {
+            push(L, std::errc::argument_out_of_domain, "arg", 2);
+            return lua_error(L);
+        }
+
+        lua_Seconds dur{secs};
+        if (
+            dur > std::chrono::file_clock::duration::max() ||
+            dur < std::chrono::file_clock::duration::min()
+        ) {
+            push(L, std::errc::value_too_large);
+            return lua_error(L);
+        }
+
+        auto ret = static_cast<std::chrono::file_clock::time_point*>(
+            lua_newuserdata(L, sizeof(std::chrono::file_clock::time_point))
+        );
+        rawgetp(L, LUA_REGISTRYINDEX, &file_clock_time_point_mt_key);
+        setmetatable(L, -2);
+        new (ret) std::chrono::file_clock::time_point{};
+
+        try {
+            *ret = *tp -
+                std::chrono::round<std::chrono::file_clock::duration>(dur);
+            return 1;
+        } catch (const std::system_error& e) {
+            push(L, e.code());
+            return lua_error(L);
+        } catch (const std::exception& e) {
+            lua_pushstring(L, e.what());
+            return lua_error(L);
+        }
+    }
+    case LUA_TUSERDATA: {
+        auto tp2 = static_cast<std::chrono::file_clock::time_point*>(
+            lua_touserdata(L, 2));
+        if (!tp2 || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &file_clock_time_point_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        try {
+            lua_pushnumber(L, lua_Seconds{*tp - *tp2}.count());
+            return 1;
+        } catch (const std::system_error& e) {
+            push(L, e.code());
+            return lua_error(L);
+        } catch (const std::exception& e) {
+            lua_pushstring(L, e.what());
+            return lua_error(L);
+        }
+    }
+    default:
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+}
+
+static int file_clock_from_system(lua_State* L)
+{
+    auto tp = static_cast<std::chrono::system_clock::time_point*>(
+        lua_touserdata(L, 1));
+    if (!tp || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &system_clock_time_point_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto ret = static_cast<std::chrono::file_clock::time_point*>(
+        lua_newuserdata(L, sizeof(std::chrono::file_clock::time_point))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &file_clock_time_point_mt_key);
+    setmetatable(L, -2);
+    new (ret) std::chrono::file_clock::time_point{};
+    // TODO (ifdefs or SFINAE magic): current libstdc++ hasn't got clock_cast
+    // yet
+    *ret = std::chrono::file_clock::from_sys(*tp);
+    return 1;
+}
+
+static int last_write_time(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto path = static_cast<fs::path*>(lua_touserdata(L, 1));
+    if (!path || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    switch (lua_type(L, 2)) {
+    case LUA_TNIL: {
+        auto tp = static_cast<std::chrono::file_clock::time_point*>(
+            lua_newuserdata(L, sizeof(std::chrono::file_clock::time_point))
+        );
+        rawgetp(L, LUA_REGISTRYINDEX, &file_clock_time_point_mt_key);
+        setmetatable(L, -2);
+        new (tp) std::chrono::file_clock::time_point{};
+        std::error_code ec;
+        *tp = fs::last_write_time(*path, ec);
+        if (ec) {
+            push(L, ec);
+            lua_pushliteral(L, "path1");
+            lua_pushvalue(L, 1);
+            lua_rawset(L, -3);
+            return lua_error(L);
+        }
+        return 1;
+    }
+    case LUA_TUSERDATA: {
+        auto tp = static_cast<std::chrono::file_clock::time_point*>(
+            lua_touserdata(L, 2));
+        if (!tp || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &file_clock_time_point_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        std::error_code ec;
+        fs::last_write_time(*path, *tp, ec);
+        if (ec) {
+            push(L, ec);
+            lua_pushliteral(L, "path1");
+            lua_pushvalue(L, 1);
+            lua_rawset(L, -3);
+            return lua_error(L);
+        }
+        return 0;
+    }
+    default:
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+}
+
 void init_filesystem(lua_State* L)
 {
     lua_pushlightuserdata(L, &filesystem_path_mt_key);
@@ -1417,6 +1869,43 @@ void init_filesystem(lua_State* L)
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
+    lua_pushlightuserdata(L, &file_clock_time_point_mt_key);
+    {
+        static_assert(std::is_trivially_destructible_v<
+            std::chrono::file_clock::time_point>);
+
+        lua_createtable(L, /*narr=*/0, /*nrec=*/7);
+
+        lua_pushliteral(L, "__metatable");
+        lua_pushliteral(L, "filesystem.clock.time_point");
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__index");
+        lua_pushcfunction(L, file_clock_time_point_mt_index);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__eq");
+        lua_pushcfunction(L, file_clock_time_point_mt_eq);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__lt");
+        lua_pushcfunction(L, file_clock_time_point_mt_lt);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__le");
+        lua_pushcfunction(L, file_clock_time_point_mt_le);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__add");
+        lua_pushcfunction(L, file_clock_time_point_mt_add);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__sub");
+        lua_pushcfunction(L, file_clock_time_point_mt_sub);
+        lua_rawset(L, -3);
+    }
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
     lua_pushlightuserdata(L, &filesystem_path_iterator_mt_key);
     {
         lua_createtable(L, /*narr=*/0, /*nrec=*/1);
@@ -1429,7 +1918,7 @@ void init_filesystem(lua_State* L)
 
     lua_pushlightuserdata(L, &filesystem_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/1);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/3);
 
         lua_pushliteral(L, "path");
         {
@@ -1450,6 +1939,20 @@ void init_filesystem(lua_State* L)
             }
             lua_rawset(L, -3);
         }
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "clock");
+        {
+            lua_createtable(L, /*narr=*/0, /*nrec=*/1);
+
+            lua_pushliteral(L, "from_system");
+            lua_pushcfunction(L, file_clock_from_system);
+            lua_rawset(L, -3);
+        }
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "last_write_time");
+        lua_pushcfunction(L, last_write_time);
         lua_rawset(L, -3);
     }
     lua_rawset(L, LUA_REGISTRYINDEX);

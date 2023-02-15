@@ -1,0 +1,31 @@
+= filesystem.last_write_time
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.last_write_time(p: fs.path) -> fs.clock.time_point -- <1>
+fs.last_write_time(p: fs.path, tp: fs.clock.time_point) -- <2>
+----
+<1> Get last write time.
+<2> Set last write time.
+
+== Description
+
+Get or set the time of the last modification of `p`.
+
+NOTE: Symlinks are followed.
+
+NOTE: It is not guaranteed that immediately after setting the write time, the
+value returned by (1) is the same as what was passed as the argument to (2)
+because the file system's time may be more granular than
+`filesystem.clock.time_point`.
