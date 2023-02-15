@@ -60,7 +60,7 @@ src3 = [
     'modules/ref/pages/system.signal.set.adoc',
     'modules/ref/pages/system.signal.ignore.adoc',
     'modules/ref/pages/system.signal.default.adoc',
-    'modules/ref/pages/system.subprocess.adoc',
+    'modules/ref/pages/system.spawn.adoc',
     'modules/ref/pages/system.getresuid.adoc',
     'modules/ref/pages/system.getresgid.adoc',
     'modules/ref/pages/system.setresuid.adoc',

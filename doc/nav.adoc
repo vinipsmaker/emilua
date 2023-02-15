@@ -77,7 +77,7 @@
 *** xref:ref:system.signal.set.adoc[]
 *** xref:ref:system.signal.ignore.adoc[]
 *** xref:ref:system.signal.default.adoc[]
-*** xref:ref:system.subprocess.adoc[]
+*** xref:ref:system.spawn.adoc[]
 *** Process credentials
 **** xref:ref:system.getresuid.adoc[]
 **** xref:ref:system.getresgid.adoc[]

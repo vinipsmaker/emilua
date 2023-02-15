@@ -1,4 +1,4 @@
-= system.subprocess
+= system.spawn
 
 ifeval::["{doctype}" == "manpage"]
 
@@ -13,15 +13,14 @@ endif::[]
 [source,lua]
 ----
 local system = require "system"
+system.spawn(opts: table) -> subprocess
 ----
 
-== Functions
-
-=== `system.spawn(opts: table) -> subprocess`
+== Description
 
 Creates a new process.
 
-.Named parameters (i.e. attributes from its single table parameter)
+=== Named parameters
 
 `program: string|filesystem.path`::
 
@@ -211,6 +210,8 @@ Enter in this Linux IPC namespace.
 
 Enter in this Linux net namespace.
 
+== `subprocess` functions
+
 === `wait(self)`
 
 Wait for the process to finish, and then reap it. Information regarding
@@ -232,7 +233,7 @@ the OS to perform permission checks (reported as raised errors).
 
 See cap_get_pid(3).
 
-== Attributes
+== `subprocess` properties
 
 === `exit_code: integer`
 
