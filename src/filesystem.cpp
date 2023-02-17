@@ -1761,6 +1761,36 @@ static int file_clock_from_system(lua_State* L)
     return 1;
 }
 
+static int absolute(lua_State* L)
+{
+    auto path = static_cast<fs::path*>(lua_touserdata(L, 1));
+    if (!path || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto ret = static_cast<fs::path*>(lua_newuserdata(L, sizeof(fs::path)));
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    setmetatable(L, -2);
+    new (ret) fs::path{};
+
+    std::error_code ec;
+    *ret = fs::absolute(*path, ec);
+    if (ec) {
+        push(L, ec);
+        lua_pushliteral(L, "path1");
+        lua_pushvalue(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+    return 1;
+}
+
 static int last_write_time(lua_State* L)
 {
     lua_settop(L, 2);
@@ -2086,7 +2116,7 @@ void init_filesystem(lua_State* L)
 
     lua_pushlightuserdata(L, &filesystem_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/7);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/8);
 
         lua_pushliteral(L, "path");
         {
@@ -2117,6 +2147,10 @@ void init_filesystem(lua_State* L)
             lua_pushcfunction(L, file_clock_from_system);
             lua_rawset(L, -3);
         }
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "absolute");
+        lua_pushcfunction(L, absolute);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "last_write_time");
