@@ -1851,6 +1851,152 @@ static int weakly_canonical(lua_State* L)
     return 1;
 }
 
+static int relative(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto path = static_cast<fs::path*>(lua_touserdata(L, 1));
+    if (!path || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    fs::path path2;
+    switch (lua_type(L, 2)) {
+    case LUA_TNIL: {
+        std::error_code ec;
+        path2 = fs::current_path(ec);
+        if (ec) {
+            push(L, ec);
+            lua_pushliteral(L, "path1");
+            lua_pushvalue(L, 1);
+            lua_rawset(L, -3);
+            return lua_error(L);
+        }
+        break;
+    }
+    case LUA_TUSERDATA: {
+        auto p = static_cast<fs::path*>(lua_touserdata(L, 2));
+        if (!p || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        path2 = *p;
+        break;
+    }
+    default:
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    auto ret = static_cast<fs::path*>(lua_newuserdata(L, sizeof(fs::path)));
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    setmetatable(L, -2);
+    new (ret) fs::path{};
+
+    std::error_code ec;
+    *ret = fs::relative(*path, path2, ec);
+    if (ec) {
+        push(L, ec);
+
+        lua_pushliteral(L, "path1");
+        lua_pushvalue(L, 1);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "path2");
+        *ret = path2;
+        lua_pushvalue(L, -3);
+        lua_rawset(L, -3);
+
+        return lua_error(L);
+    }
+    return 1;
+}
+
+static int proximate(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto path = static_cast<fs::path*>(lua_touserdata(L, 1));
+    if (!path || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    fs::path path2;
+    switch (lua_type(L, 2)) {
+    case LUA_TNIL: {
+        std::error_code ec;
+        path2 = fs::current_path(ec);
+        if (ec) {
+            push(L, ec);
+            lua_pushliteral(L, "path1");
+            lua_pushvalue(L, 1);
+            lua_rawset(L, -3);
+            return lua_error(L);
+        }
+        break;
+    }
+    case LUA_TUSERDATA: {
+        auto p = static_cast<fs::path*>(lua_touserdata(L, 2));
+        if (!p || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        path2 = *p;
+        break;
+    }
+    default:
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    auto ret = static_cast<fs::path*>(lua_newuserdata(L, sizeof(fs::path)));
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    setmetatable(L, -2);
+    new (ret) fs::path{};
+
+    std::error_code ec;
+    *ret = fs::proximate(*path, path2, ec);
+    if (ec) {
+        push(L, ec);
+
+        lua_pushliteral(L, "path1");
+        lua_pushvalue(L, 1);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "path2");
+        *ret = path2;
+        lua_pushvalue(L, -3);
+        lua_rawset(L, -3);
+
+        return lua_error(L);
+    }
+    return 1;
+}
+
 static int last_write_time(lua_State* L)
 {
     lua_settop(L, 2);
@@ -2176,7 +2322,7 @@ void init_filesystem(lua_State* L)
 
     lua_pushlightuserdata(L, &filesystem_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/10);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/12);
 
         lua_pushliteral(L, "path");
         {
@@ -2219,6 +2365,14 @@ void init_filesystem(lua_State* L)
 
         lua_pushliteral(L, "weakly_canonical");
         lua_pushcfunction(L, weakly_canonical);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "relative");
+        lua_pushcfunction(L, relative);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "proximate");
+        lua_pushcfunction(L, proximate);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "last_write_time");

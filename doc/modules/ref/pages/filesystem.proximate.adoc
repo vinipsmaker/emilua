@@ -1,0 +1,21 @@
+= filesystem.proximate
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.proximate(p: fs.path, base: fs.path = fs.current_working_directory()) -> fs.path
+----
+
+== Description
+
+See <https://en.cppreference.com/w/cpp/filesystem/relative>.

@@ -14,6 +14,10 @@ include::pages/filesystem.canonical.adoc[]
 
 include::pages/filesystem.weakly_canonical.adoc[]
 
+include::pages/filesystem.relative.adoc[]
+
+include::pages/filesystem.proximate.adoc[]
+
 include::pages/filesystem.current_working_directory.adoc[]
 
 include::pages/filesystem.create_directory.adoc[]

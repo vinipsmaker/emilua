@@ -16,6 +16,8 @@
 *** xref:ref:filesystem.absolute.adoc[]
 *** xref:ref:filesystem.canonical.adoc[]
 *** xref:ref:filesystem.weakly_canonical.adoc[]
+*** xref:ref:filesystem.relative.adoc[]
+*** xref:ref:filesystem.proximate.adoc[]
 *** xref:ref:filesystem.current_working_directory.adoc[]
 *** xref:ref:filesystem.create_directory.adoc[]
 *** xref:ref:filesystem.clock.adoc[]
