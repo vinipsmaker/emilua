@@ -16,6 +16,7 @@ char filesystem_key;
 char filesystem_path_mt_key;
 static char filesystem_path_iterator_mt_key;
 static char file_clock_time_point_mt_key;
+static char file_status_mt_key;
 
 using lua_Seconds = std::chrono::duration<lua_Number>;
 
@@ -1735,6 +1736,88 @@ static int file_clock_time_point_mt_sub(lua_State* L)
     }
 }
 
+inline int file_status_type(lua_State* L)
+{
+    auto st = static_cast<fs::file_status*>(lua_touserdata(L, 1));
+    switch (st->type()) {
+    case fs::file_type::none:
+        lua_pushnil(L);
+        return 1;
+    case fs::file_type::not_found:
+        lua_pushliteral(L, "not_found");
+        return 1;
+    case fs::file_type::regular:
+        lua_pushliteral(L, "regular");
+        return 1;
+    case fs::file_type::directory:
+        lua_pushliteral(L, "directory");
+        return 1;
+    case fs::file_type::symlink:
+        lua_pushliteral(L, "symlink");
+        return 1;
+    case fs::file_type::block:
+        lua_pushliteral(L, "block");
+        return 1;
+    case fs::file_type::character:
+        lua_pushliteral(L, "character");
+        return 1;
+    case fs::file_type::fifo:
+        lua_pushliteral(L, "fifo");
+        return 1;
+    case fs::file_type::socket:
+        lua_pushliteral(L, "socket");
+        return 1;
+#if BOOST_OS_WINDOWS
+    case fs::file_type::junction:
+        lua_pushliteral(L, "junction");
+        return 1;
+#endif // BOOST_OS_WINDOWS
+    case fs::file_type::unknown:
+        // by avoiding an explicit `default` case we get compiler warnings in
+        // case we miss any
+        break;
+    }
+
+    lua_pushliteral(L, "unknown");
+    return 1;
+}
+
+inline int file_status_mode(lua_State* L)
+{
+    auto st = static_cast<fs::file_status*>(lua_touserdata(L, 1));
+    if (st->permissions() == fs::perms::unknown) {
+        lua_pushliteral(L, "unknown");
+        return 1;
+    }
+    auto p = static_cast<std::underlying_type_t<fs::perms>>(st->permissions());
+    lua_pushinteger(L, p);
+    return 1;
+}
+
+static int file_status_mt_index(lua_State* L)
+{
+    return dispatch_table::dispatch(
+        hana::make_tuple(
+            hana::make_pair(BOOST_HANA_STRING("type"), file_status_type),
+            hana::make_pair(BOOST_HANA_STRING("mode"), file_status_mode)
+        ),
+        [](std::string_view /*key*/, lua_State* L) -> int {
+            push(L, errc::bad_index, "index", 2);
+            return lua_error(L);
+        },
+        tostringview(L, 2),
+        L
+    );
+}
+
+static int file_status_mt_eq(lua_State* L)
+{
+    auto st1 = static_cast<fs::file_status*>(lua_touserdata(L, 1));
+    auto st2 = static_cast<fs::file_status*>(lua_touserdata(L, 2));
+    lua_pushboolean(L, *st1 == *st2);
+    return 1;
+}
+
 static int file_clock_from_system(lua_State* L)
 {
     auto tp = static_cast<std::chrono::system_clock::time_point*>(
@@ -2229,6 +2312,70 @@ static int current_working_directory(lua_State* L)
     return 0;
 }
 
+static int status(lua_State* L)
+{
+    auto path = static_cast<fs::path*>(lua_touserdata(L, 1));
+    if (!path || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto ret = static_cast<fs::file_status*>(
+        lua_newuserdata(L, sizeof(fs::file_status))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &file_status_mt_key);
+    setmetatable(L, -2);
+    new (ret) fs::file_status{};
+
+    std::error_code ec;
+    *ret = fs::status(*path, ec);
+    if (ec) {
+        push(L, ec);
+        lua_pushliteral(L, "path1");
+        lua_pushvalue(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+    return 1;
+}
+
+static int symlink_status(lua_State* L)
+{
+    auto path = static_cast<fs::path*>(lua_touserdata(L, 1));
+    if (!path || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto ret = static_cast<fs::file_status*>(
+        lua_newuserdata(L, sizeof(fs::file_status))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &file_status_mt_key);
+    setmetatable(L, -2);
+    new (ret) fs::file_status{};
+
+    std::error_code ec;
+    *ret = fs::symlink_status(*path, ec);
+    if (ec) {
+        push(L, ec);
+        lua_pushliteral(L, "path1");
+        lua_pushvalue(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+    return 1;
+}
+
 void init_filesystem(lua_State* L)
 {
     lua_pushlightuserdata(L, &filesystem_path_mt_key);
@@ -2320,9 +2467,29 @@ void init_filesystem(lua_State* L)
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
+    lua_pushlightuserdata(L, &file_status_mt_key);
+    {
+        static_assert(std::is_trivially_destructible_v<fs::file_status>);
+
+        lua_createtable(L, /*narr=*/0, /*nrec=*/3);
+
+        lua_pushliteral(L, "__metatable");
+        lua_pushliteral(L, "filesystem.file_status");
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__index");
+        lua_pushcfunction(L, file_status_mt_index);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__eq");
+        lua_pushcfunction(L, file_status_mt_eq);
+        lua_rawset(L, -3);
+    }
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
     lua_pushlightuserdata(L, &filesystem_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/12);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/14);
 
         lua_pushliteral(L, "path");
         {
@@ -2393,6 +2560,14 @@ void init_filesystem(lua_State* L)
 
         lua_pushliteral(L, "current_working_directory");
         lua_pushcfunction(L, current_working_directory);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "status");
+        lua_pushcfunction(L, status);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "symlink_status");
+        lua_pushcfunction(L, symlink_status);
         lua_rawset(L, -3);
     }
     lua_rawset(L, LUA_REGISTRYINDEX);

@@ -1,0 +1,38 @@
+= filesystem.status
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.status(p: fs.path) -> { type: string, mode: integer|"unknown" }
+fs.symlink_status(p: fs.path) -> { type: string, mode: integer|"unknown" }
+----
+
+== Description
+
+See <https://en.cppreference.com/w/cpp/filesystem/status>.
+
+The acceptable strings for the member named `type` in the returned object are:
+
+* `"not_found"`
+* `"regular"`
+* `"directory"`
+* `"symlink"`
+* `"block"`
+* `"character"`
+* `"fifo"`
+* `"socket"`
+* `"junction"` (Windows-only)
+* `"unknown"`
+
+The member named `mode` in the returned object refers to the POSIX file access
+mode (permissions).
