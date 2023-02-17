@@ -1,0 +1,22 @@
+= filesystem.canonical
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.canonical(p: fs.path) -> fs.path
+----
+
+== Description
+
+Returns a canonical absolute path referencing the same file system location as
+`p`.

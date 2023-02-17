@@ -10,6 +10,10 @@ include::pages/filesystem.path.adoc[]
 
 include::pages/filesystem.absolute.adoc[]
 
+include::pages/filesystem.canonical.adoc[]
+
+include::pages/filesystem.weakly_canonical.adoc[]
+
 include::pages/filesystem.current_working_directory.adoc[]
 
 include::pages/filesystem.create_directory.adoc[]

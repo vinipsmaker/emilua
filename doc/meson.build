@@ -9,6 +9,8 @@ src3 = [
     'modules/ref/pages/cond.adoc',
     'modules/ref/pages/filesystem.path.adoc',
     'modules/ref/pages/filesystem.absolute.adoc',
+    'modules/ref/pages/filesystem.canonical.adoc',
+    'modules/ref/pages/filesystem.weakly_canonical.adoc',
     'modules/ref/pages/filesystem.current_working_directory.adoc',
     'modules/ref/pages/filesystem.create_directory.adoc',
     'modules/ref/pages/filesystem.clock.adoc',
