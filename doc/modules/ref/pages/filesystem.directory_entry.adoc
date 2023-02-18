@@ -1,0 +1,48 @@
+= filesystem.directory_entry
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+== Description
+
+endif::[]
+
+The object returned by directory iterators. Objects of this class cannot be
+created directly.
+
+== Functions
+
+=== `refresh(self)`
+
+Updates the cached file attributes.
+
+== Properties
+
+=== `path: filesystem.path`
+
+The path the entry refers to.
+
+=== `file_size: integer`
+
+The size in bytes of the file to which the directory entry refers to.
+
+=== `hard_link_count: integer`
+
+The number of hard links referring to the file to which the directory entry
+refers to.
+
+=== `last_write_time: filesystem.clock.time_point`
+
+The time of the last data modification of the file to which the directory entry
+refers to.
+
+=== `status`
+
+Returns the same value as `filesystem.status()`.
+
+=== `symlink_status`
+
+Returns the same value as `filesystem.symlink_status()`.

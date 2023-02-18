@@ -8,6 +8,12 @@ include::pages/cond.adoc[]
 
 include::pages/filesystem.path.adoc[]
 
+include::pages/filesystem.directory_entry.adoc[]
+
+include::pages/filesystem.directory_iterator.adoc[]
+
+include::pages/filesystem.recursive_directory_iterator.adoc[]
+
 include::pages/filesystem.absolute.adoc[]
 
 include::pages/filesystem.canonical.adoc[]

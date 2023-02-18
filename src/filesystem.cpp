@@ -17,8 +17,43 @@ char filesystem_path_mt_key;
 static char filesystem_path_iterator_mt_key;
 static char file_clock_time_point_mt_key;
 static char file_status_mt_key;
+static char directory_entry_mt_key;
+static char directory_iterator_mt_key;
+static char recursive_directory_iterator_mt_key;
 
 using lua_Seconds = std::chrono::duration<lua_Number>;
+
+struct directory_iterator
+{
+    template<class... Args>
+    directory_iterator(Args&&... args)
+        : iterator{std::forward<Args>(args)...}
+    {}
+
+    fs::directory_iterator iterator;
+    bool increment = false;
+
+    static int next(lua_State* L);
+    static int make(lua_State* L);
+};
+
+struct recursive_directory_iterator
+{
+    template<class... Args>
+    recursive_directory_iterator(Args&&... args)
+        : iterator{std::forward<Args>(args)...}
+    {}
+
+    fs::recursive_directory_iterator iterator;
+    bool increment = false;
+
+    static int pop(lua_State* L);
+    static int disable_recursion_pending(lua_State* L);
+    static int recursion_pending(lua_State* L);
+    static int mt_index(lua_State* L);
+    static int next(lua_State* L);
+    static int make(lua_State* L);
+};
 
 static int path_to_generic(lua_State* L)
 {
@@ -1818,6 +1853,533 @@ static int file_status_mt_eq(lua_State* L)
     return 1;
 }
 
+static int directory_entry_refresh(lua_State* L)
+{
+    auto entry = static_cast<fs::directory_entry*>(lua_touserdata(L, 1));
+    if (!entry || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &directory_entry_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    std::error_code ec;
+    entry->refresh(ec);
+    if (ec) {
+        push(L, ec);
+
+        lua_pushliteral(L, "path1");
+        {
+            auto path = static_cast<fs::path*>(
+                lua_newuserdata(L, sizeof(fs::path)));
+            rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+            setmetatable(L, -2);
+            new (path) fs::path{};
+            *path = entry->path();
+        }
+        lua_rawset(L, -3);
+
+        return lua_error(L);
+    }
+    return 0;
+}
+
+inline int directory_entry_path(lua_State* L)
+{
+    auto entry = static_cast<fs::directory_entry*>(lua_touserdata(L, 1));
+    auto path = static_cast<fs::path*>(lua_newuserdata(L, sizeof(fs::path)));
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    setmetatable(L, -2);
+    new (path) fs::path{};
+    *path = entry->path();
+    return 1;
+}
+
+inline int directory_entry_file_size(lua_State* L)
+{
+    auto entry = static_cast<fs::directory_entry*>(lua_touserdata(L, 1));
+
+    std::error_code ec;
+    auto ret = entry->file_size(ec);
+    if (ec) {
+        push(L, ec);
+
+        lua_pushliteral(L, "path1");
+        {
+            auto path = static_cast<fs::path*>(
+                lua_newuserdata(L, sizeof(fs::path)));
+            rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+            setmetatable(L, -2);
+            new (path) fs::path{};
+            *path = entry->path();
+        }
+        lua_rawset(L, -3);
+
+        return lua_error(L);
+    }
+    lua_pushinteger(L, ret);
+    return 1;
+}
+
+inline int directory_entry_hard_link_count(lua_State* L)
+{
+    auto entry = static_cast<fs::directory_entry*>(lua_touserdata(L, 1));
+
+    std::error_code ec;
+    auto ret = entry->hard_link_count(ec);
+    if (ec) {
+        push(L, ec);
+
+        lua_pushliteral(L, "path1");
+        {
+            auto path = static_cast<fs::path*>(
+                lua_newuserdata(L, sizeof(fs::path)));
+            rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+            setmetatable(L, -2);
+            new (path) fs::path{};
+            *path = entry->path();
+        }
+        lua_rawset(L, -3);
+
+        return lua_error(L);
+    }
+    lua_pushinteger(L, ret);
+    return 1;
+}
+
+inline int directory_entry_last_write_time(lua_State* L)
+{
+    auto entry = static_cast<fs::directory_entry*>(lua_touserdata(L, 1));
+
+    std::error_code ec;
+    auto ret = entry->last_write_time(ec);
+    if (ec) {
+        push(L, ec);
+
+        lua_pushliteral(L, "path1");
+        {
+            auto path = static_cast<fs::path*>(
+                lua_newuserdata(L, sizeof(fs::path)));
+            rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+            setmetatable(L, -2);
+            new (path) fs::path{};
+            *path = entry->path();
+        }
+        lua_rawset(L, -3);
+
+        return lua_error(L);
+    }
+
+    auto tp = static_cast<std::chrono::file_clock::time_point*>(
+        lua_newuserdata(L, sizeof(std::chrono::file_clock::time_point))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &file_clock_time_point_mt_key);
+    setmetatable(L, -2);
+    new (tp) std::chrono::file_clock::time_point{ret};
+    return 1;
+}
+
+inline int directory_entry_status(lua_State* L)
+{
+    auto entry = static_cast<fs::directory_entry*>(lua_touserdata(L, 1));
+
+    std::error_code ec;
+    auto ret = entry->status(ec);
+    if (ec) {
+        push(L, ec);
+
+        lua_pushliteral(L, "path1");
+        {
+            auto path = static_cast<fs::path*>(
+                lua_newuserdata(L, sizeof(fs::path)));
+            rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+            setmetatable(L, -2);
+            new (path) fs::path{};
+            *path = entry->path();
+        }
+        lua_rawset(L, -3);
+
+        return lua_error(L);
+    }
+
+    auto st = static_cast<fs::file_status*>(
+        lua_newuserdata(L, sizeof(fs::file_status))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &file_status_mt_key);
+    setmetatable(L, -2);
+    new (st) fs::file_status{ret};
+    return 1;
+}
+
+inline int directory_entry_symlink_status(lua_State* L)
+{
+    auto entry = static_cast<fs::directory_entry*>(lua_touserdata(L, 1));
+
+    std::error_code ec;
+    auto ret = entry->symlink_status(ec);
+    if (ec) {
+        push(L, ec);
+
+        lua_pushliteral(L, "path1");
+        {
+            auto path = static_cast<fs::path*>(
+                lua_newuserdata(L, sizeof(fs::path)));
+            rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+            setmetatable(L, -2);
+            new (path) fs::path{};
+            *path = entry->path();
+        }
+        lua_rawset(L, -3);
+
+        return lua_error(L);
+    }
+
+    auto st = static_cast<fs::file_status*>(
+        lua_newuserdata(L, sizeof(fs::file_status))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &file_status_mt_key);
+    setmetatable(L, -2);
+    new (st) fs::file_status{ret};
+    return 1;
+}
+
+static int directory_entry_mt_index(lua_State* L)
+{
+    return dispatch_table::dispatch(
+        hana::make_tuple(
+            hana::make_pair(
+                BOOST_HANA_STRING("refresh"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, directory_entry_refresh);
+                    return 1;
+                }
+            ),
+            hana::make_pair(BOOST_HANA_STRING("path"), directory_entry_path),
+            hana::make_pair(
+                BOOST_HANA_STRING("file_size"), directory_entry_file_size),
+            hana::make_pair(
+                BOOST_HANA_STRING("hard_link_count"),
+                directory_entry_hard_link_count),
+            hana::make_pair(
+                BOOST_HANA_STRING("last_write_time"),
+                directory_entry_last_write_time),
+            hana::make_pair(
+                BOOST_HANA_STRING("status"), directory_entry_status),
+            hana::make_pair(
+                BOOST_HANA_STRING("symlink_status"),
+                directory_entry_symlink_status)
+        ),
+        [](std::string_view /*key*/, lua_State* L) -> int {
+            push(L, errc::bad_index, "index", 2);
+            return lua_error(L);
+        },
+        tostringview(L, 2),
+        L
+    );
+}
+
+int directory_iterator::next(lua_State* L)
+{
+    auto self = static_cast<directory_iterator*>(
+        lua_touserdata(L, lua_upvalueindex(1)));
+
+    if (self->iterator == fs::directory_iterator{})
+        return 0;
+
+    if (self->increment) {
+        std::error_code ec;
+        self->iterator.increment(ec);
+        if (ec) {
+            push(L, ec);
+            return lua_error(L);
+        }
+
+        if (self->iterator == fs::directory_iterator{})
+            return 0;
+    } else {
+        self->increment = true;
+    }
+
+    auto ret = static_cast<fs::directory_entry*>(
+        lua_newuserdata(L, sizeof(fs::directory_entry)));
+    rawgetp(L, LUA_REGISTRYINDEX, &directory_entry_mt_key);
+    setmetatable(L, -2);
+    new (ret) fs::directory_entry{};
+    *ret = *(self->iterator);
+    return 1;
+}
+
+int directory_iterator::make(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto path = static_cast<fs::path*>(lua_touserdata(L, 1));
+    if (!path || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    fs::directory_options options = fs::directory_options::none;
+
+    switch (lua_type(L, 2)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TTABLE:
+        lua_getfield(L, 2, "skip_permission_denied");
+        switch (lua_type(L, -1)) {
+        case LUA_TNIL:
+            break;
+        case LUA_TBOOLEAN:
+            if (lua_toboolean(L, -1))
+                options |= fs::directory_options::skip_permission_denied;
+            break;
+        default:
+            push(L, std::errc::invalid_argument,
+                 "arg", "skip_permission_denied");
+            return lua_error(L);
+        }
+        break;
+    default:
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    {
+        std::error_code ec;
+        auto iter = static_cast<directory_iterator*>(
+            lua_newuserdata(L, sizeof(directory_iterator)));
+        rawgetp(L, LUA_REGISTRYINDEX, &directory_iterator_mt_key);
+        setmetatable(L, -2);
+        new (iter) directory_iterator{*path, options, ec};
+
+        if (ec) {
+            push(L, ec);
+            lua_pushliteral(L, "path1");
+            lua_pushvalue(L, 1);
+            lua_rawset(L, -3);
+            return lua_error(L);
+        }
+    }
+    lua_pushcclosure(L, next, 1);
+    return 1;
+}
+
+int recursive_directory_iterator::pop(lua_State* L)
+{
+    auto self = static_cast<recursive_directory_iterator*>(
+        lua_touserdata(L, 1));
+    if (!self || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &recursive_directory_iterator_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    std::error_code ec;
+    self->iterator.pop(ec);
+    if (ec) {
+        push(L, ec);
+        return lua_error(L);
+    }
+    return 0;
+}
+
+int recursive_directory_iterator::disable_recursion_pending(lua_State* L)
+{
+    auto self = static_cast<recursive_directory_iterator*>(
+        lua_touserdata(L, 1));
+    if (!self || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &recursive_directory_iterator_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    if (self->iterator == fs::recursive_directory_iterator{}) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    try {
+        self->iterator.disable_recursion_pending();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+    return 0;
+}
+
+int recursive_directory_iterator::recursion_pending(lua_State* L)
+{
+    auto self = static_cast<recursive_directory_iterator*>(
+        lua_touserdata(L, 1));
+    if (self->iterator == fs::recursive_directory_iterator{}) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    lua_pushboolean(L, self->iterator.recursion_pending());
+    return 1;
+}
+
+int recursive_directory_iterator::mt_index(lua_State* L)
+{
+    return dispatch_table::dispatch(
+        hana::make_tuple(
+            hana::make_pair(
+                BOOST_HANA_STRING("pop"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, pop);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("disable_recursion_pending"),
+                [](lua_State* L) -> int {
+                    lua_pushcfunction(L, disable_recursion_pending);
+                    return 1;
+                }
+            ),
+            hana::make_pair(
+                BOOST_HANA_STRING("recursion_pending"), recursion_pending
+            )
+        ),
+        [](std::string_view /*key*/, lua_State* L) -> int {
+            push(L, errc::bad_index, "index", 2);
+            return lua_error(L);
+        },
+        tostringview(L, 2),
+        L
+    );
+}
+
+int recursive_directory_iterator::next(lua_State* L)
+{
+    auto self = static_cast<recursive_directory_iterator*>(
+        lua_touserdata(L, lua_upvalueindex(1)));
+
+    if (self->iterator == fs::recursive_directory_iterator{})
+        return 0;
+
+    if (self->increment) {
+        std::error_code ec;
+        self->iterator.increment(ec);
+        if (ec) {
+            push(L, ec);
+            return lua_error(L);
+        }
+
+        if (self->iterator == fs::recursive_directory_iterator{})
+            return 0;
+    } else {
+        self->increment = true;
+    }
+
+    auto ret = static_cast<fs::directory_entry*>(
+        lua_newuserdata(L, sizeof(fs::directory_entry)));
+    rawgetp(L, LUA_REGISTRYINDEX, &directory_entry_mt_key);
+    setmetatable(L, -2);
+    new (ret) fs::directory_entry{};
+    *ret = *(self->iterator);
+
+    lua_pushinteger(L, self->iterator.depth());
+
+    return 2;
+}
+
+int recursive_directory_iterator::make(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto path = static_cast<fs::path*>(lua_touserdata(L, 1));
+    if (!path || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    fs::directory_options options = fs::directory_options::none;
+
+    switch (lua_type(L, 2)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TTABLE:
+        lua_getfield(L, 2, "skip_permission_denied");
+        switch (lua_type(L, -1)) {
+        case LUA_TNIL:
+            break;
+        case LUA_TBOOLEAN:
+            if (lua_toboolean(L, -1))
+                options |= fs::directory_options::skip_permission_denied;
+            break;
+        default:
+            push(L, std::errc::invalid_argument,
+                 "arg", "skip_permission_denied");
+            return lua_error(L);
+        }
+
+        lua_getfield(L, 2, "follow_directory_symlink");
+        switch (lua_type(L, -1)) {
+        case LUA_TNIL:
+            break;
+        case LUA_TBOOLEAN:
+            if (lua_toboolean(L, -1))
+                options |= fs::directory_options::follow_directory_symlink;
+            break;
+        default:
+            push(L, std::errc::invalid_argument,
+                 "arg", "follow_directory_symlink");
+            return lua_error(L);
+        }
+        break;
+    default:
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    {
+        std::error_code ec;
+        auto iter = static_cast<recursive_directory_iterator*>(
+            lua_newuserdata(L, sizeof(recursive_directory_iterator)));
+        rawgetp(L, LUA_REGISTRYINDEX, &recursive_directory_iterator_mt_key);
+        setmetatable(L, -2);
+        new (iter) recursive_directory_iterator{*path, options, ec};
+
+        if (ec) {
+            push(L, ec);
+            lua_pushliteral(L, "path1");
+            lua_pushvalue(L, 1);
+            lua_rawset(L, -3);
+            return lua_error(L);
+        }
+    }
+    lua_pushvalue(L, -1);
+    lua_pushcclosure(L, next, 1);
+    lua_insert(L, -2);
+    return 2;
+}
+
 static int file_clock_from_system(lua_State* L)
 {
     auto tp = static_cast<std::chrono::system_clock::time_point*>(
@@ -2467,6 +3029,34 @@ void init_filesystem(lua_State* L)
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
+    lua_pushlightuserdata(L, &directory_iterator_mt_key);
+    {
+        lua_createtable(L, /*narr=*/0, /*nrec=*/1);
+
+        lua_pushliteral(L, "__gc");
+        lua_pushcfunction(L, finalizer<directory_iterator>);
+        lua_rawset(L, -3);
+    }
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_pushlightuserdata(L, &recursive_directory_iterator_mt_key);
+    {
+        lua_createtable(L, /*narr=*/0, /*nrec=*/3);
+
+        lua_pushliteral(L, "__metatable");
+        lua_pushliteral(L, "filesystem.recursive_directory_iterator");
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__index");
+        lua_pushcfunction(L, recursive_directory_iterator::mt_index);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__gc");
+        lua_pushcfunction(L, finalizer<recursive_directory_iterator>);
+        lua_rawset(L, -3);
+    }
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
     lua_pushlightuserdata(L, &file_status_mt_key);
     {
         static_assert(std::is_trivially_destructible_v<fs::file_status>);
@@ -2487,9 +3077,27 @@ void init_filesystem(lua_State* L)
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
+    lua_pushlightuserdata(L, &directory_entry_mt_key);
+    {
+        lua_createtable(L, /*narr=*/0, /*nrec=*/3);
+
+        lua_pushliteral(L, "__metatable");
+        lua_pushliteral(L, "filesystem.directory_entry");
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__index");
+        lua_pushcfunction(L, directory_entry_mt_index);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__gc");
+        lua_pushcfunction(L, finalizer<fs::directory_entry>);
+        lua_rawset(L, -3);
+    }
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
     lua_pushlightuserdata(L, &filesystem_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/14);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/16);
 
         lua_pushliteral(L, "path");
         {
@@ -2520,6 +3128,14 @@ void init_filesystem(lua_State* L)
             lua_pushcfunction(L, file_clock_from_system);
             lua_rawset(L, -3);
         }
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "directory_iterator");
+        lua_pushcfunction(L, directory_iterator::make);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "recursive_directory_iterator");
+        lua_pushcfunction(L, recursive_directory_iterator::make);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "absolute");

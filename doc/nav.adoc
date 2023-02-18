@@ -13,6 +13,9 @@
 ** xref:ref:byte_span.adoc[]
 ** filesystem
 *** xref:ref:filesystem.path.adoc[]
+*** xref:ref:filesystem.directory_entry.adoc[]
+*** xref:ref:filesystem.directory_iterator.adoc[]
+*** xref:ref:filesystem.recursive_directory_iterator.adoc[]
 *** xref:ref:filesystem.absolute.adoc[]
 *** xref:ref:filesystem.canonical.adoc[]
 *** xref:ref:filesystem.weakly_canonical.adoc[]

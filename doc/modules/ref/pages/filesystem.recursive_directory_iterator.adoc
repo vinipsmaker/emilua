@@ -1,0 +1,90 @@
+= filesystem.recursive_directory_iterator
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.recursive_directory_iterator(p: fs.path[, opts: table]) -> function, handle
+----
+
+== Description
+
+Returns an iterator function, and a handle to control iteration.
+
+Each time the iterator is called, returns a `filesystem.directory_entry` object
+for an element of the directory `p` (and, recursively, over the entries of all
+of its subdirectories), and the current recursion depth (an `integer`).
+
+== `opts`
+
+`skip_permission_denied: boolean = false`::
+
+Whether to skip directories that would otherwise result in `EPERM`.
+
+`follow_directory_symlink: boolean = false`::
+
+Whether to follow directory symlinks.
+
+== Wrapping the iterator to skip over CVS files.
+
+Some programs such as `rsync` have command line options such as `--cvs-exclude`
+that skip over unwanted files for the directory traversal. Such patterns can be
+easily abstracted on top of `recursive_directory_iterator`. Here's the
+implementation for a function that does just that:
+
+[source,lua]
+----
+function cvs_exclude(iter, ctrl)
+    local function next()
+        local entry, depth = iter()
+        if entry == nil then
+            return
+        end
+
+        local p = tostring(entry.path:filename())
+        if p == ".git" or p == ".svn" or p == ".hg" then
+            ctrl:disable_recursion_pending()
+        end
+        return entry, depth
+    end
+    return next, ctrl
+end
+----
+
+TIP: The same trick can be used to create functions to perform shell globbing.
+
+== `handle` functions
+
+=== `pop(self)`
+
+Moves the iterator one level up in the directory hierarchy.
+
+=== `disable_recursion_pending(self)`
+
+Disables recursion until the next increment.
+
+== `handle` properties
+
+=== `recursion_pending: boolean`
+
+Whether the recursion is disabled for the current directory.
+
+== Example
+
+[source,lua]
+----
+local fs = require "filesystem"
+
+for entry, depth in fs.recursive_directory_iterator(fs.path.new(".")) do
+    print(string.rep("\t", depth) .. tostring(entry.path:filename()))
+end
+----

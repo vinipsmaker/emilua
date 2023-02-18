@@ -1,0 +1,29 @@
+= filesystem.directory_iterator
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.directory_iterator(p: fs.path[, opts: table]) -> function
+----
+
+== Description
+
+Returns an iterator function that, each time it is called, returns a
+`filesystem.directory_entry` object for an element of the directory `p`.
+
+== `opts`
+
+`skip_permission_denied: boolean = false`::
+
+On `true`, an `EPERM` will not be reported. Instead, an iterator to an empty
+collection will be returned.
