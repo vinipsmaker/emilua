@@ -20,6 +20,7 @@ src3 = [
     'modules/ref/pages/filesystem.create_directory.adoc',
     'modules/ref/pages/filesystem.clock.adoc',
     'modules/ref/pages/filesystem.last_write_time.adoc',
+    'modules/ref/pages/filesystem.chmod.adoc',
     'modules/ref/pages/filesystem.is_empty.adoc',
     'modules/ref/pages/filesystem.status.adoc',
     'modules/ref/pages/filesystem.umask.adoc',

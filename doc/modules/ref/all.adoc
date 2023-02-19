@@ -32,6 +32,8 @@ include::pages/filesystem.clock.adoc[]
 
 include::pages/filesystem.last_write_time.adoc[]
 
+include::pages/filesystem.chmod.adoc[]
+
 include::pages/filesystem.is_empty.adoc[]
 
 include::pages/filesystem.status.adoc[]
