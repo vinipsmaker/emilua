@@ -36,6 +36,8 @@ include::pages/filesystem.is_empty.adoc[]
 
 include::pages/filesystem.status.adoc[]
 
+include::pages/filesystem.umask.adoc[]
+
 include::pages/file.open_flag.adoc[]
 
 include::pages/file.random_access.adoc[]
@@ -155,8 +157,6 @@ include::pages/system.setresgid.adoc[]
 include::pages/system.getgroups.adoc[]
 
 include::pages/system.setgroups.adoc[]
-
-include::pages/system.umask.adoc[]
 
 include::pages/system.linux_capabilities.adoc[]
 

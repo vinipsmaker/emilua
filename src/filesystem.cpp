@@ -2938,6 +2938,19 @@ static int symlink_status(lua_State* L)
     return 1;
 }
 
+static int filesystem_umask(lua_State* L)
+{
+    auto& vm_ctx = get_vm_context(L);
+    if (!vm_ctx.is_master()) {
+        push(L, std::errc::operation_not_permitted);
+        return lua_error(L);
+    }
+
+    mode_t res = umask(luaL_checkinteger(L, 1));
+    lua_pushinteger(L, res);
+    return 1;
+}
+
 void init_filesystem(lua_State* L)
 {
     lua_pushlightuserdata(L, &filesystem_path_mt_key);
@@ -3097,7 +3110,7 @@ void init_filesystem(lua_State* L)
 
     lua_pushlightuserdata(L, &filesystem_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/16);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/17);
 
         lua_pushliteral(L, "path");
         {
@@ -3184,6 +3197,10 @@ void init_filesystem(lua_State* L)
 
         lua_pushliteral(L, "symlink_status");
         lua_pushcfunction(L, symlink_status);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "umask");
+        lua_pushcfunction(L, filesystem_umask);
         lua_rawset(L, -3);
     }
     lua_rawset(L, LUA_REGISTRYINDEX);

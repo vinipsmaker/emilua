@@ -1,4 +1,4 @@
-= system.umask
+= filesystem.umask
 
 ifeval::["{doctype}" == "manpage"]
 
@@ -12,8 +12,8 @@ endif::[]
 
 [source,lua]
 ----
-local system = require "system"
-system.umask(mask: integer) -> integer
+local fs = require "filesystem"
+fs.umask(mask: integer) -> integer
 ----
 
 == Description

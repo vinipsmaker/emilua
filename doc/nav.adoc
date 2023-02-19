@@ -27,6 +27,7 @@
 *** xref:ref:filesystem.last_write_time.adoc[]
 *** xref:ref:filesystem.is_empty.adoc[]
 *** xref:ref:filesystem.status.adoc[]
+*** xref:ref:filesystem.umask.adoc[]
 ** file
 *** xref:ref:file.open_flag.adoc[]
 *** xref:ref:file.random_access.adoc[]
@@ -97,7 +98,6 @@
 **** xref:ref:system.setresgid.adoc[]
 **** xref:ref:system.getgroups.adoc[]
 **** xref:ref:system.setgroups.adoc[]
-**** xref:ref:system.umask.adoc[]
 **** xref:ref:system.linux_capabilities.adoc[]
 *** Process & job control
 **** xref:ref:system.getpid.adoc[]
