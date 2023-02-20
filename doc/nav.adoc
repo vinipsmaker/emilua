@@ -27,6 +27,7 @@
 *** xref:ref:filesystem.last_write_time.adoc[]
 *** xref:ref:filesystem.chmod.adoc[]
 *** xref:ref:filesystem.is_empty.adoc[]
+*** xref:ref:filesystem.space.adoc[]
 *** xref:ref:filesystem.status.adoc[]
 *** xref:ref:filesystem.umask.adoc[]
 ** file

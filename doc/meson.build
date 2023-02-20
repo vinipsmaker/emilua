@@ -22,6 +22,7 @@ src3 = [
     'modules/ref/pages/filesystem.last_write_time.adoc',
     'modules/ref/pages/filesystem.chmod.adoc',
     'modules/ref/pages/filesystem.is_empty.adoc',
+    'modules/ref/pages/filesystem.space.adoc',
     'modules/ref/pages/filesystem.status.adoc',
     'modules/ref/pages/filesystem.umask.adoc',
     'modules/ref/pages/file.open_flag.adoc',

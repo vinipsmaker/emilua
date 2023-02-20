@@ -1,0 +1,24 @@
+= filesystem.space
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.space(p: fs.path) -> { capacity: integer, free: integer, available: integer }
+----
+
+== Description
+
+Determines the information about the filesystem on which the pathname `p` is
+located.
+
+NOTE: Bytes are used for the units.

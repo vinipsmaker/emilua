@@ -16,6 +16,7 @@ char filesystem_key;
 char filesystem_path_mt_key;
 static char filesystem_path_iterator_mt_key;
 static char file_clock_time_point_mt_key;
+static char space_info_mt_key;
 static char file_status_mt_key;
 static char directory_entry_mt_key;
 static char directory_iterator_mt_key;
@@ -1771,6 +1772,53 @@ static int file_clock_time_point_mt_sub(lua_State* L)
     }
 }
 
+inline int space_info_capacity(lua_State* L)
+{
+    auto space = static_cast<fs::space_info*>(lua_touserdata(L, 1));
+    lua_pushinteger(L, space->capacity);
+    return 1;
+}
+
+inline int space_info_free(lua_State* L)
+{
+    auto space = static_cast<fs::space_info*>(lua_touserdata(L, 1));
+    lua_pushinteger(L, space->free);
+    return 1;
+}
+
+inline int space_info_available(lua_State* L)
+{
+    auto space = static_cast<fs::space_info*>(lua_touserdata(L, 1));
+    lua_pushinteger(L, space->available);
+    return 1;
+}
+
+static int space_info_mt_index(lua_State* L)
+{
+    return dispatch_table::dispatch(
+        hana::make_tuple(
+            hana::make_pair(BOOST_HANA_STRING("capacity"), space_info_capacity),
+            hana::make_pair(BOOST_HANA_STRING("free"), space_info_free),
+            hana::make_pair(
+                BOOST_HANA_STRING("available"), space_info_available)
+        ),
+        [](std::string_view /*key*/, lua_State* L) -> int {
+            push(L, errc::bad_index, "index", 2);
+            return lua_error(L);
+        },
+        tostringview(L, 2),
+        L
+    );
+}
+
+static int space_info_mt_eq(lua_State* L)
+{
+    auto sp1 = static_cast<fs::space_info*>(lua_touserdata(L, 1));
+    auto sp2 = static_cast<fs::space_info*>(lua_touserdata(L, 2));
+    lua_pushboolean(L, *sp1 == *sp2);
+    return 1;
+}
+
 inline int file_status_type(lua_State* L)
 {
     auto st = static_cast<fs::file_status*>(lua_touserdata(L, 1));
@@ -2926,6 +2974,40 @@ static int current_working_directory(lua_State* L)
     return 0;
 }
 
+static int space(lua_State* L)
+{
+    auto path = static_cast<fs::path*>(lua_touserdata(L, 1));
+    if (!path || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    std::error_code ec;
+    auto ret = fs::space(*path, ec);
+    if (ec) {
+        push(L, ec);
+
+        lua_pushliteral(L, "path1");
+        lua_pushvalue(L, 1);
+        lua_rawset(L, -3);
+
+        return lua_error(L);
+    }
+
+    auto space = static_cast<fs::space_info*>(
+        lua_newuserdata(L, sizeof(fs::space_info))
+    );
+    rawgetp(L, LUA_REGISTRYINDEX, &space_info_mt_key);
+    setmetatable(L, -2);
+    new (space) fs::space_info{ret};
+    return 1;
+}
+
 static int status(lua_State* L)
 {
     auto path = static_cast<fs::path*>(lua_touserdata(L, 1));
@@ -3122,6 +3204,26 @@ void init_filesystem(lua_State* L)
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
+    lua_pushlightuserdata(L, &space_info_mt_key);
+    {
+        static_assert(std::is_trivially_destructible_v<fs::space_info>);
+
+        lua_createtable(L, /*narr=*/0, /*nrec=*/3);
+
+        lua_pushliteral(L, "__metatable");
+        lua_pushliteral(L, "filesystem.space_info");
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__index");
+        lua_pushcfunction(L, space_info_mt_index);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__eq");
+        lua_pushcfunction(L, space_info_mt_eq);
+        lua_rawset(L, -3);
+    }
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
     lua_pushlightuserdata(L, &file_status_mt_key);
     {
         static_assert(std::is_trivially_destructible_v<fs::file_status>);
@@ -3162,7 +3264,7 @@ void init_filesystem(lua_State* L)
 
     lua_pushlightuserdata(L, &filesystem_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/19);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/20);
 
         lua_pushliteral(L, "path");
         {
@@ -3249,6 +3351,10 @@ void init_filesystem(lua_State* L)
 
         lua_pushliteral(L, "current_working_directory");
         lua_pushcfunction(L, current_working_directory);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "space");
+        lua_pushcfunction(L, space);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "status");
