@@ -24,6 +24,7 @@ src3 = [
     'modules/ref/pages/filesystem.is_empty.adoc',
     'modules/ref/pages/filesystem.space.adoc',
     'modules/ref/pages/filesystem.status.adoc',
+    'modules/ref/pages/filesystem.temp_directory_path.adoc',
     'modules/ref/pages/filesystem.umask.adoc',
     'modules/ref/pages/file.open_flag.adoc',
     'modules/ref/pages/file.random_access.adoc',

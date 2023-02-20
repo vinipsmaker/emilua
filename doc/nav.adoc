@@ -29,6 +29,7 @@
 *** xref:ref:filesystem.is_empty.adoc[]
 *** xref:ref:filesystem.space.adoc[]
 *** xref:ref:filesystem.status.adoc[]
+*** xref:ref:filesystem.temp_directory_path.adoc[]
 *** xref:ref:filesystem.umask.adoc[]
 ** file
 *** xref:ref:file.open_flag.adoc[]

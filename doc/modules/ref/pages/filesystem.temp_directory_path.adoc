@@ -1,0 +1,21 @@
+= filesystem.temp_directory_path
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.temp_directory_path() -> fs.path
+----
+
+== Description
+
+Returns the directory location suitable for temporary files.

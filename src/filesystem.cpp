@@ -3072,6 +3072,30 @@ static int symlink_status(lua_State* L)
     return 1;
 }
 
+static int temp_directory_path(lua_State* L)
+{
+    lua_settop(L, 0);
+
+    auto path = static_cast<fs::path*>(lua_newuserdata(L, sizeof(fs::path)));
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    setmetatable(L, -2);
+    new (path) fs::path{};
+
+    try {
+        *path = fs::temp_directory_path();
+        return 1;
+    } catch (const fs::filesystem_error& e) {
+        push(L, e.code());
+
+        *path = e.path1();
+        lua_pushliteral(L, "path1");
+        lua_pushvalue(L, 1);
+        lua_rawset(L, -3);
+
+        return lua_error(L);
+    }
+}
+
 static int filesystem_umask(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
@@ -3264,7 +3288,7 @@ void init_filesystem(lua_State* L)
 
     lua_pushlightuserdata(L, &filesystem_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/20);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/21);
 
         lua_pushliteral(L, "path");
         {
@@ -3363,6 +3387,10 @@ void init_filesystem(lua_State* L)
 
         lua_pushliteral(L, "symlink_status");
         lua_pushcfunction(L, symlink_status);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "temp_directory_path");
+        lua_pushcfunction(L, temp_directory_path);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "umask");

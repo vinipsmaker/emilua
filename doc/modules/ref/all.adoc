@@ -40,6 +40,8 @@ include::pages/filesystem.space.adoc[]
 
 include::pages/filesystem.status.adoc[]
 
+include::pages/filesystem.temp_directory_path.adoc[]
+
 include::pages/filesystem.umask.adoc[]
 
 include::pages/file.open_flag.adoc[]
