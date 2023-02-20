@@ -1,0 +1,21 @@
+= filesystem.file_size
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.file_size(p: fs.path) -> integer
+----
+
+== Description
+
+For a regular file `p`, returns its size in bytes.
