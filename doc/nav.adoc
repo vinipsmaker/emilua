@@ -22,6 +22,7 @@
 *** xref:ref:filesystem.relative.adoc[]
 *** xref:ref:filesystem.proximate.adoc[]
 *** xref:ref:filesystem.current_working_directory.adoc[]
+*** xref:ref:filesystem.copy.adoc[]
 *** xref:ref:filesystem.copy_file.adoc[]
 *** xref:ref:filesystem.copy_symlink.adoc[]
 *** xref:ref:filesystem.create_directory.adoc[]

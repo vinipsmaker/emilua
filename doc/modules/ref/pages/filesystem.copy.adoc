@@ -1,0 +1,68 @@
+= filesystem.copy
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.copy(from: fs.path, to: fs.path[, opts: table])
+----
+
+== Description
+
+See <https://en.cppreference.com/w/cpp/filesystem/copy>.
+
+== `opts`
+
+`existing: "skip"|"overwrite"|"update"|nil`::
+
+Behavior when the file already exists.
+
+`nil`::: Report an error.
+
+`"skip"`::: Keep the existing file, without reporting an error.
+
+`"overwrite"`::: Replace the existing file.
+
+`"update"`:::
+
+Replace the existing file only if it is older than the file being copied.
+
+`recursive: boolean = false`::
+
+`false`::: Skip subdirectories.
+
+`true`::: Recursively copy subdirectories and their content.
+
+`symlinks: "copy"|"skip"|nil`::
+
+`nil`::: Follow symlinks.
+
+`"copy"`::: Copy symlinks as symlinks, not as the files they point to.
+
+`"skip"`::: Ignore symlinks.
+
+`copy: "directories_only"|"create_symlinks"|"create_hard_links"|nil`::
+
+`nil`::: Copy file content.
+
+`"directories_only"`:::
+
+Copy the directory structure, but do not copy any non-directory files.
+
+`"create_symlinks"`:::
+
+Instead of creating copies of files, create symlinks pointing to the originals.
+
+`"create_hard_links"`:::
+
+Instead of creating copies of files, create hardlinks that resolve to the same
+files as the originals.
