@@ -1,0 +1,22 @@
+= filesystem.create_symlink
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.create_symlink(target: fs.path, link: fs.path)
+fs.create_directory_symlink(target: fs.path, link: fs.path)
+----
+
+== Description
+
+See <https://en.cppreference.com/w/cpp/filesystem/create_symlink>.
