@@ -2754,6 +2754,84 @@ static int last_write_time(lua_State* L)
     }
 }
 
+static int copy_file(lua_State* L)
+{
+    lua_settop(L, 3);
+
+    auto path = static_cast<fs::path*>(lua_touserdata(L, 1));
+    if (!path || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto path2 = static_cast<fs::path*>(lua_touserdata(L, 2));
+    if (!path2 || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    fs::copy_options options = fs::copy_options::none;
+    switch (lua_type(L, 3)) {
+    case LUA_TNIL:
+        break;
+    case LUA_TTABLE:
+        lua_getfield(L, 3, "existing");
+        switch (lua_type(L, -1)) {
+        case LUA_TNIL:
+            break;
+        case LUA_TSTRING: {
+            auto v = tostringview(L);
+            if (v == "skip") {
+                options |= fs::copy_options::skip_existing;
+            } else if (v == "overwrite") {
+                options |= fs::copy_options::overwrite_existing;
+            } else if (v == "update") {
+                options |= fs::copy_options::update_existing;
+            } else {
+                push(L, std::errc::invalid_argument, "arg", "existing");
+                return lua_error(L);
+            }
+            break;
+        }
+        default:
+            push(L, std::errc::invalid_argument, "arg", "existing");
+            return lua_error(L);
+        }
+        break;
+    default:
+        push(L, std::errc::invalid_argument, "arg", 3);
+        return lua_error(L);
+    }
+
+    std::error_code ec;
+    bool ret = fs::copy_file(*path, *path2, options, ec);
+    if (ec) {
+        push(L, ec);
+
+        lua_pushliteral(L, "path1");
+        lua_pushvalue(L, 1);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "path2");
+        lua_pushvalue(L, 2);
+        lua_rawset(L, -3);
+
+        return lua_error(L);
+    }
+    lua_pushboolean(L, ret);
+    return 1;
+}
+
 static int copy_symlink(lua_State* L)
 {
     lua_settop(L, 2);
@@ -3712,7 +3790,7 @@ void init_filesystem(lua_State* L)
 
     lua_pushlightuserdata(L, &filesystem_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/33);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/34);
 
         lua_pushliteral(L, "path");
         {
@@ -3775,6 +3853,10 @@ void init_filesystem(lua_State* L)
 
         lua_pushliteral(L, "last_write_time");
         lua_pushcfunction(L, last_write_time);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "copy_file");
+        lua_pushcfunction(L, copy_file);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "copy_symlink");

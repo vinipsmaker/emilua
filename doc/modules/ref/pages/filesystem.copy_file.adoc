@@ -1,0 +1,37 @@
+= filesystem.copy_file
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.copy_file(from: fs.path, to: fs.path[, opts: table]) -> boolean
+----
+
+== Description
+
+See <https://en.cppreference.com/w/cpp/filesystem/copy_file>.
+
+== `opts`
+
+`existing: "skip"|"overwrite"|"update"|nil`::
+
+Behavior when the file already exists.
+
+`nil`::: Report an error.
+
+`"skip"`::: Keep the existing file, without reporting an error.
+
+`"overwrite"`::: Replace the existing file.
+
+`"update"`:::
+
+Replace the existing file only if it is older than the file being copied.
