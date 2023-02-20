@@ -1,0 +1,21 @@
+= filesystem.copy_symlink
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.copy_symlink(from: fs.path, to: fs.path)
+----
+
+== Description
+
+See <https://en.cppreference.com/w/cpp/filesystem/copy_symlink>.

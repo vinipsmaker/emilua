@@ -2754,6 +2754,50 @@ static int last_write_time(lua_State* L)
     }
 }
 
+static int copy_symlink(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto path = static_cast<fs::path*>(lua_touserdata(L, 1));
+    if (!path || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    auto path2 = static_cast<fs::path*>(lua_touserdata(L, 2));
+    if (!path2 || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    std::error_code ec;
+    fs::copy_symlink(*path, *path2, ec);
+    if (ec) {
+        push(L, ec);
+
+        lua_pushliteral(L, "path1");
+        lua_pushvalue(L, 1);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "path2");
+        lua_pushvalue(L, 2);
+        lua_rawset(L, -3);
+
+        return lua_error(L);
+    }
+    return 0;
+}
+
 static int create_directory(lua_State* L)
 {
     lua_settop(L, 2);
@@ -3668,7 +3712,7 @@ void init_filesystem(lua_State* L)
 
     lua_pushlightuserdata(L, &filesystem_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/32);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/33);
 
         lua_pushliteral(L, "path");
         {
@@ -3731,6 +3775,10 @@ void init_filesystem(lua_State* L)
 
         lua_pushliteral(L, "last_write_time");
         lua_pushcfunction(L, last_write_time);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "copy_symlink");
+        lua_pushcfunction(L, copy_symlink);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "create_directory");
