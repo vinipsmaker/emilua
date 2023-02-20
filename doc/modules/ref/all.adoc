@@ -44,6 +44,8 @@ include::pages/filesystem.read_symlink.adoc[]
 
 include::pages/filesystem.remove.adoc[]
 
+include::pages/filesystem.rename.adoc[]
+
 include::pages/filesystem.resize_file.adoc[]
 
 include::pages/filesystem.is_empty.adoc[]
