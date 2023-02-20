@@ -28,6 +28,7 @@
 *** xref:ref:filesystem.clock.adoc[]
 *** xref:ref:filesystem.last_write_time.adoc[]
 *** xref:ref:filesystem.chmod.adoc[]
+*** xref:ref:filesystem.read_symlink.adoc[]
 *** xref:ref:filesystem.remove.adoc[]
 *** xref:ref:filesystem.is_empty.adoc[]
 *** xref:ref:filesystem.space.adoc[]

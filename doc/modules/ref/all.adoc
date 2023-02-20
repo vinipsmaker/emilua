@@ -38,6 +38,8 @@ include::pages/filesystem.last_write_time.adoc[]
 
 include::pages/filesystem.chmod.adoc[]
 
+include::pages/filesystem.read_symlink.adoc[]
+
 include::pages/filesystem.remove.adoc[]
 
 include::pages/filesystem.is_empty.adoc[]

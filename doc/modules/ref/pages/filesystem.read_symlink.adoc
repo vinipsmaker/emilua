@@ -1,0 +1,21 @@
+= filesystem.read_symlink
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.read_symlink(p: fs.path) -> fs.path
+----
+
+== Description
+
+Returns a new path which refers to the target of the symbolic link.

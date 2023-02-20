@@ -23,6 +23,7 @@ src3 = [
     'modules/ref/pages/filesystem.clock.adoc',
     'modules/ref/pages/filesystem.last_write_time.adoc',
     'modules/ref/pages/filesystem.chmod.adoc',
+    'modules/ref/pages/filesystem.read_symlink.adoc',
     'modules/ref/pages/filesystem.remove.adoc',
     'modules/ref/pages/filesystem.is_empty.adoc',
     'modules/ref/pages/filesystem.space.adoc',
