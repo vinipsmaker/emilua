@@ -25,6 +25,7 @@ src3 = [
     'modules/ref/pages/filesystem.chmod.adoc',
     'modules/ref/pages/filesystem.read_symlink.adoc',
     'modules/ref/pages/filesystem.remove.adoc',
+    'modules/ref/pages/filesystem.resize_file.adoc',
     'modules/ref/pages/filesystem.is_empty.adoc',
     'modules/ref/pages/filesystem.space.adoc',
     'modules/ref/pages/filesystem.status.adoc',

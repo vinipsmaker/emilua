@@ -1,0 +1,21 @@
+= filesystem.resize_file
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.resize_file(p: fs.path, new_size: integer)
+----
+
+== Description
+
+See <https://en.cppreference.com/w/cpp/filesystem/resize_file>.
