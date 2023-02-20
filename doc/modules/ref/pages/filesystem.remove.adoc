@@ -1,0 +1,22 @@
+= filesystem.remove
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.remove(p: fs.path) -> boolean
+fs.remove_all(p: fs.path) -> integer
+----
+
+== Description
+
+See <https://en.cppreference.com/w/cpp/filesystem/remove>.
