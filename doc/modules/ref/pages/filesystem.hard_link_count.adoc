@@ -1,0 +1,22 @@
+= filesystem.hard_link_count
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.hard_link_count(p: fs.path) -> integer
+----
+
+== Description
+
+Returns the number of hard links for the filesystem object identified by path
+`p`.

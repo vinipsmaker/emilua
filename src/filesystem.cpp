@@ -2845,6 +2845,32 @@ static int create_directories(lua_State* L)
     return 1;
 }
 
+static int hard_link_count(lua_State* L)
+{
+    auto path = static_cast<fs::path*>(lua_touserdata(L, 1));
+    if (!path || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    std::error_code ec;
+    auto ret = fs::hard_link_count(*path, ec);
+    if (ec) {
+        push(L, ec);
+        lua_pushliteral(L, "path1");
+        lua_pushvalue(L, 1);
+        lua_rawset(L, -3);
+        return lua_error(L);
+    }
+    lua_pushinteger(L, ret);
+    return 1;
+}
+
 static int chmod(lua_State* L)
 {
     auto path = static_cast<fs::path*>(lua_touserdata(L, 1));
@@ -3288,7 +3314,7 @@ void init_filesystem(lua_State* L)
 
     lua_pushlightuserdata(L, &filesystem_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/21);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/22);
 
         lua_pushliteral(L, "path");
         {
@@ -3359,6 +3385,10 @@ void init_filesystem(lua_State* L)
 
         lua_pushliteral(L, "create_directories");
         lua_pushcfunction(L, create_directories);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "hard_link_count");
+        lua_pushcfunction(L, hard_link_count);
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "chmod");

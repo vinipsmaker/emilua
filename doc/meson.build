@@ -18,6 +18,7 @@ src3 = [
     'modules/ref/pages/filesystem.proximate.adoc',
     'modules/ref/pages/filesystem.current_working_directory.adoc',
     'modules/ref/pages/filesystem.create_directory.adoc',
+    'modules/ref/pages/filesystem.hard_link_count.adoc',
     'modules/ref/pages/filesystem.clock.adoc',
     'modules/ref/pages/filesystem.last_write_time.adoc',
     'modules/ref/pages/filesystem.chmod.adoc',
