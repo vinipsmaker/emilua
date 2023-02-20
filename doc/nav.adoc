@@ -23,6 +23,7 @@
 *** xref:ref:filesystem.proximate.adoc[]
 *** xref:ref:filesystem.current_working_directory.adoc[]
 *** xref:ref:filesystem.create_directory.adoc[]
+*** xref:ref:filesystem.create_hard_link.adoc[]
 *** xref:ref:filesystem.equivalent.adoc[]
 *** xref:ref:filesystem.file_size.adoc[]
 *** xref:ref:filesystem.hard_link_count.adoc[]

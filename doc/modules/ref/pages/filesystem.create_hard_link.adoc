@@ -1,0 +1,21 @@
+= filesystem.create_hard_link
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.create_hard_link(target: fs.path, link: fs.path)
+----
+
+== Description
+
+See <https://en.cppreference.com/w/cpp/filesystem/create_hard_link>.

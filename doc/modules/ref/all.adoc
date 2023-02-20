@@ -28,6 +28,8 @@ include::pages/filesystem.current_working_directory.adoc[]
 
 include::pages/filesystem.create_directory.adoc[]
 
+include::pages/filesystem.create_hard_link.adoc[]
+
 include::pages/filesystem.equivalent.adoc[]
 
 include::pages/filesystem.file_size.adoc[]
