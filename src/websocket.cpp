@@ -241,7 +241,7 @@ inline int websocket_new_client(lua_State* L, int nargs)
                         for (char& ch: key)
                             ch = std::tolower(ch);
                         push(L, key);
-                        push(L, header.value());
+                        push(L, static_cast<std::string_view>(header.value()));
                         lua_rawset(L, -3);
                     }
                 };
@@ -471,8 +471,10 @@ static int websocket_close(lua_State* L)
         return lua_error(L);
     case LUA_TNIL:
         break;
-    case LUA_TSTRING:
-        close_reason.reason = tostringview(L, 3);
+    case LUA_TSTRING: {
+        auto v = tostringview(L, 3);
+        close_reason.reason.assign(v.begin(), v.end());
+    }
     }
 
     lua_pushvalue(L, 1);
