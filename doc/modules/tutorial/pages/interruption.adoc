@@ -237,9 +237,9 @@ function mt:new_sample(sample)
 end
 ----
 
-Functions that suspend the fiber (e.g. IO and functions from the `cond` module)
-configure interruption points. The function `echo` defined below has
-interruption points.
+Functions that suspend the fiber (e.g. IO and functions from the
+`condition_variable` module) configure interruption points. The function `echo`
+defined below has interruption points.
 
 [source,lua]
 ----
@@ -497,7 +497,7 @@ while true do
     if not ok then
         return
     end
-    -- uses `cond`
+    -- uses `condition_variable`
     app:wait_on_subscriptions()
 end
 ----

@@ -92,7 +92,7 @@
 *** xref:ref:stream.scanner.adoc[]
 ** sync primitives
 *** xref:ref:mutex.adoc[]
-*** xref:ref:cond.adoc[]
+*** xref:ref:condition_variable.adoc[]
 ** system
 *** xref:ref:system.arguments.adoc[]
 *** xref:ref:system.environment.adoc[]

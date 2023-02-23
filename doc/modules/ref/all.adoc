@@ -4,7 +4,7 @@
 
 include::pages/byte_span.adoc[]
 
-include::pages/cond.adoc[]
+include::pages/condition_variable.adoc[]
 
 include::pages/filesystem.path.adoc[]
 

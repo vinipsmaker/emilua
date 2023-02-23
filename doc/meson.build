@@ -6,7 +6,7 @@ src3 = [
     'modules/ref/pages/pipe.write_stream.adoc',
     'modules/ref/pages/pipe.pair.adoc',
     'modules/ref/pages/byte_span.adoc',
-    'modules/ref/pages/cond.adoc',
+    'modules/ref/pages/condition_variable.adoc',
     'modules/ref/pages/filesystem.path.adoc',
     'modules/ref/pages/filesystem.directory_entry.adoc',
     'modules/ref/pages/filesystem.directory_iterator.adoc',

@@ -3,16 +3,16 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
+#include <emilua/condition_variable.hpp>
 #include <emilua/dispatch_table.hpp>
 #include <emilua/mutex.hpp>
-#include <emilua/cond.hpp>
 
 namespace emilua {
 
 extern unsigned char cond_wait_bytecode[];
 extern std::size_t cond_wait_bytecode_size;
 
-char cond_key;
+char condition_variable_key;
 static char cond_mt_key;
 static char cond_wait_key;
 
@@ -201,15 +201,15 @@ static int cond_new(lua_State* L)
     return 1;
 }
 
-void init_cond_module(lua_State* L)
+void init_condition_variable_module(lua_State* L)
 {
-    lua_pushlightuserdata(L, &cond_key);
+    lua_pushlightuserdata(L, &condition_variable_key);
     lua_newtable(L);
     {
         lua_createtable(L, /*narr=*/0, /*nrec=*/3);
 
         lua_pushliteral(L, "__metatable");
-        lua_pushliteral(L, "cond");
+        lua_pushliteral(L, "condition_variable");
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__index");
@@ -244,7 +244,7 @@ void init_cond_module(lua_State* L)
         lua_createtable(L, /*narr=*/0, /*nrec=*/3);
 
         lua_pushliteral(L, "__metatable");
-        lua_pushliteral(L, "cond");
+        lua_pushliteral(L, "condition_variable");
         lua_rawset(L, -3);
 
         lua_pushliteral(L, "__index");

@@ -3,7 +3,7 @@
 -- condition through a mutex.
 
 local mutex = require('mutex')
-local cond = require('cond')
+local cond = require('condition_variable')
 
 local m = mutex.new()
 local c = cond.new()

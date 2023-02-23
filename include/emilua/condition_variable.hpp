@@ -9,8 +9,8 @@
 
 namespace emilua {
 
-extern char cond_key;
+extern char condition_variable_key;
 
-void init_cond_module(lua_State* L);
+void init_condition_variable_module(lua_State* L);
 
 } // namespace emilua

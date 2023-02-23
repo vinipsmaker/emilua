@@ -1,4 +1,4 @@
-= cond
+= condition_variable
 
 ifeval::["{doctype}" == "manpage"]
 
@@ -12,7 +12,7 @@ endif::[]
 
 [source,lua]
 ----
-local cond = require('cond')
+local condition_variable = require('condition_variable')
 
 local function queue_consumer()
     scope(function()
@@ -33,7 +33,7 @@ A condition variable.
 
 == Functions
 
-=== `new() -> cond`
+=== `new() -> condition_variable`
 
 Constructor.
 

@@ -9,6 +9,7 @@
 #include <boost/nowide/fstream.hpp>
 
 #include <emilua/detail/core.hpp>
+#include <emilua/condition_variable.hpp>
 #include <emilua/dispatch_table.hpp>
 #include <emilua/scope_cleanup.hpp>
 #include <emilua/serial_port.hpp>
@@ -25,7 +26,6 @@
 #include <emilua/regex.hpp>
 #include <emilua/state.hpp>
 #include <emilua/time.hpp>
-#include <emilua/cond.hpp>
 #include <emilua/json.hpp>
 #include <emilua/pipe.hpp>
 #include <emilua/tls.hpp>
@@ -780,10 +780,10 @@ static int require(lua_State* L)
                     }
                 ),
                 hana::make_pair(
-                    BOOST_HANA_STRING("cond"),
+                    BOOST_HANA_STRING("condition_variable"),
                     [](lua_State* L) -> int {
                         lua_pushboolean(L, 1);
-                        rawgetp(L, LUA_REGISTRYINDEX, &cond_key);
+                        rawgetp(L, LUA_REGISTRYINDEX, &condition_variable_key);
                         return 2;
                     }
                 ),
@@ -1239,7 +1239,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
     init_lua_shim_module(L);
     init_fiber_module(L);
     init_mutex_module(L);
-    init_cond_module(L);
+    init_condition_variable_module(L);
     init_actor_module(L);
 
 #if BOOST_OS_UNIX
