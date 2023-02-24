@@ -491,6 +491,17 @@ static int posix_mt_index(lua_State* L)
             return 2;
         });
         return 1;
+    } else if (key == "unshare") {
+        lua_pushcfunction(L, [](lua_State* L) -> int {
+            int nstype = luaL_checkinteger(L, 1);
+            int res = unshare(nstype);
+            int last_error = (res == -1) ? errno : 0;
+            check_last_error(L, last_error);
+            lua_pushinteger(L, res);
+            lua_pushinteger(L, last_error);
+            return 2;
+        });
+        return 1;
     } else if (key == "setns") {
         lua_pushcfunction(L, [](lua_State* L) -> int {
             int fd = luaL_checkinteger(L, 1);

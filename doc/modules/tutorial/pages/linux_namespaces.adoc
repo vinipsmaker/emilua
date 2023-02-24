@@ -1021,6 +1021,7 @@ as the second result):
 * `setresgid()`.
 * `cap_reset_ambient()`.
 * `cap_set_secbits()`.
+* `unshare()`.
 * `setns()`.
 
 === Constants
