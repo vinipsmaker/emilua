@@ -342,6 +342,11 @@ if get_option('enable_tests')
         'EMILUA_BIN=' + emilua_bin.full_path(),
         'NORMALIZE_PATH_BIN=' + normalize_path_bin.full_path(),
         'AWK_BIN=' + gawk.full_path(),
+
+        # Make output strings for perror(), strerror(), and others predictable
+        'LANG=',
+        'LC_ALL=',
+        'LC_MESSAGES=',
     ]
 
     tests = {

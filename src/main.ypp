@@ -153,6 +153,19 @@ int main(int argc, char *argv[], char *envp[])
 #endif // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
 
     LUAJIT_VERSION_SYM();
+    try {
+        std::locale native_locale{""};
+        std::locale::global(native_locale);
+        std::cin.imbue(native_locale);
+        std::cout.imbue(native_locale);
+        std::cerr.imbue(native_locale);
+        std::clog.imbue(native_locale);
+    } catch (const std::exception& e) {
+        fmt::print(
+            boost::nowide::cerr,
+            FMT_STRING("<4>Failed to set the native locale: `{}`\n"),
+            e.what());
+    }
     std::optional<boost::nowide::args> args = std::nullopt;
     try {
         args.emplace(argc, argv, envp);

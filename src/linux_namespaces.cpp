@@ -11,9 +11,13 @@
 #include <iostream>
 #include <charconv>
 
+#include <fmt/ostream.h>
+#include <fmt/format.h>
+
 #include <boost/serialization/unordered_map.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/preprocessor/stringize.hpp>
+#include <boost/nowide/iostream.hpp>
 #include <boost/scope_exit.hpp>
 #include <boost/hana/less.hpp>
 #include <boost/hana/plus.hpp>
@@ -1039,6 +1043,20 @@ static int child_main(void*)
     }
     buffer.clear();
     buffer.shrink_to_fit();
+
+    try {
+        std::locale native_locale{""};
+        std::locale::global(native_locale);
+        std::cin.imbue(native_locale);
+        std::cout.imbue(native_locale);
+        std::cerr.imbue(native_locale);
+        std::clog.imbue(native_locale);
+    } catch (const std::exception& e) {
+        fmt::print(
+            boost::nowide::cerr,
+            FMT_STRING("<4>Failed to set the native locale: `{}`\n"),
+            e.what());
+    }
 
     emilua::stdout_has_color = [&tmp_env]() {
         if (auto it = tmp_env.find("EMILUA_COLORS") ; it != tmp_env.end()) {
