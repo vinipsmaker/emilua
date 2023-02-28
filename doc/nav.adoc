@@ -11,6 +11,7 @@
 ** xref:tutorial:errors.adoc[]
 ** xref:tutorial:linux_namespaces.adoc[]
 * Reference
+** xref:ref:generic_error.adoc[]
 ** xref:ref:byte_span.adoc[]
 ** filesystem
 *** xref:ref:filesystem.path.adoc[]

@@ -5,6 +5,7 @@ src3 = [
     'modules/ref/pages/pipe.read_stream.adoc',
     'modules/ref/pages/pipe.write_stream.adoc',
     'modules/ref/pages/pipe.pair.adoc',
+    'modules/ref/pages/generic_error.adoc',
     'modules/ref/pages/byte_span.adoc',
     'modules/ref/pages/condition_variable.adoc',
     'modules/ref/pages/filesystem.path.adoc',

@@ -181,6 +181,7 @@ incdir = [
 ]
 
 src = [
+    'src/generic_error.cpp',
     'src/scope_cleanup.cpp',
     'src/serial_port.cpp',
     'src/async_base.cpp',

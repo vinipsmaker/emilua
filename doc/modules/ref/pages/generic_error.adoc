@@ -1,0 +1,102 @@
+= generic_error
+
+:_:
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+== Description
+
+endif::[]
+
+[source,lua]
+----
+local generic_error = require 'generic_error'
+
+local my_error = generic_error.EINVAL
+my_error.arg = 1
+error(my_error)
+----
+
+An userdata for which the `__index()` metamethod returns a new error code from
+the generic category on access.
+
+== Error list
+
+* `EAFNOSUPPORT`
+* `EADDRINUSE`
+* `EADDRNOTAVAIL`
+* `EISCONN`
+* `E2BIG`
+* `EDOM`
+* `EFAULT`
+* `EBADF`
+* `EBADMSG`
+* `EPIPE`
+* `ECONNABORTED`
+* `EALREADY`
+* `ECONNREFUSED`
+* `ECONNRESET`
+* `EXDEV`
+* `EDESTADDRREQ`
+* `EBUSY`
+* `ENOTEMPTY`
+* `ENOEXEC`
+* `EEXIST`
+* `EFBIG`
+* `ENAMETOOLONG`
+* `ENOSYS`
+* `EHOSTUNREACH`
+* `EIDRM`
+* `EILSEQ`
+* `ENOTTY`
+* `EINTR`
+* `EINVAL`
+* `ESPIPE`
+* `EIO`
+* `EISDIR`
+* `EMSGSIZE`
+* `ENETDOWN`
+* `ENETRESET`
+* `ENETUNREACH`
+* `ENOBUFS`
+* `ECHILD`
+* `ENOLINK`
+* `ENOLCK`
+* `ENOMSG`
+* `ENOPROTOOPT`
+* `ENOSPC`
+* `ENXIO`
+* `ENODEV`
+* `ENOENT`
+* `ESRCH`
+* `ENOTDIR`
+* `ENOTSOCK`
+* `ENOTCONN`
+* `ENOMEM`
+* `ENOTSUP`
+* `ECANCELED`
+* `EINPROGRESS`
+* `EPERM`
+* `EOPNOTSUPP`
+* `EWOULDBLOCK`
+* `EOWNERDEAD`
+* `EACCES`
+* `EPROTO`
+* `EPROTONOSUPPORT`
+* `EROFS`
+* `EDEADLK`
+* `EAGAIN`
+* `ERANGE`
+* `ENOTRECOVERABLE`
+* `ETXTBSY`
+* `ETIMEDOUT`
+* `ENFILE`
+* `EMFILE`
+* `EMLINK`
+* `ELOOP`
+* `EOVERFLOW`
+* `EPROTOTYPE`

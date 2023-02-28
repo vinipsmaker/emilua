@@ -2,6 +2,8 @@
 
 :leveloffset: +1
 
+include::pages/generic_error.adoc[]
+
 include::pages/byte_span.adoc[]
 
 include::pages/condition_variable.adoc[]
