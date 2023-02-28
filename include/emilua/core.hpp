@@ -199,6 +199,17 @@ struct TransparentStringComp
     }
 };
 
+struct TransparentStringHash : private std::hash<std::string_view>
+{
+    using is_transparent = void;
+
+    template<class T>
+    std::size_t operator()(const T& s) const
+    {
+        return static_cast<const std::hash<std::string_view>&>(*this)(s);
+    }
+};
+
 template<class Executor>
 class remap_post_to_defer: private Executor
 {
@@ -267,6 +278,31 @@ class BOOST_SYMBOL_VISIBLE plugin;
 
 class vm_context;
 
+struct rdf_error_category : public std::error_category
+{
+    const char* name() const noexcept override;
+    std::string message(int value) const noexcept override;
+    std::error_condition default_error_condition(int code) const noexcept
+        override;
+
+    std::string name_;
+    std::map<
+        int,
+        std::map<
+            // default constructed for non-localized version
+            /*locale=*/std::string,
+            /*message=*/std::string
+        >
+    > messages;
+    std::unordered_map<
+        std::string, int, TransparentStringHash, std::equal_to<>
+    > aliases;
+    std::map<
+        /*internal_code=*/int,
+        /*code_from_generic_category=*/int
+    > generic_errors;
+};
+
 class app_context
 {
 private:
@@ -311,6 +347,9 @@ public:
 
     std::unordered_map<std::filesystem::path, std::string, path_hash>
         modules_cache_registry;
+    std::unordered_map<
+        std::filesystem::path, std::unique_ptr<rdf_error_category>, path_hash
+    > rdf_ec_cache_registry;
 #if EMILUA_CONFIG_ENABLE_PLUGINS
     std::unordered_map<std::string, boost::shared_ptr<plugin>>
         native_modules_cache_registry;
@@ -813,6 +852,9 @@ enum class errc {
     no_senders,
     internal_module,
     raise_error,
+    bad_rdf,
+    bad_rdf_module,
+    bad_rdf_error_category,
 };
 
 const std::error_category& category();

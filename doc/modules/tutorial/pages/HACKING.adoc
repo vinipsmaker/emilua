@@ -1085,6 +1085,79 @@ maxrecord=16000
 maxmcode=40960  -- in KB
 ----
 
+== Locales
+
+A recent POSIX standard specified anemic per-thread and per-function locale
+support, but, aside from this anemic support, C uses the same locale globally
+for the whole process.
+
+Meanwhile, {cpp} has somewhat usable support for multiple locales per process
+(and an extra global one that also affects the global C locale).
+
+Functions such as `perror()` and `strerror()` will query `LC_MESSAGES` from the
+global C locale. However the sole function to query this attribute --
+`setlocale()` -- is not thread-safe so we shouldn't change the locale after the
+program starts and minimal initialization to the process state is done. Changing
+the global locale is highly unsafe and such API will not be exposed to Lua code.
+
+The thread-safe {cpp} locales export functionality for `LC_MESSAGES` through the
+facet `std::messages`. This facet allows one to open system-defined message
+catalogs, and get translation messages for them. This facet exposes no
+equivalent for the query `setlocale(LC_MESSAGES, NULL)`. Even if we query it at
+the beginning of the program and try to attach a new custom facet to the global
+locale object, this will create a nameless locale. Unnamed global {cpp} locales
+will break `LC_MESSAGES` for the C ecosystem (e.g. `perror()` will no longer
+print localized messages). Therefore custom facets are out of question.
+
+A direct call to `setlocale(LC_MESSAGES, NULL)` is avoided too because ISO {cpp}
+doesn't define the macro `LC_MESSAGES`. To query the current `LC_MESSAGES` we
+just look for `LC_MESSAGES` in the current {cpp} locale's name. This approach
+doesn't interfere with the C ecosystem, and also paves the way for multiple
+per-process locales.
+
+One can find the list of POSIX environment variables that affect the process'
+locale at
+<https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html#tag_08_02>.
+The format for these variables is defined as:
+
+[source]
+----
+[language[_territory][.codeset][@modifier]]
+----
+
+This format is compatible with RDF's Turtle where `LANGTAG` is defined as:
+
+[source]
+----
+LANGTAG ::= '@' [a-zA-Z]+ ('-' [a-zA-Z0-9]+)*
+----
+
+And it matches the semantics for BCP47 definition:
+
+[source]
+----
+obs-language-tag = primary-subtag *( "-" subtag )
+primary-subtag   = 1*8ALPHA
+subtag           = 1*8(ALPHA / DIGIT)
+----
+
+The registry of subtags is maintained by IANA at
+<https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry>.
+
+So `LC_MESSAGES=pt_BR` becomes Turtle's `"literal"@pt-BR` (and at least the
+subtag is case sensitive).
+
+CAUTION: A Turtle language-tagged string ceases to be of the datatype
+<http://www.w3.org/2001/XMLSchema#string>. Its datatype will be
+<http://www.w3.org/1999/02/22-rdf-syntax-ns#langString>. If this is a problem
+for your application, do not use Turtle language-tagged strings.
+
+For more information about {cpp} locales, the following links are relevant:
+
+* <https://stdcxx.apache.org/doc/stdlibug/24-3.html>
+* <https://gcc.gnu.org/onlinedocs/libstdc++/manual/facets.html#std.localization.facet.messages%23facet.messages.design>
+* <https://www.gnu.org/software/libc/manual/html_node/Locale-Names.html>
+
 == Open questions
 
 * Describe the behaviour for `sys.exit()` (for main and secondary VMs). Should

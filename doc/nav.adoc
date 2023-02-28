@@ -8,6 +8,7 @@
 ** xref:tutorial:interruption.adoc[]
 ** xref:tutorial:lua51.adoc[]
 ** xref:tutorial:modules.adoc[]
+** xref:tutorial:errors.adoc[]
 ** xref:tutorial:linux_namespaces.adoc[]
 * Reference
 ** xref:ref:byte_span.adoc[]

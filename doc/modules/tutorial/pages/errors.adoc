@@ -1,0 +1,194 @@
+= Errors
+
+:_:
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+== Description
+
+endif::[]
+
+Emilua is a concurrency runtime for Lua programs. The intra-VM concurrency
+support is exploited to offer async I/O. IO errors reported from the operating
+system are preserved and reported back to the user. That's specially important
+for logging and tracing.
+
+POSIX systems report errors through `errno`. Meanwhile Windows report errors
+through `GetLastError()`. In both cases, we have an integer holding an error
+code. So that's the first piece of information captured and reported.
+
+The enumeration for `errno` cannot be extended by libraries or user code, so
+each new module that uses the same error reporting style (integer error codes)
+must defined their own enumeration (which can safely conflict with error code
+values from `errno`). The origin of the integer code defines the error
+domain. For instance, POSIX's `getaddrinfo()` uses its own set of error codes
+(``EAI_``...). The error domain is the second piece of information captured and
+reported by Emilua: that's the error category.
+
+An error reported by Emilua is a Lua table with two members:
+
+`code: integer`:: The error code (e.g. value from `errno`).
+
+`category: userdata`:: An object that encodes the error domain (e.g. whether
+value was read out of `errno`).
+
+Extra information about the error's origin might be available depending on the
+function that throws the error (e.g. many functions attach the integer `"arg"`
+for `EINVAL` errors).
+
+== The error category
+
+Error categories define the metamethods ``++__++tostring()`` and
+``++__++eq()``. The category for errors read from `errno` (or `GetLastError()`
+on Windows) will return `"system"` for ``++__++tostring()``. That's the
+category's name.
+
+Another important category on Emilua is the `"generic"` category. This category
+is meant to represent POSIX errors (even on Windows). The purpose of this
+category is to compare errors portably so you can write cross-platform programs,
+but you'll see more on that later.
+
+=== `message(self, code: integer) -> string`
+
+Returns the explanatory message string for the error specified by `code`.
+
+For the `"system"` category on POSIX platforms, that's the same as strerror(3p).
+
+== The error table
+
+The metatable for raised error tables also define the metamethods
+``++__++tostring()`` and ``++__++eq()``. Its ``++__++tostring()`` is just a
+shorthand to use the category's `message()`. Only `code` and `category` are
+compared for ``++__++eq()`` and extra members are ignored.
+
+=== `togeneric(self) -> error_code`
+
+That's a function present in ``++__++index``. It'll return the default error
+condition for `self`.
+
+For instance, `filesystem.create_hard_link()` will report the original error
+from the OS so you don't lose information on errors. On Windows, this function
+might throw `ERROR_ALREADY_EXISTS`, but this error maps perfectly to POSIX's
+`EEXIST`. If you're _reacting_ on error codes to determine an action to take
+(i.e. you're actually handling the error instead of throwing it up higher in the
+stack or logging/tracing it), then adding the specific error code for each
+platform serves you no purpose. That's the purpose for the function
+`togeneric()`. If there's a mapping between the error code and POSIX, it'll
+return a new error table from the `"generic"` category. If no such mapping
+exists, the original error is returned.
+
+[source,lua]
+----
+local ok, ec = pcall(...)
+if ec:togeneric() == generic_error.EEXIST then
+    -- ...
+end
+----
+
+== RDF error categories
+
+Errors are also user-extensible by defining your own error categories. Emilua
+has the concept of modules defined by RDF's Turtle
+files{_}footnote:[<https://github.com/JoshData/rdfabout>]. In the future, this
+will also be used to define application/packaging resources in Android and
+Windows binaries, for instance. However, right now, they're only used to define
+error categories.
+
+[source,turtle]
+----
+# Easter egg codes from:
+# <https://www.gnu.org/software/libc/manual/html_node/Error-Codes.html>
+
+@prefix cat: <https://schema.emilua.org/error_category/0/#>.
+
+<about:emilua-module>
+	a <https://schema.emilua.org/error_category/0/>;
+	cat:error [
+		cat:code 1;
+		cat:alias "ED";
+		# The experienced user will know what is wrong.
+		cat:message "?"
+	], [
+		cat:code 2;
+		cat:alias "EGREGIOUS";
+		# You did what?
+		cat:message "You really blew it this time",
+			"Você realmente se superou dessa vez"@pt-BR
+	], [
+		cat:code 3;
+		cat:alias "EIEIO";
+		# Go home and have a glass of warm, dairy-fresh milk.
+		cat:message "Computer bought the farm"
+	], [
+		cat:code 4;
+		cat:alias "EGRATUITOUS";
+		# This error code has no purpose.
+		cat:message "Gratuitous error"
+	].
+----
+
+[quote, David Robillard, LV2 co-author]
+____
+[Turtle is] RDF syntax for those with taste
+____
+
+Just throw a `.ttl` file in the place where you'd put your `.lua` file and the
+module system will find it.
+
+[source,lua]
+----
+local my_error_category = require "/my_error_category"
+
+-- it creates a new error every time,
+-- so you don't need to worry about reusing
+-- old values
+local my_error = my_error_category.EGREGIOUS
+my_error.context = "Lorem ipsum"
+error(my_error)
+----
+
+[NOTE]
+====
+
+You can also refer to errors in a category module by number, but that should be
+avoided:
+
+[source,lua]
+----
+error(my_error_category[2])
+----
+====
+
+You can also define a mapping for generic errors:
+
+[source,turtle]
+----
+@prefix cat: <https://schema.emilua.org/error_category/0/#>.
+
+<about:emilua-module>
+	a <https://schema.emilua.org/error_category/0/>;
+	cat:error [
+		cat:code 1;
+		cat:alias "operation_would_block",
+			"resource_unavailable_try_again";
+		cat:message "Resource temporarily unavailable";
+		cat:generic_error "EAGAIN"
+	].
+----
+
+[NOTE]
+====
+It might be useful to define generic errors for categories other than
+`"generic"`
+too{_}footnote:[<http://breese.github.io/2017/05/12/customizing-error-codes.html>]. However
+Emilua doesn't offer this ability yet as someone needs to put some thought on
+the design.
+====
+
+This is an unusual design in the Lua ecosystem, so you might want some
+rationale:
+<https://emilua.gitlab.io/blog/2021/03/14/lua-errors-from-multiple-vms/>.

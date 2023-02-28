@@ -34,6 +34,8 @@ boost = dependency(
     modules : boost_modules,
 )
 fmt = dependency('fmt', version : '>=8.0')
+serd = dependency('serd-0')
+sord = dependency('sord-0')
 trial_protocol = dependency('trial-protocol')
 libdl = meson.get_compiler('cpp').find_library('dl', required : false)
 find_program('xxd')
@@ -262,6 +264,8 @@ emilua_bin = executable(
         boost,
         luajit,
         fmt,
+        serd,
+        sord,
         trial_protocol,
         http_dep,
         ssl,

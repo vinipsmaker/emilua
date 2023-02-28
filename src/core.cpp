@@ -4,6 +4,7 @@
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
 #include <charconv>
+#include <locale>
 #include <new>
 
 #include <fmt/ostream.h>
@@ -45,7 +46,69 @@ namespace detail {
 char context_key;
 char error_code_mt_key;
 char error_category_mt_key;
+char rdf_error_category_module_mt_key;
 } // namespace detail
+
+const char* rdf_error_category::name() const noexcept
+{
+    return name_.c_str();
+}
+
+std::string rdf_error_category::message(int value) const noexcept
+{
+    std::string curloc{std::locale{}.name()};
+    std::string_view tgt{"LC_MESSAGES="};
+    if (auto idx = curloc.find(tgt) ; idx != std::string::npos) {
+        curloc.erase(0, idx + tgt.size());
+    }
+    if (auto it = messages.find(value) ; it != messages.end()) {
+        // TODO: perform a binary search first to find the lower/upper bounds,
+        // and thus reduce the iteration range
+        for (const auto& m: it->second) {
+            // TODO: what to do about matches that are more specific (e.g. "en"
+            // vs "en_US")?
+            if (!m.first.empty() && curloc.starts_with(m.first))
+                return m.second;
+        }
+        return it->second.at(std::string{});
+    } else {
+        return "Unknown";
+    }
+}
+
+std::error_condition rdf_error_category::default_error_condition(int code) const
+    noexcept
+{
+    // TODO: RDF-defined error categories should be able to map error conditions
+    // for other categories too. A draft follows:
+    //
+    // @prefix cat: <https://schema.emilua.org/error_category/1/#>.
+    // <about:emilua-module>
+    //     a <https://schema.emilua.org/error_category/1/>;
+    //     cat:error [
+    //         cat:code 1;
+    //         cat:alias "ED";
+    //         cat:message "?";
+    //         cat:generic_error [
+    //             cat:code 2; # or the string-alias
+    //
+    //             # same syntax from module import, but we deliberately
+    //             # avoid using <https://schema.emilua.org/module/0/#import>
+    //             # or the likes to ensure the error_category schema remains
+    //             # more stable/frozen/independent over time
+    //             cat:foreign_category "path/to/error/category"
+    //         ]
+    //     ].
+    //
+    // An use-case for this future feature:
+    // <http://breese.github.io/2017/05/12/customizing-error-codes.html>.
+
+    if (auto it = generic_errors.find(code) ; it != generic_errors.end()) {
+        return {it->second, std::generic_category()};
+    } else {
+        return std::error_category::default_error_condition(code);
+    }
+}
 
 void app_context::init_log_domain(std::string_view name, int& log_level)
 {
@@ -709,6 +772,12 @@ std::string category_impl::message(int value) const noexcept
         return "Lua code cannot import this module directly";
     case static_cast<int>(errc::raise_error):
         return "std::raise() failed";
+    case static_cast<int>(errc::bad_rdf):
+        return "Failed to parse RDF";
+    case static_cast<int>(errc::bad_rdf_module):
+        return "Parsed RDF doesn't contain a recognized Emilua module";
+    case static_cast<int>(errc::bad_rdf_error_category):
+        return "Parsed RDF module contains an invalid error category";
     default:
         return {};
     }

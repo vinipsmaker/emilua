@@ -17,6 +17,8 @@ include::pages/lua51.adoc[]
 
 include::pages/modules.adoc[]
 
+include::pages/errors.adoc[]
+
 include::pages/linux_namespaces.adoc[]
 
 :leveloffset: -1

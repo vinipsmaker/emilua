@@ -1,4 +1,4 @@
-/* Copyright (c) 2020, 2021, 2022 Vinícius dos Santos Oliveira
+/* Copyright (c) 2020, 2021, 2022, 2023 Vinícius dos Santos Oliveira
 
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
@@ -7,6 +7,15 @@
 #include <new>
 
 #include <boost/nowide/fstream.hpp>
+
+#if defined(__clang__)
+# pragma clang diagnostic push
+# pragma clang diagnostic ignored "-Wnullability-extension"
+#endif
+#include <sord/sordmm.hpp>
+#if defined(__clang__)
+# pragma clang diagnostic pop
+#endif
 
 #include <emilua/detail/core.hpp>
 #include <emilua/condition_variable.hpp>
@@ -137,6 +146,511 @@ static std::string& load_module_source(
             .first;
     }
     return it->second;
+}
+
+// Throws:
+//
+// * std::ios_base::failure
+// * std::system_error
+// * std::exception
+static rdf_error_category& load_rdf_error_category(
+    std::lock_guard<std::mutex>& /*modules_cache_registry_guard*/,
+    emilua::app_context& appctx, const fs::path& module_path)
+{
+    auto& cache_registry = appctx.rdf_ec_cache_registry;
+    auto it = cache_registry.find(module_path);
+    if (it == cache_registry.end()) {
+        std::string contents;
+        nowide::ifstream in{module_path, std::ios::in | std::ios::binary};
+        in.exceptions(std::ios_base::badbit | std::ios_base::failbit |
+                      std::ios_base::eofbit);
+        {
+            char buf[1];
+            in.read(buf, 1);
+        }
+        in.seekg(0, std::ios::end);
+        contents.resize(in.tellg());
+        in.seekg(0, std::ios::beg);
+        in.read(&contents[0], contents.size());
+        in.close();
+
+        std::string base_uri{"file://"};
+        {
+            auto s = module_path.u8string();
+            base_uri.append(reinterpret_cast<char*>(s.data()), s.size());
+        }
+
+        Sord::Namespaces prefixes;
+
+        Sord::World world;
+        Sord::Model model{world, base_uri};
+        model.load_string(prefixes.c_obj(), SerdSyntax::SERD_TURTLE,
+                          contents.c_str(), contents.size(), base_uri);
+        if (model.num_quads() == 0) {
+            throw std::system_error{errc::bad_rdf};
+        }
+
+        const Sord::Node module_node{
+            world, Sord::Node::URI, "about:emilua-module"};
+        const Sord::Node category_schema{
+            world, Sord::Node::URI,
+            "https://schema.emilua.org/error_category/0/"};
+        const Sord::Node type_property{
+            world, Sord::Node::URI,
+            "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"};
+
+        {
+            Sord::Node type;
+            for (
+                auto it = model.find(module_node, type_property, Sord::Node{}) ;
+                !it.end() ; it.next()
+            ) {
+                if (type.is_valid() || !it.get_object().is_uri()) {
+                    throw std::system_error{errc::bad_rdf_module};
+                }
+
+                type = it.get_object();
+            }
+            if (!type.is_valid()) {
+                throw std::system_error{errc::bad_rdf_module};
+            }
+            if (type != category_schema) {
+                throw std::system_error{errc::bad_rdf_error_category};
+            }
+        }
+
+        auto category = std::make_unique<rdf_error_category>();
+        category->name_ = base_uri;
+
+        const Sord::Node error_property{
+            world, Sord::Node::URI,
+            "https://schema.emilua.org/error_category/0/#error"};
+        const Sord::Node code_property{
+            world, Sord::Node::URI,
+            "https://schema.emilua.org/error_category/0/#code"};
+        const Sord::Node alias_property{
+            world, Sord::Node::URI,
+            "https://schema.emilua.org/error_category/0/#alias"};
+        const Sord::Node message_property{
+            world, Sord::Node::URI,
+            "https://schema.emilua.org/error_category/0/#message"};
+        const Sord::Node generic_error_property{
+            world, Sord::Node::URI,
+            "https://schema.emilua.org/error_category/0/#generic_error"};
+
+        for (
+            auto it2 = model.find(module_node, error_property, Sord::Node{}) ;
+            !it2.end() ; it2.next()
+        ) {
+            auto code = model.get(
+                it2.get_object(), code_property, Sord::Node{});
+            if (!code.is_valid() || !code.is_int()) {
+                throw std::system_error{errc::bad_rdf_error_category};
+            }
+
+            for (
+                auto it3 = model.find(
+                    it2.get_object(), alias_property, Sord::Node{}) ;
+                !it3.end() ; it3.next()
+            ) {
+                auto alias = it3.get_object();
+                if (
+                    alias.type() != Sord::Node::LITERAL ||
+                    sord_node_get_datatype(alias.c_obj()) != nullptr ||
+                    !category->aliases.emplace(alias.to_string(), code.to_int())
+                    .second
+                ) {
+                    throw std::system_error{errc::bad_rdf_error_category};
+                }
+            }
+
+            for (
+                auto it3 = model.find(
+                    it2.get_object(), message_property, Sord::Node{}) ;
+                !it3.end() ; it3.next()
+            ) {
+                auto message = it3.get_object();
+                if (
+                    message.type() != Sord::Node::LITERAL ||
+                    sord_node_get_datatype(message.c_obj()) != nullptr
+                ) {
+                    throw std::system_error{errc::bad_rdf_error_category};
+                }
+
+                std::string locale;
+                if (
+                    auto lang = sord_node_get_language(message.c_obj()) ;
+                    lang != nullptr
+                ) {
+                    locale = lang;
+                    for (char& c: locale) { if (c == '-') { c = '_'; break; } }
+                }
+
+                auto& messages = category->messages[code.to_int()];
+                if (!messages.emplace(locale, message.to_string()).second) {
+                    throw std::system_error{errc::bad_rdf_error_category};
+                }
+            }
+
+            {
+                auto& messages = category->messages[code.to_int()];
+                if (messages.find(std::string{}) == messages.end()) {
+                    throw std::system_error{errc::bad_rdf_error_category};
+                }
+            }
+
+            for (
+                auto it3 = model.find(
+                    it2.get_object(), generic_error_property, Sord::Node{}) ;
+                !it3.end() ; it3.next()
+            ) {
+                auto pe = it3.get_object();
+                if (
+                    pe.type() != Sord::Node::LITERAL ||
+                    sord_node_get_datatype(pe.c_obj()) != nullptr
+                ) {
+                    throw std::system_error{errc::bad_rdf_error_category};
+                }
+
+                int ge = static_cast<int>(dispatch_table::dispatch(
+                    hana::make_tuple(
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EAFNOSUPPORT"),
+                            []() {
+                                return std::errc::address_family_not_supported;
+                            }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EADDRINUSE"),
+                            []() { return std::errc::address_in_use; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EADDRNOTAVAIL"),
+                            []() { return std::errc::address_not_available; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EISCONN"),
+                            []() { return std::errc::already_connected; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("E2BIG"),
+                            []() { return std::errc::argument_list_too_long; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EDOM"),
+                            []() { return std::errc::argument_out_of_domain; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EFAULT"),
+                            []() { return std::errc::bad_address; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EBADF"),
+                            []() { return std::errc::bad_file_descriptor; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EBADMSG"),
+                            []() { return std::errc::bad_message; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EPIPE"),
+                            []() { return std::errc::broken_pipe; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ECONNABORTED"),
+                            []() { return std::errc::connection_aborted; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EALREADY"),
+                            []() {
+                                return
+                                    std::errc::connection_already_in_progress;
+                            }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ECONNREFUSED"),
+                            []() { return std::errc::connection_refused; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ECONNRESET"),
+                            []() { return std::errc::connection_reset; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EXDEV"),
+                            []() { return std::errc::cross_device_link; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EDESTADDRREQ"),
+                            []() {
+                                return std::errc::destination_address_required;
+                            }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EBUSY"),
+                            []() { return std::errc::device_or_resource_busy; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENOTEMPTY"),
+                            []() { return std::errc::directory_not_empty; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENOEXEC"),
+                            []() { return std::errc::executable_format_error; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EEXIST"),
+                            []() { return std::errc::file_exists; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EFBIG"),
+                            []() { return std::errc::file_too_large; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENAMETOOLONG"),
+                            []() { return std::errc::filename_too_long; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENOSYS"),
+                            []() { return std::errc::function_not_supported; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EHOSTUNREACH"),
+                            []() { return std::errc::host_unreachable; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EIDRM"),
+                            []() { return std::errc::identifier_removed; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EILSEQ"),
+                            []() { return std::errc::illegal_byte_sequence; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENOTTY"),
+                            []() {
+                                return std::errc
+                                    ::inappropriate_io_control_operation;
+                            }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EINTR"),
+                            []() { return std::errc::interrupted; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EINVAL"),
+                            []() { return std::errc::invalid_argument; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ESPIPE"),
+                            []() { return std::errc::invalid_seek; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EIO"),
+                            []() { return std::errc::io_error; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EISDIR"),
+                            []() { return std::errc::is_a_directory; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EMSGSIZE"),
+                            []() { return std::errc::message_size; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENETDOWN"),
+                            []() { return std::errc::network_down; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENETRESET"),
+                            []() { return std::errc::network_reset; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENETUNREACH"),
+                            []() { return std::errc::network_unreachable; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENOBUFS"),
+                            []() { return std::errc::no_buffer_space; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ECHILD"),
+                            []() { return std::errc::no_child_process; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENOLINK"),
+                            []() { return std::errc::no_link; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENOLCK"),
+                            []() { return std::errc::no_lock_available; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENOMSG"),
+                            []() { return std::errc::no_message; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENOPROTOOPT"),
+                            []() { return std::errc::no_protocol_option; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENOSPC"),
+                            []() { return std::errc::no_space_on_device; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENXIO"),
+                            []() {
+                                return std::errc::no_such_device_or_address;
+                            }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENODEV"),
+                            []() { return std::errc::no_such_device; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENOENT"),
+                            []() {
+                                return std::errc::no_such_file_or_directory;
+                            }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ESRCH"),
+                            []() { return std::errc::no_such_process; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENOTDIR"),
+                            []() { return std::errc::not_a_directory; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENOTSOCK"),
+                            []() { return std::errc::not_a_socket; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENOTCONN"),
+                            []() { return std::errc::not_connected; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENOMEM"),
+                            []() { return std::errc::not_enough_memory; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENOTSUP"),
+                            []() { return std::errc::not_supported; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ECANCELED"),
+                            []() { return std::errc::operation_canceled; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EINPROGRESS"),
+                            []() { return std::errc::operation_in_progress; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EPERM"),
+                            []() { return std::errc::operation_not_permitted; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EOPNOTSUPP"),
+                            []() { return std::errc::operation_not_supported; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EWOULDBLOCK"),
+                            []() { return std::errc::operation_would_block; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EOWNERDEAD"),
+                            []() { return std::errc::owner_dead; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EACCES"),
+                            []() { return std::errc::permission_denied; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EPROTO"),
+                            []() { return std::errc::protocol_error; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EPROTONOSUPPORT"),
+                            []() { return std::errc::protocol_not_supported; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EROFS"),
+                            []() { return std::errc::read_only_file_system; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EDEADLK"),
+                            []() {
+                                return std::errc::resource_deadlock_would_occur;
+                            }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EAGAIN"),
+                            []() {
+                                return
+                                    std::errc::resource_unavailable_try_again;
+                            }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ERANGE"),
+                            []() { return std::errc::result_out_of_range; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENOTRECOVERABLE"),
+                            []() { return std::errc::state_not_recoverable; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ETXTBSY"),
+                            []() { return std::errc::text_file_busy; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ETIMEDOUT"),
+                            []() { return std::errc::timed_out; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ENFILE"),
+                            []() {
+                                return std::errc::too_many_files_open_in_system;
+                            }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EMFILE"),
+                            []() { return std::errc::too_many_files_open; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EMLINK"),
+                            []() { return std::errc::too_many_links; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("ELOOP"),
+                            []() {
+                                return std::errc::too_many_symbolic_link_levels;
+                            }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EOVERFLOW"),
+                            []() { return std::errc::value_too_large; }
+                        ),
+                        hana::make_pair(
+                            BOOST_HANA_STRING("EPROTOTYPE"),
+                            []() { return std::errc::wrong_protocol_type; }
+                        )
+                    ),
+                    [](std::string_view /*key*/) -> std::errc {
+                        throw std::system_error{errc::bad_rdf_error_category};
+                    },
+                    pe.to_string()
+                ));
+
+                if (
+                    !category->generic_errors.emplace(code.to_int(), ge).second
+                ) {
+                    throw std::system_error{errc::bad_rdf_error_category};
+                }
+            }
+        }
+
+        it = cache_registry.emplace(module_path, std::move(category)).first;
+    }
+    return *it->second;
 }
 
 #if EMILUA_CONFIG_ENABLE_PLUGINS
@@ -554,6 +1068,35 @@ static int require(lua_State* L)
                 module_path /= module_id;
                 module_path /= "init.lua";
                 module_is_leaf = false;
+            } else if (
+                fs::exists(module_path / (std::string{module_id} + ".ttl"))
+            ) {
+                module_path /= std::string{module_id} + ".ttl";
+
+                [[maybe_unused]] std::lock_guard guard{
+                    vm_ctx->appctx.modules_cache_registry_mtx};
+                try {
+                    const auto& error_category_module = load_rdf_error_category(
+                        guard, vm_ctx->appctx,
+                        fs::absolute(std::move(module_path)));
+
+                    lua_pushboolean(L, 1);
+
+                    *static_cast<const rdf_error_category**>(
+                        lua_newuserdata(L, sizeof(void*))) =
+                        &error_category_module;
+                    rawgetp(L, LUA_REGISTRYINDEX,
+                            &detail::rdf_error_category_module_mt_key);
+                    setmetatable(L, -2);
+
+                    return 2;
+                } catch (const std::system_error& e) {
+                    push(L, e.code());
+                    return lua_error(L);
+                } catch (const std::exception& e) {
+                    lua_pushstring(L, e.what());
+                    return lua_error(L);
+                }
             } else {
                 throw std::system_error{errc::module_not_found};
             }
@@ -647,6 +1190,7 @@ static int require(lua_State* L)
 
                 fs::path module_path;
                 bool module_is_leaf;
+                rdf_error_category* error_category_module = nullptr;
 #if EMILUA_CONFIG_ENABLE_PLUGINS
                 boost::shared_ptr<plugin> native_module;
 #endif // EMILUA_CONFIG_ENABLE_PLUGINS
@@ -663,6 +1207,16 @@ static int require(lua_State* L)
                     ) {
                         module_path = fs::absolute(std::move(module_path));
                         module_is_leaf = false;
+                    } else if (
+                        module_path = p / (std::string{module_id} + ".ttl") ;
+                        fs::exists(module_path)
+                    ) {
+                        [[maybe_unused]] std::lock_guard guard{
+                            vm_ctx->appctx.modules_cache_registry_mtx};
+                        error_category_module = &load_rdf_error_category(
+                            guard, vm_ctx->appctx,
+                            fs::absolute(std::move(module_path))
+                        );
                     } else {
 #if EMILUA_CONFIG_ENABLE_PLUGINS
                         [[maybe_unused]] std::lock_guard guard{
@@ -703,6 +1257,20 @@ static int require(lua_State* L)
                     return 2;
                 }
 #endif // EMILUA_CONFIG_ENABLE_PLUGINS
+
+                if (error_category_module) {
+                    assert(!already_loaded);
+                    lua_pushboolean(L, 1);
+
+                    *static_cast<const rdf_error_category**>(
+                        lua_newuserdata(L, sizeof(void*))) =
+                        error_category_module;
+                    rawgetp(L, LUA_REGISTRYINDEX,
+                            &detail::rdf_error_category_module_mt_key);
+                    setmetatable(L, -2);
+
+                    return 2;
+                }
 
                 {
                     rawgetp(L, LUA_REGISTRYINDEX, &loaded_modules_key);
@@ -1044,7 +1612,47 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
 
     {
         lua_pushlightuserdata(L, &detail::error_code_mt_key);
-        lua_createtable(L, /*narr=*/0, /*nrec=*/2);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/4);
+
+        lua_pushliteral(L, "__metatable");
+        lua_pushliteral(L, "error_code");
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__index");
+        {
+            lua_createtable(L, /*narr=*/0, /*nrec=*/1);
+
+            lua_pushliteral(L, "togeneric");
+            lua_pushcclosure(
+                L,
+                [](lua_State* L) -> int {
+                    luaL_checktype(L, 1, LUA_TTABLE);
+                    lua_getfield(L, 1, "code");
+                    int code = luaL_checkinteger(L, -1);
+
+                    lua_getfield(L, 1, "category");
+                    auto cat = static_cast<std::error_category**>(
+                        lua_touserdata(L, -1));
+                    if (!cat || !lua_getmetatable(L, -1)) {
+                        push(L, std::errc::invalid_argument, "arg", 1);
+                        return lua_error(L);
+                    }
+                    rawgetp(L, LUA_REGISTRYINDEX,
+                            &detail::error_category_mt_key);
+                    if (!lua_rawequal(L, -1, -2)) {
+                        push(L, std::errc::invalid_argument, "arg", 1);
+                        return lua_error(L);
+                    }
+
+                    auto c = (*cat)->default_error_condition(code);
+                    std::error_code ec{c.value(), c.category()};
+                    push(L, ec);
+                    return 1;
+                },
+                0);
+            lua_rawset(L, -3);
+        }
+        lua_rawset(L, -3);
 
         lua_pushliteral(L, "__eq");
         lua_pushcfunction(
@@ -1106,6 +1714,53 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
 
         lua_rawset(L, LUA_REGISTRYINDEX);
     }
+
+    lua_pushlightuserdata(L, &detail::rdf_error_category_module_mt_key);
+    {
+        lua_createtable(L, /*narr=*/0, /*nrec=*/2);
+
+        lua_pushliteral(L, "__metatable");
+        lua_pushliteral(L, "rdf_error_category_module");
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "__index");
+        lua_pushcclosure(
+            L,
+            [](lua_State* L) -> int {
+                const auto& cat = **static_cast<const rdf_error_category**>(
+                    lua_touserdata(L, 1));
+                switch (lua_type(L, 2)) {
+                case LUA_TNUMBER: {
+                    std::error_code ec(lua_tointeger(L, 2), cat);
+                    push(L, ec);
+                    return 1;
+                    break;
+                }
+                case LUA_TSTRING: {
+                    auto key = tostringview(L, 2);
+                    if (
+                        auto it = cat.aliases.find(key) ;
+                        it != cat.aliases.end()
+                    ) {
+                        std::error_code ec{it->second, cat};
+                        push(L, ec);
+                        return 1;
+                    } else {
+                        push(L, errc::bad_index, "index", 2);
+                        return lua_error(L);
+                    }
+                    break;
+                }
+                default:
+                    push(L, errc::bad_index, "index", 2);
+                    return lua_error(L);
+                }
+            },
+            0
+        );
+        lua_rawset(L, -3);
+    }
+    lua_rawset(L, LUA_REGISTRYINDEX);
 
     {
         lua_pushlightuserdata(L, &loaded_modules_key);

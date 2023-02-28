@@ -1,0 +1,9 @@
+[wrap-file]
+directory = serd-0.30.16
+
+source_url = https://download.drobilla.net/serd-0.30.16.tar.xz
+source_filename = serd-0.30.16.tar.xz
+source_hash = f50f486da519cdd8d03b20c9e42414e459133f5a244411d8e63caef8d9ac9146
+
+[provide]
+serd-0 = serd_dep

@@ -150,6 +150,7 @@ src7 = [
     'modules/tutorial/pages/interruption.adoc',
     'modules/tutorial/pages/lua51.adoc',
     'modules/tutorial/pages/modules.adoc',
+    'modules/tutorial/pages/errors.adoc',
     'modules/tutorial/pages/linux_namespaces.adoc',
 ]
 
