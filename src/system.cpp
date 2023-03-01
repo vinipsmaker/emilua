@@ -37,6 +37,7 @@
 
 #if BOOST_OS_LINUX
 #include <linux/close_range.h>
+#include <linux/securebits.h>
 #include <sys/capability.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
@@ -3643,6 +3644,54 @@ static int system_mt_index(lua_State* L)
                 BOOST_HANA_STRING("cap_set_file"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, system_cap_set_file);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("SECBIT_NOROOT"),
+                [](lua_State* L) -> int {
+                    lua_pushinteger(L, SECBIT_NOROOT);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("SECBIT_NOROOT_LOCKED"),
+                [](lua_State* L) -> int {
+                    lua_pushinteger(L, SECBIT_NOROOT_LOCKED);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("SECBIT_NO_SETUID_FIXUP"),
+                [](lua_State* L) -> int {
+                    lua_pushinteger(L, SECBIT_NO_SETUID_FIXUP);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("SECBIT_NO_SETUID_FIXUP_LOCKED"),
+                [](lua_State* L) -> int {
+                    lua_pushinteger(L, SECBIT_NO_SETUID_FIXUP_LOCKED);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("SECBIT_KEEP_CAPS"),
+                [](lua_State* L) -> int {
+                    lua_pushinteger(L, SECBIT_KEEP_CAPS);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("SECBIT_KEEP_CAPS_LOCKED"),
+                [](lua_State* L) -> int {
+                    lua_pushinteger(L, SECBIT_KEEP_CAPS_LOCKED);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("SECBIT_NO_CAP_AMBIENT_RAISE"),
+                [](lua_State* L) -> int {
+                    lua_pushinteger(L, SECBIT_NO_CAP_AMBIENT_RAISE);
+                    return 1;
+                }),
+            hana::make_pair(
+                BOOST_HANA_STRING("SECBIT_NO_CAP_AMBIENT_RAISE_LOCKED"),
+                [](lua_State* L) -> int {
+                    lua_pushinteger(L, SECBIT_NO_CAP_AMBIENT_RAISE_LOCKED);
                     return 1;
                 }),
 #endif // BOOST_OS_LINUX

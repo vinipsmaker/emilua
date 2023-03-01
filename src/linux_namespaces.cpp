@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 
 #include <linux/close_range.h>
+#include <linux/securebits.h>
 #include <grp.h>
 
 #include <iostream>

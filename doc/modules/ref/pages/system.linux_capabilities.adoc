@@ -66,6 +66,17 @@ See cap_get_secbits(3).
 
 See cap_set_secbits(3).
 
+The securebits flag constants are available from the `system` table:
+
+* `SECBIT_NOROOT`
+* `SECBIT_NOROOT_LOCKED`
+* `SECBIT_NO_SETUID_FIXUP`
+* `SECBIT_NO_SETUID_FIXUP_LOCKED`
+* `SECBIT_KEEP_CAPS`
+* `SECBIT_KEEP_CAPS_LOCKED`
+* `SECBIT_NO_CAP_AMBIENT_RAISE`
+* `SECBIT_NO_CAP_AMBIENT_RAISE_LOCKED`
+
 NOTE: Only the master VM is allowed to use this function.
 
 === `cap_get_file(path: string) -> linux_capabilities`
