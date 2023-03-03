@@ -60,7 +60,8 @@ int main()
     {
         std::filesystem::path p{buffer, std::filesystem::path::native_format};
         p.make_preferred();
-        buffer = p.u8string();
+        auto s = p.u8string();
+        buffer.assign(reinterpret_cast<char*>(s.data()), s.size());
     }
 #endif // BOOST_OS_WINDOWS
 
