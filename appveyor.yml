@@ -1,0 +1,54 @@
+shallow_clone: true
+
+platform:
+  - x64
+
+configuration:
+  - Release
+
+image: Visual Studio 2022
+
+environment:
+#  CXXFLAGS: -DWIN32_LEAN_AND_MEAN
+#  VCPKG_ENV_PASSTHROUGH: VCPKG_BUILD_TYPE
+#  VCPKG_BUILD_TYPE: release
+  PKG_CONFIG_PATH: C:/pkgconfig;C:/Tools/vcpkg/packages/luajit_x64-windows-static-release/lib/pkgconfig;C:/Tools/vcpkg/packages/fmt_x64-windows-static-release/lib/pkgconfig
+
+install:
+#  - call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars32.bat"
+  - call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+  - wmic pagefile list
+  - wmic pagefile list full
+#  - cinst -y cmake.portable
+#  - ps: (new-object net.webclient).DownloadFile('https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.zip', 'C:\boost_1_66_0.zip')
+#  - ps: Add-Type -A System.IO.Compression.FileSystem
+#  - ps: "[IO.Compression.ZipFile]::ExtractToDirectory('C:\\boost_1_66_0.zip', 'C:\\')"
+#  - cd "C:\boost_1_66_0"
+#  - bootstrap.bat --with-toolset=msvc-15.0
+#  - b2 --with-container --with-context --with-coroutine --with-date_time --with-filesystem --with-system --with-regex --with=test
+#  - cd "%APPVEYOR_BUILD_FOLDER%"
+#  - vcpkg install boost luajit fmt
+#  - vcpkg install --triplet x64-windows boost-asio boost-beast boost-config boost-container boost-context boost-core boost-dll boost-hana boost-intrusive boost-nowide boost-outcome boost-predef boost-preprocessor boost-safe-numerics boost-scope-exit boost-smart-ptr boost-vmd luajit fmt
+#  - dir /S C:\OpenSSL-v111-Win64
+  - md C:\pkgconfig
+  - curl --output-dir C:/pkgconfig --output openssl.pc https://pastebin.com/raw/LRnyD1r2
+  - type C:\pkgconfig\openssl.pc
+  - vcpkg install --triplet x64-windows-static-release luajit fmt
+  - set PATH=%PATH%;C:\Tools\vcpkg\packages\luajit_x64-windows-static-release\tools
+  - choco install pkgconfiglite boost-msvc-14.3 xxd re2c gawk
+
+build_script:
+#  - md "test\build"
+#  - cd "test\build"
+#  - set LDFLAGS="/SAFESEH:NO"
+#  - cmake -G"Visual Studio 15 2017" -DBOOST_ROOT="C:/boost_1_66_0" -DBoost_USE_STATIC_LIBS=ON ..
+#  - cmake --build .
+#  - ctest --output-on-failure -C Debug
+#  - dir /S C:\OpenSSL-v30-Win64\bin
+  - md build
+  - cd build
+  - set CXX=clang-cl
+  - meson setup -Dbackend=ninja -Denable_file_io=true -Denable_http=true -Denable_manpages=false -Ddisable_color=true -Dcpp_args=['-DFMT_HEADER_ONLY','-D_WIN32_WINNT=0x0602'] -Dcpp_eh=a -Db_pch=false -Dbuildtype=release -Ddefault_library=static -Db_ndebug=true ..
+#  - meson compile
+  - ninja -j1
+  - meson test --print-errorlogs
