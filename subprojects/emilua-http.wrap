@@ -1,4 +1,4 @@
 [wrap-git]
 url = https://github.com/BoostGSoC14/boost.http.git
-revision = 07ba4ef67fc1488bf789008b43550526931ab412
+revision = 93ae527c89ffc517862e1f5f54c8a257278f1195
 patch_directory = emilua-http

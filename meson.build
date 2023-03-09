@@ -568,6 +568,7 @@ if get_option('enable_tests')
                 'http2',
                 'http3',
                 'http4',
+                'http5',
             ]
         }
     endif
