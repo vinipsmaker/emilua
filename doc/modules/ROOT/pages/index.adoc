@@ -1,4 +1,81 @@
-= Home
+= Emilua
 
-Welcome to Emilua's reference documentation. Choose one topic from the
-navigation menu to start reading.
+:_:
+
+A cross-platform execution engine for LuaJIT with support for async IO and
+flexible threading layout.
+
+== Execution engine
+
+Emilua strives to be the most complete execution engine for Lua. Whether you
+want single-VM concurrency support to exploit complex async IO interactions or
+multi-VM support to exploit possible parallelism your needs should be covered.
+
+== Fibers
+
+Avoid the callback-hell syndrome, and enjoy tried-and-true sync primitives when
+you opt for shared-memory concurrency. Emilua offers a complete fiber API
+(bonus: you don’t need to migrate to Lua 5.4 to enjoy to-be-closed specifier
+benefits -- use cleanup handlers directly from LuaJIT instead).
+
+== Cross-platform
+
+Emilua is powered by the battle-tested and scar-accumulating Boost.Asio library
+to drive IO and it’ll make use of
+https://www.boost.org/doc/libs/1_81_0/doc/html/boost_asio/overview/implementation.html[native
+APIs in a long list of supported platforms]. Moreover processor ISA
+compatibility will be http://luajit.org/install.html[limited by LuaJIT
+availability].
+
+== Network IO
+
+* TCP.
+* UDP.
+* TLS.
+* Address/service forward/reverse name resolution.
+* IPv6 support (and mostly transparent).
+* Cancellable operations transparently integrated into the fiber interruption
+  API.
+* Several generic algorithms.
+* Experimental HTTP and WebSocket support. In later releases they should be
+  split into their own plugin so they can evolve and follow their own release
+  schedules without impacting core Emilua.
+
+== IPC
+
+* UNIX domain sockets (stream, datagram, and seqpacket).
+* `SCM_RIGHTS` fd-passing.
+* Pipes.
+* UNIX signals.
+* Ctty job control (and basic pty support).
+
+== Filesystem API
+
+* It easily abstracts path manipulation for different platforms (e.g. POSIX &
+  Windows).
+* Transparently translates to UTF-8 while retaining the native representation
+  for the underlying system under the hood.
+* Directory iterators (flat and recursive).
+* APIs to query attributes, manipulate permissions, and the like.
+* Lots of algorithms (e.g. symlink-resolving path canonization, subtrees
+  copying, etc).
+* It focuses on cross-platform support, so not all operations are supported yet,
+  but some platform-specific extensions are already available (e.g. non-Windows
+  umask(3p)).
+
+== Misc features
+
+* Complete fiber API (sync primitives, interruption API, clean-up handlers,
+  fiber local storage, assert-like scheduling constraints, ...).
+* Integrates with Lua builtins (i.e. you can mix up fibers and coroutines,
+  modules, ...).
+* AWK-inspired scanner to parse textual streams easily.
+* Clocks & timers.
+* File IO (for proactors only{_}footnote:[Right now, Windows' IOCP, and Linux's
+  io_uring.], so the main thread never blocks).
+* Serial ports.
+* A basic regex module.
+* Native JSON module.
+* Portable error code comparison.
+* Powerful interface to interact with Linux namespaces.
+* And much more.
