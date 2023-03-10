@@ -104,7 +104,7 @@ It's encouraged that you build luajit with `-DLUAJIT_ENABLE_LUA52COMPAT`.
 
 == Documentation
 
-You can browse the documentation online at <https://emilua.gitlab.io/docs/>.
+You can browse the documentation online at <https://docs.emilua.org/>.
 
 Alternatively, you may pass `-Denable_manpages=true` when building the project
 to have the documentation installed as manpages in your system. The reference

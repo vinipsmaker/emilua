@@ -191,4 +191,4 @@ the design.
 
 This is an unusual design in the Lua ecosystem, so you might want some
 rationale:
-<https://emilua.gitlab.io/blog/2021/03/14/lua-errors-from-multiple-vms/>.
+<https://blog.emilua.org/2021/03/14/lua-errors-from-multiple-vms/>.
