@@ -3,6 +3,8 @@
 :imagesdir: modules/tutorial/images/
 :leveloffset: +1
 
+include::pages/getting-started.adoc[]
+
 include::pages/actor.adoc[]
 
 include::pages/alternatives.adoc[]

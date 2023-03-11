@@ -144,6 +144,7 @@ foreach input : src3
 endforeach
 
 src7 = [
+    'modules/tutorial/pages/getting-started.adoc',
     'modules/tutorial/pages/actor.adoc',
     'modules/tutorial/pages/alternatives.adoc',
     'modules/tutorial/pages/fiber.adoc',
