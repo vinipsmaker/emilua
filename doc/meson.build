@@ -1,129 +1,13 @@
 fs = import('fs')
 
-src3 = [
-    'modules/ref/pages/file_descriptor.adoc',
-    'modules/ref/pages/pipe.read_stream.adoc',
-    'modules/ref/pages/pipe.write_stream.adoc',
-    'modules/ref/pages/pipe.pair.adoc',
-    'modules/ref/pages/generic_error.adoc',
-    'modules/ref/pages/byte_span.adoc',
-    'modules/ref/pages/condition_variable.adoc',
-    'modules/ref/pages/filesystem.path.adoc',
-    'modules/ref/pages/filesystem.directory_entry.adoc',
-    'modules/ref/pages/filesystem.directory_iterator.adoc',
-    'modules/ref/pages/filesystem.recursive_directory_iterator.adoc',
-    'modules/ref/pages/filesystem.absolute.adoc',
-    'modules/ref/pages/filesystem.canonical.adoc',
-    'modules/ref/pages/filesystem.weakly_canonical.adoc',
-    'modules/ref/pages/filesystem.relative.adoc',
-    'modules/ref/pages/filesystem.proximate.adoc',
-    'modules/ref/pages/filesystem.current_working_directory.adoc',
-    'modules/ref/pages/filesystem.copy.adoc',
-    'modules/ref/pages/filesystem.copy_file.adoc',
-    'modules/ref/pages/filesystem.copy_symlink.adoc',
-    'modules/ref/pages/filesystem.create_directory.adoc',
-    'modules/ref/pages/filesystem.create_hard_link.adoc',
-    'modules/ref/pages/filesystem.create_symlink.adoc',
-    'modules/ref/pages/filesystem.equivalent.adoc',
-    'modules/ref/pages/filesystem.file_size.adoc',
-    'modules/ref/pages/filesystem.hard_link_count.adoc',
-    'modules/ref/pages/filesystem.clock.adoc',
-    'modules/ref/pages/filesystem.last_write_time.adoc',
-    'modules/ref/pages/filesystem.chmod.adoc',
-    'modules/ref/pages/filesystem.read_symlink.adoc',
-    'modules/ref/pages/filesystem.remove.adoc',
-    'modules/ref/pages/filesystem.rename.adoc',
-    'modules/ref/pages/filesystem.resize_file.adoc',
-    'modules/ref/pages/filesystem.is_empty.adoc',
-    'modules/ref/pages/filesystem.space.adoc',
-    'modules/ref/pages/filesystem.status.adoc',
-    'modules/ref/pages/filesystem.temp_directory_path.adoc',
-    'modules/ref/pages/filesystem.umask.adoc',
-    'modules/ref/pages/file.open_flag.adoc',
-    'modules/ref/pages/file.random_access.adoc',
-    'modules/ref/pages/file.stream.adoc',
-    'modules/ref/pages/file.read_all_at.adoc',
-    'modules/ref/pages/file.read_at_least_at.adoc',
-    'modules/ref/pages/file.write_all_at.adoc',
-    'modules/ref/pages/file.write_at_least_at.adoc',
-    'modules/ref/pages/http.headers.adoc',
-    'modules/ref/pages/http.request.adoc',
-    'modules/ref/pages/http.response.adoc',
-    'modules/ref/pages/http.socket.adoc',
-    'modules/ref/pages/ip.address.adoc',
-    'modules/ref/pages/ip.connect.adoc',
-    'modules/ref/pages/ip.address_info_flag.adoc',
-    'modules/ref/pages/ip.get_address_info.adoc',
-    'modules/ref/pages/ip.get_name_info.adoc',
-    'modules/ref/pages/ip.host_name.adoc',
-    'modules/ref/pages/ip.tostring.adoc',
-    'modules/ref/pages/ip.toendpoint.adoc',
-    'modules/ref/pages/ip.message_flag.adoc',
-    'modules/ref/pages/ip.tcp.acceptor.adoc',
-    'modules/ref/pages/ip.tcp.socket.adoc',
-    'modules/ref/pages/ip.udp.socket.adoc',
-    'modules/ref/pages/json.adoc',
-    'modules/ref/pages/json.writer.adoc',
-    'modules/ref/pages/mutex.adoc',
-    'modules/ref/pages/regex.adoc',
-    'modules/ref/pages/serial_port.adoc',
-    'modules/ref/pages/time.sleep.adoc',
-    'modules/ref/pages/time.steady_clock.adoc',
-    'modules/ref/pages/time.steady_timer.adoc',
-    'modules/ref/pages/time.system_clock.adoc',
-    'modules/ref/pages/time.system_timer.adoc',
-    'modules/ref/pages/time.high_resolution_clock.adoc',
-    'modules/ref/pages/stream.write_all.adoc',
-    'modules/ref/pages/stream.write_at_least.adoc',
-    'modules/ref/pages/stream.read_all.adoc',
-    'modules/ref/pages/stream.read_at_least.adoc',
-    'modules/ref/pages/stream.scanner.adoc',
-    'modules/ref/pages/system.arguments.adoc',
-    'modules/ref/pages/system.environment.adoc',
-    'modules/ref/pages/system.in_.adoc',
-    'modules/ref/pages/system.out.adoc',
-    'modules/ref/pages/system.err.adoc',
-    'modules/ref/pages/system.exit.adoc',
-    'modules/ref/pages/system.signal.adoc',
-    'modules/ref/pages/system.signal.raise.adoc',
-    'modules/ref/pages/system.signal.set.adoc',
-    'modules/ref/pages/system.signal.ignore.adoc',
-    'modules/ref/pages/system.signal.default.adoc',
-    'modules/ref/pages/system.spawn.adoc',
-    'modules/ref/pages/system.getresuid.adoc',
-    'modules/ref/pages/system.getresgid.adoc',
-    'modules/ref/pages/system.setresuid.adoc',
-    'modules/ref/pages/system.setresgid.adoc',
-    'modules/ref/pages/system.getgroups.adoc',
-    'modules/ref/pages/system.setgroups.adoc',
-    'modules/ref/pages/system.linux_capabilities.adoc',
-    'modules/ref/pages/system.getpid.adoc',
-    'modules/ref/pages/system.getppid.adoc',
-    'modules/ref/pages/system.kill.adoc',
-    'modules/ref/pages/system.getpgrp.adoc',
-    'modules/ref/pages/system.getpgid.adoc',
-    'modules/ref/pages/system.setpgid.adoc',
-    'modules/ref/pages/system.getsid.adoc',
-    'modules/ref/pages/system.setsid.adoc',
-    'modules/ref/pages/tls.context.adoc',
-    'modules/ref/pages/tls.context_flag.adoc',
-    'modules/ref/pages/tls.socket.adoc',
-    'modules/ref/pages/unix.datagram_socket.adoc',
-    'modules/ref/pages/unix.message_flag.adoc',
-    'modules/ref/pages/unix.stream_acceptor.adoc',
-    'modules/ref/pages/unix.stream_socket.adoc',
-    'modules/ref/pages/unix.seqpacket_acceptor.adoc',
-    'modules/ref/pages/unix.seqpacket_socket.adoc',
-    'modules/ref/pages/websocket.adoc',
-]
-
-# Full-of-shit's Meson won't let me do away with the for-loop:
-#
-# ERROR: Output cannot contain @PLAINNAME@ or @BASENAME@ when there is more
-# than one input (we can't know which to use)
-foreach input : src3
+foreach line : fs.read('modules' / 'ref' / 'all.adoc').split('\n')
+    if not line.startswith('include::')
+        continue
+    endif
+    input = (
+        'modules' / 'ref' / line.replace('include::', '').replace('[]', ''))
     custom_target(
-        'man3_' + fs.stem(input),
+        fs.stem(input) + '.3em',
         build_by_default : true,
         command : [
             asciidoctor,
@@ -143,26 +27,15 @@ foreach input : src3
     )
 endforeach
 
-src7 = [
-    'modules/tutorial/pages/getting-started.adoc',
-    'modules/tutorial/pages/actor.adoc',
-    'modules/tutorial/pages/alternatives.adoc',
-    'modules/tutorial/pages/fiber.adoc',
-    'modules/tutorial/pages/HACKING.adoc',
-    'modules/tutorial/pages/interruption.adoc',
-    'modules/tutorial/pages/lua51.adoc',
-    'modules/tutorial/pages/modules.adoc',
-    'modules/tutorial/pages/errors.adoc',
-    'modules/tutorial/pages/linux_namespaces.adoc',
-]
-
-# Full-of-shit's Meson won't let me do away with the for-loop:
-#
-# ERROR: Output cannot contain @PLAINNAME@ or @BASENAME@ when there is more
-# than one input (we can't know which to use)
-foreach input : src7
+foreach line : fs.read('modules' / 'tutorial' / 'all.adoc').split('\n')
+    if not line.startswith('include::')
+        continue
+    endif
+    input = (
+        'modules' / 'tutorial' /
+        line.replace('include::', '').replace('[]', ''))
     custom_target(
-        'man7_' + fs.stem(input),
+        'emilua-' + fs.stem(input) + '.7',
         build_by_default : true,
         command : [
             asciidoctor,

@@ -1,7 +1,7 @@
 project(
     'emilua', 'cpp',
     default_options : ['cpp_std=c++20'],
-    meson_version : '>=0.55.0',
+    meson_version : '>=0.57.0',
     license : 'BSL-1.0',
     version : '0.3.2',
 )
