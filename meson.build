@@ -99,7 +99,7 @@ bytecode_gen = generator(
 )
 
 re2c = find_program('re2c')
-re2c_version = run_command([re2c, '--version']).stdout().split('\n')[0].split(' ')[-1].strip()
+re2c_version = run_command([re2c, '--version'], check : true).stdout().split('\n')[0].split(' ')[-1].strip()
 extra_re2c_args = []
 
 if meson.get_compiler('cpp').get_id() == 'gcc' and re2c_version.version_compare('>=2.0')
