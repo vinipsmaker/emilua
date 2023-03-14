@@ -3,97 +3,32 @@
 :_:
 :cpp: C++
 
-An execution engine{_}footnote:[If you don't know what is an execution engine
-think NodeJS.] for Lua.
+A cross-platform execution engine for LuaJIT with support for async IO and
+flexible threading layout.
 
 Features:
 
 * Complete fiber API (sync primitives, interruption API, clean-up handlers,
   fiber local storage, assert-like scheduling constraints, ...).
+* TCP, UDP, TLS, file IO, address/service forward/reverse name resolution, UNIX
+  domain sockets, SCM_RIGHTS fd-passing, pipes, serial ports, ...
+* Clocks & timers.
+* Filesystem API.
+* Portable error comparison.
 * Integrates with Lua builtins (i.e. you can mix up fibers and coroutines,
   modules, ...).
-* HTTP{_}footnote:[WebSocket planned for next releases.].
+* Experimental support for HTTP & WebSocket.
 * Actor API (each VM is an actor and they're spawned in thread pools under your
   control{_}footnote:[The default profile inherits the parent execution context
   (no new thread is created), but the option to create a new one is also
-  available.]).
+  available.]). You can even spawn isolated actors into new Linux namespaces.
 * Native JSON module.
 * Cross-platform (should run anywhere Boost.Asio also runs).
-
-== Hello World
-
-[source,lua]
-----
-local sleep = require('sleep')
-
-local numbers = {8, 42, 38, 111, 2, 39, 1}
-
-for _, n in pairs(numbers) do
-    spawn(function()
-        sleep(n / 100)
-        print(n)
-    end)
-end
-----
-
-== Actor example
-
-[source,lua]
-----
-local inbox = require('inbox')
-
-print('actor started with _CONTEXT=' .. _CONTEXT)
-
-if _CONTEXT == 'main' then
-    local ch = spawn_vm('.')
-    ch:send{ from = inbox, body = 'Hello World' }
-    local m = inbox:receive()
-    print(m)
-else assert(_CONTEXT == 'worker')
-    local m = inbox:receive()
-    m.from:send(m.body)
-end
-----
-
-== Dependencies
-
-* Meson 0.55.0 or later.
-* {cpp}17 compiler (GCC 10 or newer should work).
-* LuaJIT.
-* Boost.Asio (and other Boost libraries as well).
-* https://fmt.dev/[fmt] 8.0 or later.
-* `re2c` 1.3 or later.
-* `xxd`.
-
-== Optional dependencies
-
-* Curses: coloured output on errors.
-* asciidoctor: manpages.
-* asciidoctor-diagram: ascii-art diagrams for manpages.
-* PlantUML: ascii-art diagrams for manpages.
-* GNU AWK: tests.
 
 == Install
 
 * https://aur.archlinux.org/packages/emilua/[ArchLinux].
 * https://guix.gnu.org/[GUIX]: Emilua is available from the main repository.
-
-== BUILD
-
-[source,bash]
-----
-$ mkdir build
-$ cd build
-$ meson ..
-$ ninja
-----
-
-An `emilua` binary will be generated. Copy it to your `$PATH`.
-
-You can also pass options when you invoke `meson`. One of the options is `-D
-enable_http=true`.
-
-It's encouraged that you build luajit with `-DLUAJIT_ENABLE_LUA52COMPAT`.
 
 == LICENSE
 
@@ -114,9 +49,43 @@ pages will be installed in the section `3em` ("em" stands for Emilua
 Module). Tutorial pages will be installed in section 7, but every page in this
 section will be prefixed by "emilua-".
 
+== Dependencies
+
+* Meson 0.57.0 or later.
+* {cpp}20 compiler (GCC 12.1 or newer should work).
+* LuaJIT.
+* Boost.Asio (and other Boost libraries as well).
+* https://fmt.dev/[fmt] 8.0 or later.
+* `re2c` 1.3 or later.
+* `xxd`.
+
+== Optional dependencies
+
+* Curses: coloured output on errors.
+* asciidoctor: manpages.
+* asciidoctor-diagram: ascii-art diagrams for manpages.
+* PlantUML: ascii-art diagrams for manpages.
+* GNU AWK: tests.
+
+== BUILD
+
+[source]
+----
+$ mkdir build
+$ cd build
+$ meson ..
+$ ninja
+# ninja install
+----
+
+You can also pass options when you invoke `meson`. One of the options is `-D
+enable_http=true`.
+
+It's encouraged that you build luajit with `-DLUAJIT_ENABLE_LUA52COMPAT`.
+
 == Tests
 
-[source,bash]
+[source]
 ----
 $ ninja test
 ----
@@ -129,16 +98,3 @@ support.
 Some fuzz tests are also available. You can configure the seed for these tests
 by setting the `EMILUA_TEST_SEED` environment variable. The envirnoment variable
 `EMILUA_TEST_FUZZER_NITER` can be used to override the number of iterations.
-
-== ROADMAP
-
-* More plugins.
-** D-Bus plug-in.
-** Python plug-in.
-** Redis plug-in.
-* Linux namespaces powered actors when available+requested.
-* Self-contained executables.
-* REPL.
-* Debugger.
-* Custom memory allocator per VM.
-* Try to infect other languages with similar ideas.
