@@ -69,6 +69,8 @@ end
 
 * Curses: coloured output on errors.
 * asciidoctor: manpages.
+* asciidoctor-diagram: ascii-art diagrams for manpages.
+* PlantUML: ascii-art diagrams for manpages.
 * GNU AWK: tests.
 
 == Install

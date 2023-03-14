@@ -5,6 +5,8 @@
 
 include::pages/getting-started.adoc[]
 
+include::pages/streams.adoc[]
+
 include::pages/actor.adoc[]
 
 include::pages/alternatives.adoc[]

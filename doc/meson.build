@@ -1,5 +1,20 @@
 fs = import('fs')
 
+asciidoctor_diagram_args = []
+
+if run_command(
+    asciidoctor, '--require=asciidoctor-diagram', '--backend=manpage',
+    '--doctype=manpage', '--out-file=-',
+    'modules' / 'tutorial' / 'pages' / 'getting-started.adoc',
+    check : false
+).returncode() == 0
+    asciidoctor_diagram_args += [
+        '--require=asciidoctor-diagram',
+        '--attribute=plantuml-format=utxt',
+        '--attribute=ditaa-format=txt',
+    ]
+endif
+
 foreach line : fs.read('modules' / 'ref' / 'all.adoc').split('\n')
     if not line.startswith('include::')
         continue
@@ -17,6 +32,7 @@ foreach line : fs.read('modules' / 'ref' / 'all.adoc').split('\n')
             get_option('version_suffix'),
             '--attribute=manmanual=Emilua reference',
             '--attribute=doctitle=@BASENAME@(3em)',
+            asciidoctor_diagram_args,
             '--out-file=@OUTPUT@',
             '@INPUT@',
         ],
@@ -45,6 +61,7 @@ foreach line : fs.read('modules' / 'tutorial' / 'all.adoc').split('\n')
             get_option('version_suffix'),
             '--attribute=manmanual=Emilua reference',
             '--attribute=doctitle=emilua-@BASENAME@(7)',
+            asciidoctor_diagram_args,
             '--out-file=@OUTPUT@',
             '@INPUT@',
         ],

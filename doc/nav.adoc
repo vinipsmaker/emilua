@@ -2,6 +2,7 @@
 * xref:ROOT:changelog.adoc[]
 * Tutorial
 ** xref:tutorial:getting-started.adoc[]
+** xref:tutorial:streams.adoc[]
 ** xref:tutorial:actor.adoc[]
 ** xref:tutorial:alternatives.adoc[]
 ** xref:tutorial:fiber.adoc[]
