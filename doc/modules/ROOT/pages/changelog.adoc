@@ -1,12 +1,61 @@
 = ChangeLog
 
+:_:
+:cpp: C++
+
 == 0.4
 
-* Add `sys.args`.
-* Add `sys.env`.
-* Add `sys.signal`.
-* Add `sys.exit`.
-* Add `byte_span`.
+* A new `byte_span` type akin to Go slices is used for IO ops.
+* Actor channels now can transceive file descriptors.
+* Support for Linux namespaces. Now you can set up sandboxes and run isolated
+  actors (or just the well-known containers).
+* Upgrade to {cpp}20. The motivating feature for the upgrade was
+  `std::atomic<std::weak_ptr<T>>`. However, other {cpp}20 features are being
+  used as well.
+* Removed `println()`.
+* Removed `sleep_for`. Its functionality has been replaced by the module `time`.
+* Moved `steady_timer` to the new module `time`.
+* Removed `ip.tcp.resolver`. Its functionality has been replaced by
+  `ip.get_address_info()`.
+* `tls.ctx` renamed to `tls.context`.
+* Modules `ip` and `tls` grew a lot. The API for sockets now supports IO ops on
+  `byte_span` instances, and plenty of new functions and classes (including UDP)
+  were added.
+* `inbox.recv()` renamed to `inbox.receive()`
+* Module `cond` renamed to `condition_variable`.
+* `error_code.cat` renamed to `error_code.category`.
+* `spawn_ctx_threads()` renamed to `spawn_context_threads()`.
+* `inherit_ctx` renamed to `inherit_context` in `spawn_vm()`.
+* New modules.
+** `time:` clocks and timers.
+** `pipe`.
+** `unix`: UNIX domain sockets.
+** `serial_port`: serial ports.
+** `system`: UNIX signals, CLI args, env vars, process credentials, and much
+   more.
+** `file`: file IO. Only available on systems with proactors (e.g. Windows with
+   IOCP, and Linux with io_uring). BSD can still be supported later (with kqueue
+   + POSIX AIO).
+** `filesystem`: portable path-manipulation, and plenty of filesystem operations
+   & algorithms.
+** `stream`: AWK-inspired scanner and common stream algorithms.
+** `regex`: Basic regex functions. The interface has been inspired by {cpp},
+   Python and AWK.
+** `generic_error`: portable error comparison for filesystem, sockets, and much
+   more.
+** `websocket`.
+* Lua programs can define their own error categories now.
+* Several new OS-specific APIs (e.g. Linux capabilities, and Windows'
+  `TransmitFile()`).
+* Add `http.request.upgrade_desired()`.
+* `http.socket` can work on top of UNIX domain stream sockets now.
+* Now Emilua is less liberal on accepted values for env var `EMILUA_COLORS`.
+* Finer-grained cancellation of IO ops.
+* Locales are set at application startup.
+* Bug fixes.
+* The build system now makes use of Meson's wrap system.
+* Documentation can now be installed as manpages.
+* Support for io_uring.
 
 == 0.3
 
