@@ -24,6 +24,7 @@
 #include <emilua/scope_cleanup.hpp>
 #include <emilua/serial_port.hpp>
 #include <emilua/async_base.hpp>
+#include <emilua/asio_error.hpp>
 #include <emilua/filesystem.hpp>
 #include <emilua/byte_span.hpp>
 #include <emilua/lua_shim.hpp>
@@ -1023,6 +1024,14 @@ static int require(lua_State* L)
                     }
                 ),
                 hana::make_pair(
+                    BOOST_HANA_STRING("asio_error"),
+                    [](lua_State* L) -> int {
+                        lua_pushboolean(L, 1);
+                        rawgetp(L, LUA_REGISTRYINDEX, &asio_error_key);
+                        return 2;
+                    }
+                ),
+                hana::make_pair(
                     BOOST_HANA_STRING("mutex"),
                     [](lua_State* L) -> int {
                         lua_pushboolean(L, 1);
@@ -1587,6 +1596,7 @@ std::shared_ptr<vm_context> make_vm(asio::io_context& ioctx,
 
     // extra modules {{{
     init_generic_error(L);
+    init_asio_error(L);
     init_time(L);
     init_filesystem(L);
     init_json_module(L);

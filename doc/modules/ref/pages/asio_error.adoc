@@ -1,0 +1,124 @@
+= asio_error
+
+:_:
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+== Description
+
+endif::[]
+
+[source,lua]
+----
+local asio_error = require 'asio_error'
+
+error(asio_error.misc.eof)
+----
+
+An userdata for which the `__index()` metamethod returns a new error code from
+the asio category on access.
+
+== Error list
+
+=== Basic errors
+
+These errors may be just an alias to common errors from the system category
+depending on the host operating system.
+
+* `basic.access_denied`
+
+* `basic.address_family_not_supported`
+
+* `basic.address_in_use`
+
+* `basic.already_connected`
+
+* `basic.already_started`
+
+* `basic.broken_pipe`
+
+* `basic.connection_aborted`
+
+* `basic.connection_refused`
+
+* `basic.connection_reset`
+
+* `basic.bad_descriptor`
+
+* `basic.fault`
+
+* `basic.host_unreachable`
+
+* `basic.in_progress`
+
+* `basic.interrupted`
+
+* `basic.invalid_argument`
+
+* `basic.message_size`
+
+* `basic.name_too_long`
+
+* `basic.network_down`
+
+* `basic.network_reset`
+
+* `basic.network_unreachable`
+
+* `basic.no_descriptors`
+
+* `basic.no_buffer_space`
+
+* `basic.no_memory`
+
+* `basic.no_permission`
+
+* `basic.no_protocol_option`
+
+* `basic.no_such_device`
+
+* `basic.not_connected`
+
+* `basic.not_socket`
+
+* `basic.operation_aborted`
+
+* `basic.operation_not_supported`
+
+* `basic.shut_down`
+
+* `basic.timed_out`
+
+* `basic.try_again`
+
+* `basic.would_block`
+
+=== `netdb.h` errors
+
+* `netdb.host_not_found`
+
+* `netdb.host_not_found_try_again`
+
+* `netdb.no_data`
+
+* `netdb.no_recovery`
+
+=== addrinfo errors
+
+* `addrinfo.service_not_found`
+
+* `addrinfo.socket_type_not_supported`
+
+=== Misc errors
+
+* `misc.already_open`
+
+* `misc.eof`
+
+* `misc.not_found`
+
+* `misc.fd_set_failure`

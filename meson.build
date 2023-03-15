@@ -185,6 +185,7 @@ src = [
     'src/scope_cleanup.cpp',
     'src/serial_port.cpp',
     'src/async_base.cpp',
+    'src/asio_error.cpp',
     'src/filesystem.cpp',
     'src/byte_span.cpp',
     'src/lua_shim.cpp',
