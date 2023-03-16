@@ -13,7 +13,7 @@ include::pages/alternatives.adoc[]
 
 include::pages/fiber.adoc[]
 
-include::pages/HACKING.adoc[]
+include::pages/internals.adoc[]
 
 include::pages/interruption.adoc[]
 

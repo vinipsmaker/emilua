@@ -1,4 +1,4 @@
-= HACKING
+= Internals
 
 :_:
 :cpp: C++

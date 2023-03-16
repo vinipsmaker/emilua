@@ -6,7 +6,7 @@
 ** xref:tutorial:actor.adoc[]
 ** xref:tutorial:alternatives.adoc[]
 ** xref:tutorial:fiber.adoc[]
-** xref:tutorial:HACKING.adoc[]
+** xref:tutorial:internals.adoc[]
 ** xref:tutorial:interruption.adoc[]
 ** xref:tutorial:lua51.adoc[]
 ** xref:tutorial:modules.adoc[]
