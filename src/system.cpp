@@ -95,6 +95,7 @@ struct spawn_arguments_t
     std::optional<std::vector<gid_t>> extra_groups;
     std::optional<mode_t> umask;
     std::optional<std::string> working_directory;
+    int working_directoryfd;
     std::optional<unsigned long> pdeathsig;
     int nsenter_user;
     int nsenter_mount;
@@ -1690,6 +1691,12 @@ static int system_spawn_child_main(void* a)
 
     if (args->umask) umask(*args->umask);
 
+    if (args->pdeathsig && prctl(PR_SET_PDEATHSIG, *args->pdeathsig) == -1) {
+        reply.code = errno;
+        write(args->closeonexecpipe, &reply, sizeof(reply));
+        return 1;
+    }
+
     if (
         args->working_directory && chdir(args->working_directory->data()) == -1
     ) {
@@ -1698,14 +1705,17 @@ static int system_spawn_child_main(void* a)
         return 1;
     }
 
-    if (args->pdeathsig && prctl(PR_SET_PDEATHSIG, *args->pdeathsig) == -1) {
+    // operations on file descriptors that will not change the file descriptor
+    // table for the process {{{
+
+    if (
+        args->working_directoryfd != -1 &&
+        fchdir(args->working_directoryfd) == -1
+    ) {
         reply.code = errno;
         write(args->closeonexecpipe, &reply, sizeof(reply));
         return 1;
     }
-
-    // operations on file descriptors that will not change the file descriptor
-    // table for the process {{{
 
     if (args->set_ctty != -1) {
         if (ioctl(args->set_ctty, TIOCSCTTY, /*force=*/0) == -1) {
@@ -2644,13 +2654,48 @@ static int system_spawn(lua_State* L)
     lua_pop(L, 1);
 
     std::optional<std::string> working_directory;
+    int working_directoryfd = -1;
     lua_getfield(L, 1, "working_directory");
     switch (lua_type(L, -1)) {
     case LUA_TNIL:
         break;
-    case LUA_TSTRING:
-        working_directory.emplace(tostringview(L));
+    case LUA_TUSERDATA: {
+        auto fd = static_cast<file_descriptor_handle*>(lua_touserdata(L, -1));
+        if (!lua_getmetatable(L, -1)) {
+            push(L, std::errc::invalid_argument, "arg", "working_directory");
+            return lua_error(L);
+        }
+        if (lua_rawequal(L, -1, FILE_DESCRIPTOR_MT_INDEX)) {
+            if (*fd == INVALID_FILE_DESCRIPTOR) {
+                push(L, std::errc::device_or_resource_busy,
+                     "arg", "working_directory");
+                return lua_error(L);
+            }
+
+            lua_pop(L, 1);
+            working_directoryfd = *fd;
+            break;
+        }
+
+        auto path = static_cast<std::filesystem::path*>(lua_touserdata(L, -2));
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", "working_directory");
+            return lua_error(L);
+        }
+        lua_pop(L, 2);
+
+        try {
+            working_directory.emplace(path->string());
+        } catch (const std::system_error& e) {
+            push(L, e.code());
+            return lua_error(L);
+        } catch (const std::exception& e) {
+            lua_pushstring(L, e.what());
+            return lua_error(L);
+        }
         break;
+    }
     default:
         push(L, std::errc::invalid_argument, "arg", "working_directory");
         return lua_error(L);
@@ -2859,6 +2904,7 @@ static int system_spawn(lua_State* L)
     args.extra_groups = std::move(extra_groups);
     args.umask = umask;
     args.working_directory = working_directory;
+    args.working_directoryfd = working_directoryfd;
     args.pdeathsig = pdeathsig;
     args.nsenter_user = nsenter_user;
     args.nsenter_mount = nsenter_mount;

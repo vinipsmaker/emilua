@@ -175,7 +175,7 @@ Set the supplementary group IDs.
 
 See umask(3p).
 
-`working_directory: string|nil`::
+`working_directory: filesystem.path|file_descriptor|nil`::
 
 Sets the working directory for the spawned program.
 
