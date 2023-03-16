@@ -18,7 +18,53 @@ scanner:get_line()
 ----
 
 This class abstracts formatted buffered textual input as an AWK-inspired
-scanner.
+scanner. The input stream is broken into records, and each record may be further
+broken down into fields.
+
+`get_line()` is used to get the next record. Surplus data read from the stream
+is kept in the buffer to be used in the next call to `get_line()`.
+
+When EOF is found on the stream, the buffered data is returned as the last
+record. To differentiate records finished on EOF from records finished on
+`record_separator`, check `self.record_terminator`.
+
+TIP: You may change the parsing rules (e.g. record and field separators) once
+`get_line()` returns.
+
+== Line-based protocols
+
+[quote, '<https://www.boost.org/doc/libs/1_81_0/doc/html/boost_asio/overview/core/line_based.html>']
+____
+Many commonly-used internet protocols are line-based, which means that they have
+protocol elements that are delimited by the character sequence
+`"\r\n"`. Examples include HTTP, SMTP and FTP.
+____
+
+To easily parse these protocols, you may set a `scanner` object with
+`record_separator="\r\n"` (the default). Then, `get_line()` will return a new
+line each time it is called. If the field separator/pattern is also specified,
+the line will be broken into a table made of the fields.
+
+New buffers will be allocated as more space is needed until a specified maximum
+(or an unspecified maximum default).
+
+== Combining strategies
+
+You may also use different parsers & algorithms to consume some parts of the
+stream. For instance, HTTP starts as a line-delimited textual protocol. Once the
+header section is consumed, the body payload is determined by rules extracted
+out of the headers. For `"content-length"` defined message bodies, you read a
+fixed amount of bytes to consume it.
+
+In such scenario, you may use `scanner` to parse the header section, and, once
+it's time to read the body, use the method `buffer()` to retrieve already
+buffered data. Just be sure to call `remove_line()` before calling `buffer()` so
+the last line of the header section doesn't get mixed up with the body. Then
+it'll be a matter of calling xref:stream.read_all.adoc[stream.read_all(3em)] (or
+several calls to `read_some()`) to consume the body.
+
+Once it's time to parse the header section for the next message in the stream,
+you can call `set_buffer()` to pass the buffered data back to the `scanner`.
 
 == Functions
 
