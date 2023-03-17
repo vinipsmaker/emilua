@@ -27,7 +27,7 @@
 * `spawn_ctx_threads()` renamed to `spawn_context_threads()`.
 * `inherit_ctx` renamed to `inherit_context` in `spawn_vm()`.
 * New modules.
-** `time:` clocks and timers.
+** `time`: clocks and timers.
 ** `pipe`.
 ** `unix`: UNIX domain sockets.
 ** `serial_port`: serial ports.
@@ -43,6 +43,7 @@
    Python and AWK.
 ** `generic_error`: portable error comparison for filesystem, sockets, and much
    more.
+** `asio_error`: errors thrown by the asio layer.
 ** `websocket`.
 * Lua programs can define their own error categories now.
 * Several new OS-specific APIs (e.g. Linux capabilities, and Windows'
