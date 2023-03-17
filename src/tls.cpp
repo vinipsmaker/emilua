@@ -11,6 +11,7 @@
 
 #include <emilua/dispatch_table.hpp>
 #include <emilua/async_base.hpp>
+#include <emilua/filesystem.hpp>
 #include <emilua/byte_span.hpp>
 #include <emilua/tls.hpp>
 #include <emilua/ip.hpp>
@@ -210,7 +211,7 @@ static int context_add_certificate_authority(lua_State* L)
 
 static int context_add_verify_path(lua_State* L)
 {
-    luaL_checktype(L, 2, LUA_TSTRING);
+    lua_settop(L, 2);
 
     auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
@@ -225,8 +226,30 @@ static int context_add_verify_path(lua_State* L)
         return lua_error(L);
     }
 
+    std::string path;
+    try {
+        auto p = static_cast<std::filesystem::path*>(lua_touserdata(L, 2));
+        if (!p || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        path = p->string();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     boost::system::error_code ec;
-    (*ctx)->add_verify_path(static_cast<std::string>(tostringview(L, 2)), ec);
+    (*ctx)->add_verify_path(path, ec);
     if (ec) {
         push(L, ec);
         return lua_error(L);
@@ -262,7 +285,7 @@ static int context_clear_options(lua_State* L)
 
 static int context_load_verify_file(lua_State* L)
 {
-    luaL_checktype(L, 2, LUA_TSTRING);
+    lua_settop(L, 2);
 
     auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
@@ -277,8 +300,30 @@ static int context_load_verify_file(lua_State* L)
         return lua_error(L);
     }
 
+    std::string path;
+    try {
+        auto p = static_cast<std::filesystem::path*>(lua_touserdata(L, 2));
+        if (!p || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        path = p->string();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     boost::system::error_code ec;
-    (*ctx)->load_verify_file(static_cast<std::string>(tostringview(L, 2)), ec);
+    (*ctx)->load_verify_file(path, ec);
     if (ec) {
         push(L, ec);
         return lua_error(L);
@@ -598,7 +643,7 @@ static int context_use_certificate_chain(lua_State* L)
 
 static int context_use_certificate_chain_file(lua_State* L)
 {
-    luaL_checktype(L, 2, LUA_TSTRING);
+    lua_settop(L, 2);
 
     auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
@@ -613,9 +658,30 @@ static int context_use_certificate_chain_file(lua_State* L)
         return lua_error(L);
     }
 
+    std::string path;
+    try {
+        auto p = static_cast<std::filesystem::path*>(lua_touserdata(L, 2));
+        if (!p || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        path = p->string();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     boost::system::error_code ec;
-    (*ctx)->use_certificate_chain_file(
-        static_cast<std::string>(tostringview(L, 2)), ec);
+    (*ctx)->use_certificate_chain_file(path, ec);
     if (ec) {
         push(L, ec);
         return lua_error(L);
@@ -625,7 +691,6 @@ static int context_use_certificate_chain_file(lua_State* L)
 
 static int context_use_certificate_file(lua_State* L)
 {
-    luaL_checktype(L, 2, LUA_TSTRING);
     luaL_checktype(L, 3, LUA_TSTRING);
 
     auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
@@ -641,6 +706,28 @@ static int context_use_certificate_file(lua_State* L)
         return lua_error(L);
     }
 
+    std::string path;
+    try {
+        auto p = static_cast<std::filesystem::path*>(lua_touserdata(L, 2));
+        if (!p || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        path = p->string();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     asio::ssl::context::file_format fmt;
     auto fmt_str = tostringview(L, 3);
     if (fmt_str == "pem") {
@@ -653,8 +740,7 @@ static int context_use_certificate_file(lua_State* L)
     }
 
     boost::system::error_code ec;
-    (*ctx)->use_certificate_file(
-        static_cast<std::string>(tostringview(L, 2)), fmt, ec);
+    (*ctx)->use_certificate_file(path, fmt, ec);
     if (ec) {
         push(L, ec);
         return lua_error(L);
@@ -712,7 +798,6 @@ static int context_use_private_key(lua_State* L)
 
 static int context_use_private_key_file(lua_State* L)
 {
-    luaL_checktype(L, 2, LUA_TSTRING);
     luaL_checktype(L, 3, LUA_TSTRING);
 
     auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
@@ -728,6 +813,28 @@ static int context_use_private_key_file(lua_State* L)
         return lua_error(L);
     }
 
+    std::string path;
+    try {
+        auto p = static_cast<std::filesystem::path*>(lua_touserdata(L, 2));
+        if (!p || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        path = p->string();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     asio::ssl::context::file_format fmt;
     auto fmt_str = tostringview(L, 3);
     if (fmt_str == "pem") {
@@ -740,8 +847,7 @@ static int context_use_private_key_file(lua_State* L)
     }
 
     boost::system::error_code ec;
-    (*ctx)->use_private_key_file(
-        static_cast<std::string>(tostringview(L, 2)), fmt, ec);
+    (*ctx)->use_private_key_file(path, fmt, ec);
     if (ec) {
         push(L, ec);
         return lua_error(L);
@@ -800,7 +906,6 @@ static int context_use_rsa_private_key(lua_State* L)
 
 static int context_use_rsa_private_key_file(lua_State* L)
 {
-    luaL_checktype(L, 2, LUA_TSTRING);
     luaL_checktype(L, 3, LUA_TSTRING);
 
     auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
@@ -816,6 +921,28 @@ static int context_use_rsa_private_key_file(lua_State* L)
         return lua_error(L);
     }
 
+    std::string path;
+    try {
+        auto p = static_cast<std::filesystem::path*>(lua_touserdata(L, 2));
+        if (!p || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        path = p->string();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     asio::ssl::context::file_format fmt;
     auto fmt_str = tostringview(L, 3);
     if (fmt_str == "pem") {
@@ -828,8 +955,7 @@ static int context_use_rsa_private_key_file(lua_State* L)
     }
 
     boost::system::error_code ec;
-    (*ctx)->use_rsa_private_key_file(
-        static_cast<std::string>(tostringview(L, 2)), fmt, ec);
+    (*ctx)->use_rsa_private_key_file(path, fmt, ec);
     if (ec) {
         push(L, ec);
         return lua_error(L);
@@ -874,7 +1000,7 @@ static int context_use_tmp_dh(lua_State* L)
 
 static int context_use_tmp_dh_file(lua_State* L)
 {
-    luaL_checktype(L, 2, LUA_TSTRING);
+    lua_settop(L, 2);
 
     auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
         lua_touserdata(L, 1)
@@ -889,8 +1015,30 @@ static int context_use_tmp_dh_file(lua_State* L)
         return lua_error(L);
     }
 
+    std::string path;
+    try {
+        auto p = static_cast<std::filesystem::path*>(lua_touserdata(L, 2));
+        if (!p || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        path = p->string();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     boost::system::error_code ec;
-    (*ctx)->use_tmp_dh_file(static_cast<std::string>(tostringview(L, 2)), ec);
+    (*ctx)->use_tmp_dh_file(path, ec);
     if (ec) {
         push(L, ec);
         return lua_error(L);
