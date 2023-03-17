@@ -44,7 +44,7 @@ Create a pair of connected sockets.
 
 Open the socket.
 
-=== `bind(self, pathname: string)`
+=== `bind(self, pathname: filesystem.path)`
 
 Bind the socket to the given local endpoint.
 
@@ -117,7 +117,7 @@ Disable sends or receives on the socket.
 `"send"`:: Shutdown the send side of the socket.
 `"both"`:: Shutdown both send and receive on the socket.
 
-=== `connect(self, pathname: string)`
+=== `connect(self, pathname: filesystem.path)`
 
 Initiate a connect operation and blocks current fiber until it completes or
 errs.
@@ -216,10 +216,10 @@ Boost.Asio documentation].
 
 Whether the socket is open.
 
-=== `local_path: string`
+=== `local_path: filesystem.path`
 
 The local address of the socket.
 
-=== `remote_path: string`
+=== `remote_path: filesystem.path`
 
 The remote address of the socket.

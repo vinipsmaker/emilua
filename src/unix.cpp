@@ -9,6 +9,7 @@
 #include <emilua/file_descriptor.hpp>
 #include <emilua/dispatch_table.hpp>
 #include <emilua/async_base.hpp>
+#include <emilua/filesystem.hpp>
 #include <emilua/byte_span.hpp>
 #include <emilua/unix.hpp>
 
@@ -202,7 +203,16 @@ struct receive_with_fds_op
             assert(len > 0);
             if (remote_endpoint.sun_path[0] != '\0')
                 --len;
-            lua_pushlstring(L, remote_endpoint.sun_path, len);
+
+            std::string_view path{remote_endpoint.sun_path, len};
+
+            auto p = static_cast<std::filesystem::path*>(
+                lua_newuserdata(L, sizeof(std::filesystem::path)));
+            rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+            setmetatable(L, -2);
+            new (p) std::filesystem::path{};
+            *p = std::filesystem::path{
+                path, std::filesystem::path::native_format};
         };
 
         auto fds_pusher = [&fds,maxfds=this->maxfds](lua_State* L) {
@@ -394,7 +404,7 @@ struct send_with_fds_op
     std::shared_ptr<unsigned char[]> buffer;
     lua_Integer buffer_size;
     std::vector<file_descriptor_lock> fds;
-    std::string_view remote_endpoint;
+    std::string remote_endpoint;
 
     static constexpr auto opt_args = vm_context::options::arguments;
 };
@@ -423,7 +433,8 @@ static int unix_datagram_socket_open(lua_State* L)
 
 static int unix_datagram_socket_bind(lua_State* L)
 {
-    luaL_checktype(L, 2, LUA_TSTRING);
+    lua_settop(L, 2);
+
     auto sock = static_cast<unix_datagram_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
@@ -435,8 +446,30 @@ static int unix_datagram_socket_bind(lua_State* L)
         return lua_error(L);
     }
 
+    std::string path;
+    try {
+        auto p = static_cast<std::filesystem::path*>(lua_touserdata(L, 2));
+        if (!p || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        path = p->string();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     boost::system::error_code ec;
-    sock->socket.bind(tostringview(L, 2), ec);
+    sock->socket.bind(path, ec);
     if (ec) {
         push(L, static_cast<std::error_code>(ec));
         return lua_error(L);
@@ -446,7 +479,8 @@ static int unix_datagram_socket_bind(lua_State* L)
 
 static int unix_datagram_socket_connect(lua_State* L)
 {
-    luaL_checktype(L, 2, LUA_TSTRING);
+    lua_settop(L, 2);
+
     auto vm_ctx = get_vm_context(L).shared_from_this();
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
@@ -462,12 +496,32 @@ static int unix_datagram_socket_connect(lua_State* L)
         return lua_error(L);
     }
 
-    auto ep = tostringview(L, 2);
+    std::string path;
+    try {
+        auto p = static_cast<std::filesystem::path*>(lua_touserdata(L, 2));
+        if (!p || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        path = p->string();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
 
     auto cancel_slot = set_default_interrupter(L, *vm_ctx);
 
     ++s->nbusy;
-    s->socket.async_connect(ep, asio::bind_cancellation_slot(cancel_slot,
+    s->socket.async_connect(path, asio::bind_cancellation_slot(cancel_slot,
         asio::bind_executor(
             vm_ctx->strand_using_defer(),
             [vm_ctx,current_fiber,s](const boost::system::error_code& ec) {
@@ -975,6 +1029,18 @@ static int unix_datagram_socket_receive_from(lua_State* L)
 
                 --sock->nbusy;
 
+                std::filesystem::path path{
+                    remote_sender->path(),
+                    std::filesystem::path::native_format};
+
+                auto path_pusher = [&path](lua_State* L) {
+                    auto p = static_cast<std::filesystem::path*>(
+                        lua_newuserdata(L, sizeof(std::filesystem::path)));
+                    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+                    setmetatable(L, -2);
+                    new (p) std::filesystem::path{std::move(path)};
+                };
+
                 vm_ctx->fiber_resume(
                     current_fiber,
                     hana::make_set(
@@ -982,7 +1048,7 @@ static int unix_datagram_socket_receive_from(lua_State* L)
                         hana::make_pair(
                             vm_context::options::arguments,
                             hana::make_tuple(
-                                ec, bytes_transferred, remote_sender->path())))
+                                ec, bytes_transferred, path_pusher)))
                 );
             }
         ))
@@ -1069,7 +1135,6 @@ static int unix_datagram_socket_send(lua_State* L)
 static int unix_datagram_socket_send_to(lua_State* L)
 {
     lua_settop(L, 4);
-    luaL_checktype(L, 3, LUA_TSTRING);
 
     auto vm_ctx = get_vm_context(L).shared_from_this();
     auto current_fiber = vm_ctx->current_fiber();
@@ -1097,6 +1162,28 @@ static int unix_datagram_socket_send_to(lua_State* L)
         return lua_error(L);
     }
 
+    std::string path;
+    try {
+        auto p = static_cast<std::filesystem::path*>(lua_touserdata(L, 3));
+        if (!p || !lua_getmetatable(L, 3)) {
+            push(L, std::errc::invalid_argument, "arg", 3);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 3);
+            return lua_error(L);
+        }
+
+        path = p->string();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     // Lua BitOp underlying type is int32
     std::int32_t flags;
     switch (lua_type(L, 4)) {
@@ -1115,7 +1202,7 @@ static int unix_datagram_socket_send_to(lua_State* L)
     ++sock->nbusy;
     sock->socket.async_send_to(
         asio::buffer(bs->data.get(), bs->size),
-        asio::local::datagram_protocol::endpoint{tostringview(L, 3)},
+        asio::local::datagram_protocol::endpoint{path},
         flags,
         asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
             vm_ctx->strand_using_defer(),
@@ -1338,7 +1425,6 @@ static int unix_datagram_socket_send_with_fds(lua_State* L)
 
 static int unix_datagram_socket_send_to_with_fds(lua_State* L)
 {
-    luaL_checktype(L, 3, LUA_TSTRING);
     luaL_checktype(L, 4, LUA_TTABLE);
 
     auto& vm_ctx = get_vm_context(L);
@@ -1366,11 +1452,33 @@ static int unix_datagram_socket_send_to_with_fds(lua_State* L)
         return lua_error(L);
     }
 
+    std::string path;
+    try {
+        auto p = static_cast<std::filesystem::path*>(lua_touserdata(L, 3));
+        if (!p || !lua_getmetatable(L, 3)) {
+            push(L, std::errc::invalid_argument, "arg", 3);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 3);
+            return lua_error(L);
+        }
+
+        path = p->string();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     auto cancel_slot = set_default_interrupter(L, vm_ctx);
 
     auto op = std::make_shared<send_with_fds_op<unix_datagram_socket>>(
         vm_ctx, std::move(cancel_slot), *sock, bs->data, bs->size);
-    op->remote_endpoint = tostringview(L, 3);
+    op->remote_endpoint = std::move(path);
 
     rawgetp(L, LUA_REGISTRYINDEX, &file_descriptor_mt_key);
     for (int i = 1 ;; ++i) {
@@ -1482,7 +1590,24 @@ inline int unix_datagram_socket_local_path(lua_State* L)
         push(L, static_cast<std::error_code>(ec));
         return lua_error(L);
     }
-    push(L, ep.path());
+
+    auto path = static_cast<std::filesystem::path*>(
+        lua_newuserdata(L, sizeof(std::filesystem::path)));
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    setmetatable(L, -2);
+    new (path) std::filesystem::path{};
+
+    try {
+        *path = std::filesystem::path{
+            ep.path(), std::filesystem::path::native_format};
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     return 1;
 }
 
@@ -1495,7 +1620,24 @@ inline int unix_datagram_socket_remote_path(lua_State* L)
         push(L, static_cast<std::error_code>(ec));
         return lua_error(L);
     }
-    push(L, ep.path());
+
+    auto path = static_cast<std::filesystem::path*>(
+        lua_newuserdata(L, sizeof(std::filesystem::path)));
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    setmetatable(L, -2);
+    new (path) std::filesystem::path{};
+
+    try {
+        *path = std::filesystem::path{
+            ep.path(), std::filesystem::path::native_format};
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     return 1;
 }
 
@@ -1769,7 +1911,8 @@ static int unix_stream_socket_open(lua_State* L)
 
 static int unix_stream_socket_bind(lua_State* L)
 {
-    luaL_checktype(L, 2, LUA_TSTRING);
+    lua_settop(L, 2);
+
     auto sock = static_cast<unix_stream_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
@@ -1781,8 +1924,30 @@ static int unix_stream_socket_bind(lua_State* L)
         return lua_error(L);
     }
 
+    std::string path;
+    try {
+        auto p = static_cast<std::filesystem::path*>(lua_touserdata(L, 2));
+        if (!p || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        path = p->string();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     boost::system::error_code ec;
-    sock->socket.bind(tostringview(L, 2), ec);
+    sock->socket.bind(path, ec);
     if (ec) {
         push(L, static_cast<std::error_code>(ec));
         return lua_error(L);
@@ -2043,7 +2208,8 @@ static int unix_stream_socket_disconnect(lua_State* L)
 
 static int unix_stream_socket_connect(lua_State* L)
 {
-    luaL_checktype(L, 2, LUA_TSTRING);
+    lua_settop(L, 2);
+
     auto vm_ctx = get_vm_context(L).shared_from_this();
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
@@ -2059,13 +2225,33 @@ static int unix_stream_socket_connect(lua_State* L)
         return lua_error(L);
     }
 
-    asio::local::stream_protocol::endpoint ep{tostringview(L, 2)};
+    std::string path;
+    try {
+        auto p = static_cast<std::filesystem::path*>(lua_touserdata(L, 2));
+        if (!p || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        path = p->string();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
 
     auto cancel_slot = set_default_interrupter(L, *vm_ctx);
 
     ++s->nbusy;
     s->socket.async_connect(
-        ep,
+        path,
         asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
             vm_ctx->strand_using_defer(),
             [vm_ctx,current_fiber,s](const boost::system::error_code& ec) {
@@ -2555,7 +2741,24 @@ inline int unix_stream_socket_local_path(lua_State* L)
         push(L, static_cast<std::error_code>(ec));
         return lua_error(L);
     }
-    push(L, ep.path());
+
+    auto path = static_cast<std::filesystem::path*>(
+        lua_newuserdata(L, sizeof(std::filesystem::path)));
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    setmetatable(L, -2);
+    new (path) std::filesystem::path{};
+
+    try {
+        *path = std::filesystem::path{
+            ep.path(), std::filesystem::path::native_format};
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     return 1;
 }
 
@@ -2568,7 +2771,24 @@ inline int unix_stream_socket_remote_path(lua_State* L)
         push(L, static_cast<std::error_code>(ec));
         return lua_error(L);
     }
-    push(L, ep.path());
+
+    auto path = static_cast<std::filesystem::path*>(
+        lua_newuserdata(L, sizeof(std::filesystem::path)));
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    setmetatable(L, -2);
+    new (path) std::filesystem::path{};
+
+    try {
+        *path = std::filesystem::path{
+            ep.path(), std::filesystem::path::native_format};
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     return 1;
 }
 
@@ -2810,7 +3030,8 @@ static int unix_stream_acceptor_open(lua_State* L)
 
 static int unix_stream_acceptor_bind(lua_State* L)
 {
-    luaL_checktype(L, 2, LUA_TSTRING);
+    lua_settop(L, 2);
+
     auto acceptor = static_cast<asio::local::stream_protocol::acceptor*>(
         lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
@@ -2823,8 +3044,30 @@ static int unix_stream_acceptor_bind(lua_State* L)
         return lua_error(L);
     }
 
+    std::string path;
+    try {
+        auto p = static_cast<std::filesystem::path*>(lua_touserdata(L, 2));
+        if (!p || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        path = p->string();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     boost::system::error_code ec;
-    acceptor->bind(tostringview(L, 2), ec);
+    acceptor->bind(path, ec);
     if (ec) {
         push(L, static_cast<std::error_code>(ec));
         return lua_error(L);
@@ -3178,7 +3421,24 @@ inline int unix_stream_acceptor_local_path(lua_State* L)
         push(L, static_cast<std::error_code>(ec));
         return lua_error(L);
     }
-    push(L, ep.path());
+
+    auto path = static_cast<std::filesystem::path*>(
+        lua_newuserdata(L, sizeof(std::filesystem::path)));
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    setmetatable(L, -2);
+    new (path) std::filesystem::path{};
+
+    try {
+        *path = std::filesystem::path{
+            ep.path(), std::filesystem::path::native_format};
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     return 1;
 }
 
@@ -3345,7 +3605,8 @@ static int unix_seqpacket_socket_open(lua_State* L)
 
 static int unix_seqpacket_socket_bind(lua_State* L)
 {
-    luaL_checktype(L, 2, LUA_TSTRING);
+    lua_settop(L, 2);
+
     auto sock = static_cast<unix_seqpacket_socket*>(lua_touserdata(L, 1));
     if (!sock || !lua_getmetatable(L, 1)) {
         push(L, std::errc::invalid_argument, "arg", 1);
@@ -3357,8 +3618,30 @@ static int unix_seqpacket_socket_bind(lua_State* L)
         return lua_error(L);
     }
 
+    std::string path;
+    try {
+        auto p = static_cast<std::filesystem::path*>(lua_touserdata(L, 2));
+        if (!p || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        path = p->string();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     boost::system::error_code ec;
-    sock->socket.bind(tostringview(L, 2), ec);
+    sock->socket.bind(path, ec);
     if (ec) {
         push(L, static_cast<std::error_code>(ec));
         return lua_error(L);
@@ -3577,7 +3860,8 @@ static int unix_seqpacket_socket_disconnect(lua_State* L)
 
 static int unix_seqpacket_socket_connect(lua_State* L)
 {
-    luaL_checktype(L, 2, LUA_TSTRING);
+    lua_settop(L, 2);
+
     auto vm_ctx = get_vm_context(L).shared_from_this();
     auto current_fiber = vm_ctx->current_fiber();
     EMILUA_CHECK_SUSPEND_ALLOWED(*vm_ctx, L);
@@ -3593,13 +3877,33 @@ static int unix_seqpacket_socket_connect(lua_State* L)
         return lua_error(L);
     }
 
-    seqpacket_protocol::endpoint ep{tostringview(L, 2)};
+    std::string path;
+    try {
+        auto p = static_cast<std::filesystem::path*>(lua_touserdata(L, 2));
+        if (!p || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        path = p->string();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
 
     auto cancel_slot = set_default_interrupter(L, *vm_ctx);
 
     ++s->nbusy;
     s->socket.async_connect(
-        ep,
+        path,
         asio::bind_cancellation_slot(cancel_slot, asio::bind_executor(
             vm_ctx->strand_using_defer(),
             [vm_ctx,current_fiber,s](const boost::system::error_code& ec) {
@@ -4106,7 +4410,24 @@ inline int unix_seqpacket_socket_local_path(lua_State* L)
         push(L, static_cast<std::error_code>(ec));
         return lua_error(L);
     }
-    push(L, ep.path());
+
+    auto path = static_cast<std::filesystem::path*>(
+        lua_newuserdata(L, sizeof(std::filesystem::path)));
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    setmetatable(L, -2);
+    new (path) std::filesystem::path{};
+
+    try {
+        *path = std::filesystem::path{
+            ep.path(), std::filesystem::path::native_format};
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     return 1;
 }
 
@@ -4119,7 +4440,24 @@ inline int unix_seqpacket_socket_remote_path(lua_State* L)
         push(L, static_cast<std::error_code>(ec));
         return lua_error(L);
     }
-    push(L, ep.path());
+
+    auto path = static_cast<std::filesystem::path*>(
+        lua_newuserdata(L, sizeof(std::filesystem::path)));
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    setmetatable(L, -2);
+    new (path) std::filesystem::path{};
+
+    try {
+        *path = std::filesystem::path{
+            ep.path(), std::filesystem::path::native_format};
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     return 1;
 }
 
@@ -4362,7 +4700,8 @@ static int unix_seqpacket_acceptor_open(lua_State* L)
 
 static int unix_seqpacket_acceptor_bind(lua_State* L)
 {
-    luaL_checktype(L, 2, LUA_TSTRING);
+    lua_settop(L, 2);
+
     auto acceptor = static_cast<seqpacket_protocol::acceptor*>(
         lua_touserdata(L, 1));
     if (!acceptor || !lua_getmetatable(L, 1)) {
@@ -4375,8 +4714,30 @@ static int unix_seqpacket_acceptor_bind(lua_State* L)
         return lua_error(L);
     }
 
+    std::string path;
+    try {
+        auto p = static_cast<std::filesystem::path*>(lua_touserdata(L, 2));
+        if (!p || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        path = p->string();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     boost::system::error_code ec;
-    acceptor->bind(tostringview(L, 2), ec);
+    acceptor->bind(path, ec);
     if (ec) {
         push(L, static_cast<std::error_code>(ec));
         return lua_error(L);
@@ -4731,7 +5092,24 @@ inline int unix_seqpacket_acceptor_local_path(lua_State* L)
         push(L, static_cast<std::error_code>(ec));
         return lua_error(L);
     }
-    push(L, ep.path());
+
+    auto path = static_cast<std::filesystem::path*>(
+        lua_newuserdata(L, sizeof(std::filesystem::path)));
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    setmetatable(L, -2);
+    new (path) std::filesystem::path{};
+
+    try {
+        *path = std::filesystem::path{
+            ep.path(), std::filesystem::path::native_format};
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     return 1;
 }
 

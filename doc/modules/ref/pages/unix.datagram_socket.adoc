@@ -14,7 +14,7 @@ endif::[]
 ----
 local sock = unix.datagram_socket.new()
 sock.open()
-sock.bind('/tmp/9Lq7BNBnBycd6nxy.socket')
+sock.bind(filesystem.path.new('/tmp/9Lq7BNBnBycd6nxy.socket'))
 
 local buf = byte_span.new(1024)
 local nread = sock:receive(buf)
@@ -41,11 +41,11 @@ Create a pair of connected sockets.
 
 Open the socket.
 
-=== `bind(self, pathname: string)`
+=== `bind(self, pathname: filesystem.path)`
 
 Bind the socket to the given local endpoint.
 
-=== `connect(self, pathname: string)`
+=== `connect(self, pathname: filesystem.path)`
 
 Set the default destination address so datagrams can be sent using `send()`
 without specifying a destination address.
@@ -124,7 +124,7 @@ Returns the number of bytes read.
 `flags` is `0` or an or-combination of values from
 xref:unix.message_flag.adoc[unix.message_flag(3em)].
 
-=== `receive_from(self, buffer: byte_span[, flags: integer]) -> integer, string`
+=== `receive_from(self, buffer: byte_span[, flags: integer]) -> integer, filesystem.path`
 
 Receive a datagram and blocks current fiber until it completes or errs.
 
@@ -147,7 +147,7 @@ xref:unix.message_flag.adoc[unix.message_flag(3em)].
 NOTE: The `send` operation can only be used with a connected socket. Use the
 `send_to` function to send data on an unconnected datagram socket.
 
-=== `send_to(self, buffer: byte_span, pathname: string[, flags: integer]) -> integer`
+=== `send_to(self, buffer: byte_span, pathname: filesystem.path[, flags: integer]) -> integer`
 
 Send a datagram to the specified remote endpoint and blocks current fiber until
 it completes or errs.
@@ -163,7 +163,7 @@ Receive a datagram and blocks current fiber until it completes or errs.
 
 Returns the number of bytes read plus the table containing the `fds` read.
 
-=== `receive_from_with_fds(self, buffer: byte_span, maxfds: integer) -> integer, string, file_descriptor[]`
+=== `receive_from_with_fds(self, buffer: byte_span, maxfds: integer) -> integer, filesystem.path, file_descriptor[]`
 
 Receive a datagram and blocks current fiber until it completes or errs.
 
@@ -180,7 +180,7 @@ Returns the number of bytes written.
 NOTE: The `send` operation can only be used with a connected socket. Use the
 `send_to` function to send data on an unconnected datagram socket.
 
-=== `send_to_with_fds(self, buffer: byte_span, pathname: string, fds: file_descriptor[]) -> integer`
+=== `send_to_with_fds(self, buffer: byte_span, pathname: filesystem.path, fds: file_descriptor[]) -> integer`
 
 Send a datagram to the specified remote endpoint and blocks current fiber until
 it completes or errs.
@@ -238,10 +238,10 @@ read without blocking. Implements the `FIONREAD` IO control command.
 
 Whether the socket is open.
 
-=== `local_path: string`
+=== `local_path: filesystem.path`
 
 The local address endpoint of the socket.
 
-=== `remote_path: string`
+=== `remote_path: filesystem.path`
 
 The remote address endpoint of the socket.

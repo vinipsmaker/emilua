@@ -14,7 +14,7 @@ endif::[]
 ----
 local a = unix.stream_acceptor.new()
 a:open()
-a:bind('/tmp/9Lq7BNBnBycd6nxy.socket')
+a:bind(filesystem.path.new('/tmp/9Lq7BNBnBycd6nxy.socket'))
 a:listen()
 
 while true do
@@ -69,7 +69,7 @@ Boost.Asio documentation].
 https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/socket_base/debug.html[Check
 Boost.Asio documentation].
 
-=== `bind(self, pathname: string)`
+=== `bind(self, pathname: filesystem.path)`
 
 Bind the acceptor to the given local endpoint.
 
@@ -142,6 +142,6 @@ ____
 
 Whether the acceptor is open.
 
-=== `local_path: string`
+=== `local_path: filesystem.path`
 
 The local address of the acceptor.
