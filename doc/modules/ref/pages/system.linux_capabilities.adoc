@@ -79,14 +79,6 @@ The securebits flag constants are available from the `system` table:
 
 NOTE: Only the master VM is allowed to use this function.
 
-=== `cap_get_file(path: string) -> linux_capabilities`
-
-See cap_get_file(3).
-
-=== `cap_set_file(path: string, caps: linux_capabilities)`
-
-See cap_set_file(3).
-
 === `dup(self) -> linux_capabilities`
 
 See cap_dup(3).

@@ -3557,47 +3557,6 @@ static int system_cap_set_secbits(lua_State* L)
     }
     return 0;
 }
-
-static int system_cap_get_file(lua_State* L)
-{
-    cap_t caps = cap_get_file(luaL_checkstring(L, 1));
-    if (caps == NULL) {
-        push(L, std::error_code{errno, std::system_category()});
-        return lua_error(L);
-    }
-    BOOST_SCOPE_EXIT_ALL(&) {
-        if (caps != NULL)
-            cap_free(caps);
-    };
-
-    auto& caps2 = *static_cast<cap_t*>(lua_newuserdata(L, sizeof(cap_t)));
-    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
-    setmetatable(L, -2);
-    caps2 = caps;
-    caps = NULL;
-
-    return 1;
-}
-
-static int system_cap_set_file(lua_State* L)
-{
-    auto caps = static_cast<cap_t*>(lua_touserdata(L, 2));
-    if (!caps || !lua_getmetatable(L, 2)) {
-        push(L, std::errc::invalid_argument, "arg", 2);
-        return lua_error(L);
-    }
-    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
-    if (!lua_rawequal(L, -1, -2)) {
-        push(L, std::errc::invalid_argument, "arg", 2);
-        return lua_error(L);
-    }
-
-    if (cap_set_file(luaL_checkstring(L, 1), *caps) == -1) {
-        push(L, std::error_code{errno, std::system_category()});
-        return lua_error(L);
-    }
-    return 0;
-}
 #endif // BOOST_OS_LINUX
 
 static int system_mt_index(lua_State* L)
@@ -3678,18 +3637,6 @@ static int system_mt_index(lua_State* L)
                 BOOST_HANA_STRING("cap_set_secbits"),
                 [](lua_State* L) -> int {
                     lua_pushcfunction(L, system_cap_set_secbits);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("cap_get_file"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_cap_get_file);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("cap_set_file"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_cap_set_file);
                     return 1;
                 }),
             hana::make_pair(

@@ -6,7 +6,14 @@
 #include <emilua/dispatch_table.hpp>
 #include <emilua/filesystem.hpp>
 #include <emilua/windows.hpp>
+#include <emilua/system.hpp>
 #include <emilua/time.hpp>
+
+#include <boost/scope_exit.hpp>
+
+#if BOOST_OS_LINUX
+#include <sys/capability.h>
+#endif // BOOST_OS_LINUX
 
 namespace emilua {
 
@@ -3759,6 +3766,95 @@ static int filesystem_umask(lua_State* L)
     return 1;
 }
 
+#if BOOST_OS_LINUX
+static int filesystem_cap_get_file(lua_State* L)
+{
+    auto path = static_cast<std::filesystem::path*>(lua_touserdata(L, 1));
+    if (!path || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    std::string path2;
+    try {
+        path2 = path->string();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
+    cap_t caps = cap_get_file(path2.c_str());
+    if (caps == NULL) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    BOOST_SCOPE_EXIT_ALL(&) {
+        if (caps != NULL)
+            cap_free(caps);
+    };
+
+    auto& caps2 = *static_cast<cap_t*>(lua_newuserdata(L, sizeof(cap_t)));
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    setmetatable(L, -2);
+    caps2 = caps;
+    caps = NULL;
+
+    return 1;
+}
+
+static int filesystem_cap_set_file(lua_State* L)
+{
+    lua_settop(L, 2);
+
+    auto path = static_cast<std::filesystem::path*>(lua_touserdata(L, 1));
+    if (!path || !lua_getmetatable(L, 1)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 1);
+        return lua_error(L);
+    }
+
+    std::string path2;
+    try {
+        path2 = path->string();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
+    auto caps = static_cast<cap_t*>(lua_touserdata(L, 2));
+    if (!caps || !lua_getmetatable(L, 2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+    rawgetp(L, LUA_REGISTRYINDEX, &linux_capabilities_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        push(L, std::errc::invalid_argument, "arg", 2);
+        return lua_error(L);
+    }
+
+    if (cap_set_file(path2.c_str(), *caps) == -1) {
+        push(L, std::error_code{errno, std::system_category()});
+        return lua_error(L);
+    }
+    return 0;
+}
+#endif // BOOST_OS_LINUX
+
 void init_filesystem(lua_State* L)
 {
     lua_pushlightuserdata(L, &filesystem_path_mt_key);
@@ -3938,7 +4034,7 @@ void init_filesystem(lua_State* L)
 
     lua_pushlightuserdata(L, &filesystem_key);
     {
-        lua_createtable(L, /*narr=*/0, /*nrec=*/35);
+        lua_createtable(L, /*narr=*/0, /*nrec=*/37);
 
         lua_pushliteral(L, "path");
         {
@@ -4102,6 +4198,16 @@ void init_filesystem(lua_State* L)
         lua_pushliteral(L, "umask");
         lua_pushcfunction(L, filesystem_umask);
         lua_rawset(L, -3);
+
+#if BOOST_OS_LINUX
+        lua_pushliteral(L, "cap_get_file");
+        lua_pushcfunction(L, filesystem_cap_get_file);
+        lua_rawset(L, -3);
+
+        lua_pushliteral(L, "cap_set_file");
+        lua_pushcfunction(L, filesystem_cap_set_file);
+        lua_rawset(L, -3);
+#endif // BOOST_OS_LINUX
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 }

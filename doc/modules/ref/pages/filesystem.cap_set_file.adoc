@@ -1,0 +1,21 @@
+= filesystem.cap_set_file
+
+ifeval::["{doctype}" == "manpage"]
+
+== Name
+
+Emilua - Lua execution engine
+
+endif::[]
+
+== Synopsis
+
+[source,lua]
+----
+local fs = require "filesystem"
+fs.cap_set_file(path: fs.path, caps: system.linux_capabilities)
+----
+
+== Description
+
+See cap_set_file(3).

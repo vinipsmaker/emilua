@@ -48,6 +48,8 @@
 *** xref:ref:filesystem.status.adoc[status]
 *** xref:ref:filesystem.temp_directory_path.adoc[temp_directory_path]
 *** xref:ref:filesystem.umask.adoc[umask]
+*** xref:ref:filesystem.cap_get_file.adoc[cap_get_file]
+*** xref:ref:filesystem.cap_set_file.adoc[cap_set_file]
 ** file
 *** xref:ref:file.open_flag.adoc[open_flag]
 *** xref:ref:file.random_access.adoc[random_access]

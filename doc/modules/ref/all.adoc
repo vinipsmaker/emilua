@@ -72,6 +72,10 @@ include::pages/filesystem.temp_directory_path.adoc[]
 
 include::pages/filesystem.umask.adoc[]
 
+include::pages/filesystem.cap_get_file.adoc[]
+
+include::pages/filesystem.cap_set_file.adoc[]
+
 include::pages/file.open_flag.adoc[]
 
 include::pages/file.random_access.adoc[]
