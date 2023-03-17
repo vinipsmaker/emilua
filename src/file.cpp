@@ -10,6 +10,7 @@
 #include <emilua/file_descriptor.hpp>
 #include <emilua/dispatch_table.hpp>
 #include <emilua/async_base.hpp>
+#include <emilua/filesystem.hpp>
 #include <emilua/byte_span.hpp>
 #include <emilua/unix.hpp>
 
@@ -37,7 +38,6 @@ int byte_span_non_member_append(lua_State* L);
 
 static int stream_open(lua_State* L)
 {
-    luaL_checktype(L, 2, LUA_TSTRING);
     luaL_checktype(L, 3, LUA_TNUMBER);
 
     auto file = static_cast<asio::stream_file*>(lua_touserdata(L, 1));
@@ -51,10 +51,32 @@ static int stream_open(lua_State* L)
         return lua_error(L);
     }
 
+    std::string path;
+    try {
+        auto p = static_cast<std::filesystem::path*>(lua_touserdata(L, 2));
+        if (!p || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        path = p->string();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     auto flags = static_cast<asio::file_base::flags>(lua_tointeger(L, 3));
 
     boost::system::error_code ec;
-    file->open(lua_tostring(L, 2), flags, ec);
+    file->open(path, flags, ec);
     if (ec) {
         push(L, static_cast<std::error_code>(ec));
         return lua_error(L);
@@ -517,7 +539,6 @@ static int stream_new(lua_State* L)
 
 static int random_access_open(lua_State* L)
 {
-    luaL_checktype(L, 2, LUA_TSTRING);
     luaL_checktype(L, 3, LUA_TNUMBER);
 
     auto file = static_cast<asio::random_access_file*>(lua_touserdata(L, 1));
@@ -531,10 +552,32 @@ static int random_access_open(lua_State* L)
         return lua_error(L);
     }
 
+    std::string path;
+    try {
+        auto p = static_cast<std::filesystem::path*>(lua_touserdata(L, 2));
+        if (!p || !lua_getmetatable(L, 2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &filesystem_path_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 2);
+            return lua_error(L);
+        }
+
+        path = p->string();
+    } catch (const std::system_error& e) {
+        push(L, e.code());
+        return lua_error(L);
+    } catch (const std::exception& e) {
+        lua_pushstring(L, e.what());
+        return lua_error(L);
+    }
+
     auto flags = static_cast<asio::file_base::flags>(lua_tointeger(L, 3));
 
     boost::system::error_code ec;
-    file->open(lua_tostring(L, 2), flags, ec);
+    file->open(path, flags, ec);
     if (ec) {
         push(L, static_cast<std::error_code>(ec));
         return lua_error(L);

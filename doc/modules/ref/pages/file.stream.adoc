@@ -20,7 +20,7 @@ new(fd: file_descriptor) -- <2>
 <1> Default constructor.
 <2> Converts a file descriptor into a `file.stream` object.
 
-=== `open(self, path: string, flags: integer)`
+=== `open(self, path: filesystem.path, flags: integer)`
 
 Open the file using the specified path.
 
