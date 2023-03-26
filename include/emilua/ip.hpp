@@ -16,7 +16,7 @@ extern char ip_key;
 extern char ip_address_mt_key;
 extern char ip_tcp_socket_mt_key;
 extern char ip_tcp_acceptor_mt_key;
-extern char ip_tcp_resolver_mt_key;
+extern char ip_udp_socket_mt_key;
 
 using tcp_socket = Socket<asio::ip::tcp::socket>;
 using udp_socket = Socket<asio::ip::udp::socket>;
