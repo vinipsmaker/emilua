@@ -156,10 +156,10 @@ int main(int argc, char *argv[], char *envp[])
     try {
         std::locale native_locale{""};
         std::locale::global(native_locale);
-        std::cin.imbue(native_locale);
-        std::cout.imbue(native_locale);
-        std::cerr.imbue(native_locale);
-        std::clog.imbue(native_locale);
+        boost::nowide::cin.imbue(native_locale);
+        boost::nowide::cout.imbue(native_locale);
+        boost::nowide::cerr.imbue(native_locale);
+        boost::nowide::clog.imbue(native_locale);
     } catch (const std::exception& e) {
         fmt::print(
             boost::nowide::cerr,

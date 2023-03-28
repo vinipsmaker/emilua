@@ -290,10 +290,13 @@ static int readable_pipe_mt_index(lua_State* L)
 
 static int readable_pipe_new(lua_State* L)
 {
-    int nargs = lua_gettop(L);
     auto& vm_ctx = get_vm_context(L);
 
+#if BOOST_OS_UNIX
+    int nargs = lua_gettop(L);
     if (nargs == 0) {
+#endif // BOOST_OS_UNIX
+
         auto pipe = static_cast<asio::readable_pipe*>(
             lua_newuserdata(L, sizeof(asio::readable_pipe))
         );
@@ -301,6 +304,8 @@ static int readable_pipe_new(lua_State* L)
         setmetatable(L, -2);
         new (pipe) asio::readable_pipe{vm_ctx.strand().context()};
         return 1;
+
+#if BOOST_OS_UNIX
     }
 
     auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
@@ -334,6 +339,7 @@ static int readable_pipe_new(lua_State* L)
     assert(!ec); boost::ignore_unused(ec);
 
     return 1;
+#endif // BOOST_OS_UNIX
 }
 
 EMILUA_GPERF_DECLS_BEGIN(write_stream)
@@ -599,10 +605,13 @@ static int writable_pipe_mt_index(lua_State* L)
 
 static int writable_pipe_new(lua_State* L)
 {
-    int nargs = lua_gettop(L);
     auto& vm_ctx = get_vm_context(L);
 
+#if BOOST_OS_UNIX
+    int nargs = lua_gettop(L);
     if (nargs == 0) {
+#endif // BOOST_OS_UNIX
+
         auto pipe = static_cast<asio::writable_pipe*>(
             lua_newuserdata(L, sizeof(asio::writable_pipe))
         );
@@ -610,6 +619,8 @@ static int writable_pipe_new(lua_State* L)
         setmetatable(L, -2);
         new (pipe) asio::writable_pipe{vm_ctx.strand().context()};
         return 1;
+
+#if BOOST_OS_UNIX
     }
 
     auto handle = static_cast<file_descriptor_handle*>(lua_touserdata(L, 1));
@@ -643,6 +654,7 @@ static int writable_pipe_new(lua_State* L)
     assert(!ec); boost::ignore_unused(ec);
 
     return 1;
+#endif // BOOST_OS_UNIX
 }
 
 static int pair(lua_State* L)

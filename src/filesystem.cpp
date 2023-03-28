@@ -4,6 +4,8 @@
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
 EMILUA_GPERF_DECLS_BEGIN(includes)
+#include <boost/predef/library/std.h>
+
 #include <emilua/filesystem.hpp>
 #include <emilua/windows.hpp>
 #include <emilua/system.hpp>
@@ -1513,9 +1515,12 @@ static int file_clock_time_point_to_system(lua_State* L)
     rawgetp(L, LUA_REGISTRYINDEX, &system_clock_time_point_mt_key);
     setmetatable(L, -2);
     new (ret) std::chrono::system_clock::time_point{};
-    // TODO (ifdefs or SFINAE magic): current libstdc++ hasn't got clock_cast
-    // yet
+#if BOOST_LIB_STD_GNU || BOOST_LIB_STD_CXX
+    // current libstdc++ hasn't got clock_cast yet
     *ret = std::chrono::file_clock::to_sys(*tp);
+#else
+    *ret = std::chrono::clock_cast<std::chrono::system_clock>(*tp);
+#endif
     return 1;
 }
 
@@ -2428,9 +2433,12 @@ static int file_clock_from_system(lua_State* L)
     rawgetp(L, LUA_REGISTRYINDEX, &file_clock_time_point_mt_key);
     setmetatable(L, -2);
     new (ret) std::chrono::file_clock::time_point{};
-    // TODO (ifdefs or SFINAE magic): current libstdc++ hasn't got clock_cast
-    // yet
+#if BOOST_LIB_STD_GNU || BOOST_LIB_STD_CXX
+    // current libstdc++ hasn't got clock_cast yet
     *ret = std::chrono::file_clock::from_sys(*tp);
+#else
+    *ret = std::chrono::clock_cast<std::chrono::file_clock>(*tp);
+#endif
     return 1;
 }
 
@@ -3726,6 +3734,9 @@ static int temp_directory_path(lua_State* L)
     }
 }
 
+// apparently there *IS* a Windows version of umask(), but I'm not quite sure
+// what it does, so I'm disabling this for now
+#if BOOST_OS_UNIX
 static int filesystem_umask(lua_State* L)
 {
     auto& vm_ctx = get_vm_context(L);
@@ -3738,6 +3749,7 @@ static int filesystem_umask(lua_State* L)
     lua_pushinteger(L, res);
     return 1;
 }
+#endif // BOOST_OS_UNIX
 
 #if BOOST_OS_LINUX
 static int filesystem_cap_get_file(lua_State* L)
@@ -4168,9 +4180,11 @@ void init_filesystem(lua_State* L)
         lua_pushcfunction(L, temp_directory_path);
         lua_rawset(L, -3);
 
+#if BOOST_OS_UNIX
         lua_pushliteral(L, "umask");
         lua_pushcfunction(L, filesystem_umask);
         lua_rawset(L, -3);
+#endif // BOOST_OS_UNIX
 
 #if BOOST_OS_LINUX
         lua_pushliteral(L, "cap_get_file");
