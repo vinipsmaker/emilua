@@ -3,10 +3,11 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
+EMILUA_GPERF_DECLS_BEGIN(includes)
 #include <fmt/format.h>
 
-#include <emilua/dispatch_table.hpp>
 #include <emilua/mutex.hpp>
+EMILUA_GPERF_DECLS_END(includes)
 
 namespace emilua {
 
@@ -26,6 +27,8 @@ inline mutex_handle::~mutex_handle()
         vm_ctx.notify_deadlock(fmt::format(spec, static_cast<void*>(this)));
 }
 
+EMILUA_GPERF_DECLS_BEGIN(mutex)
+EMILUA_GPERF_NAMESPACE(emilua)
 static int mutex_lock(lua_State* L)
 {
     auto handle = static_cast<mutex_handle*>(lua_touserdata(L, 1));
@@ -83,33 +86,30 @@ static int mutex_unlock(lua_State* L)
     }, std::allocator<void>{});
     return 0;
 }
+EMILUA_GPERF_DECLS_END(mutex)
 
 static int mutex_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("unlock"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, mutex_unlock);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("lock"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, mutex_lock);
-                    return 1;
-                }
-            )
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "unlock",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, mutex_unlock);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "lock",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, mutex_lock);
+                return 1;
+            })
+    EMILUA_GPERF_END(key)(L);
 }
 
 static int mutex_new(lua_State* L)

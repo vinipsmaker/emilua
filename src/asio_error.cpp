@@ -3,9 +3,9 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
+EMILUA_GPERF_DECLS_BEGIN(includes)
 #include <emilua/asio_error.hpp>
-
-#include <emilua/dispatch_table.hpp>
+EMILUA_GPERF_DECLS_END(includes)
 
 namespace emilua {
 
@@ -13,372 +13,146 @@ char asio_error_key;
 
 static int basic_mt_index(lua_State* L)
 {
-    using error = asio::error::basic_errors;
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("access_denied"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::access_denied));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("address_family_not_supported"),
-                [](lua_State* L) -> int {
-                    push(
-                        L,
-                        make_error_code(error::address_family_not_supported));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("address_in_use"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::address_in_use));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("already_connected"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::already_connected));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("already_started"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::already_started));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("broken_pipe"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::broken_pipe));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("connection_aborted"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::connection_aborted));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("connection_refused"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::connection_refused));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("connection_reset"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::connection_reset));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("bad_descriptor"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::bad_descriptor));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("fault"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::fault));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("host_unreachable"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::host_unreachable));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("in_progress"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::in_progress));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("interrupted"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::interrupted));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("invalid_argument"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::invalid_argument));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("message_size"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::message_size));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("name_too_long"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::name_too_long));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("network_down"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::network_down));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("network_reset"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::network_reset));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("network_unreachable"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::network_unreachable));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("no_descriptors"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::no_descriptors));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("no_buffer_space"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::no_buffer_space));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("no_memory"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::no_memory));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("no_permission"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::no_permission));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("no_protocol_option"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::no_protocol_option));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("no_such_device"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::no_such_device));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("not_connected"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::not_connected));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("not_socket"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::not_socket));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("operation_aborted"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::operation_aborted));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("operation_not_supported"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::operation_not_supported));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("shut_down"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::shut_down));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("timed_out"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::timed_out));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("try_again"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::try_again));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("would_block"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::would_block));
-                    return 1;
-                }
-            )
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index, "index", 2);
-            return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+    auto key = tostringview(L, 2);
+    int code = EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int action)
+        EMILUA_GPERF_DEFAULT_VALUE(0)
+        EMILUA_GPERF_PAIR(
+            "access_denied", asio::error::basic_errors::access_denied)
+        EMILUA_GPERF_PAIR(
+            "address_family_not_supported",
+            asio::error::basic_errors::address_family_not_supported)
+        EMILUA_GPERF_PAIR(
+            "address_in_use", asio::error::basic_errors::address_in_use)
+        EMILUA_GPERF_PAIR(
+            "already_connected", asio::error::basic_errors::already_connected)
+        EMILUA_GPERF_PAIR(
+            "already_started", asio::error::basic_errors::already_started)
+        EMILUA_GPERF_PAIR("broken_pipe", asio::error::basic_errors::broken_pipe)
+        EMILUA_GPERF_PAIR(
+            "connection_aborted", asio::error::basic_errors::connection_aborted)
+        EMILUA_GPERF_PAIR(
+            "connection_refused", asio::error::basic_errors::connection_refused)
+        EMILUA_GPERF_PAIR(
+            "connection_reset", asio::error::basic_errors::connection_reset)
+        EMILUA_GPERF_PAIR(
+            "bad_descriptor", asio::error::basic_errors::bad_descriptor)
+        EMILUA_GPERF_PAIR("fault", asio::error::basic_errors::fault)
+        EMILUA_GPERF_PAIR(
+            "host_unreachable", asio::error::basic_errors::host_unreachable)
+        EMILUA_GPERF_PAIR("in_progress", asio::error::basic_errors::in_progress)
+        EMILUA_GPERF_PAIR("interrupted", asio::error::basic_errors::interrupted)
+        EMILUA_GPERF_PAIR(
+            "invalid_argument", asio::error::basic_errors::invalid_argument)
+        EMILUA_GPERF_PAIR(
+            "message_size", asio::error::basic_errors::message_size)
+        EMILUA_GPERF_PAIR(
+            "name_too_long", asio::error::basic_errors::name_too_long)
+        EMILUA_GPERF_PAIR(
+            "network_down", asio::error::basic_errors::network_down)
+        EMILUA_GPERF_PAIR(
+            "network_reset", asio::error::basic_errors::network_reset)
+        EMILUA_GPERF_PAIR(
+            "network_unreachable",
+            asio::error::basic_errors::network_unreachable)
+        EMILUA_GPERF_PAIR(
+            "no_descriptors", asio::error::basic_errors::no_descriptors)
+        EMILUA_GPERF_PAIR(
+            "no_buffer_space", asio::error::basic_errors::no_buffer_space)
+        EMILUA_GPERF_PAIR("no_memory", asio::error::basic_errors::no_memory)
+        EMILUA_GPERF_PAIR(
+            "no_permission", asio::error::basic_errors::no_permission)
+        EMILUA_GPERF_PAIR(
+            "no_protocol_option", asio::error::basic_errors::no_protocol_option)
+        EMILUA_GPERF_PAIR(
+            "no_such_device", asio::error::basic_errors::no_such_device)
+        EMILUA_GPERF_PAIR(
+            "not_connected", asio::error::basic_errors::not_connected)
+        EMILUA_GPERF_PAIR("not_socket", asio::error::basic_errors::not_socket)
+        EMILUA_GPERF_PAIR(
+            "operation_aborted", asio::error::basic_errors::operation_aborted)
+        EMILUA_GPERF_PAIR(
+            "operation_not_supported",
+            asio::error::basic_errors::operation_not_supported)
+        EMILUA_GPERF_PAIR("shut_down", asio::error::basic_errors::shut_down)
+        EMILUA_GPERF_PAIR("timed_out", asio::error::basic_errors::timed_out)
+        EMILUA_GPERF_PAIR("try_again", asio::error::basic_errors::try_again)
+        EMILUA_GPERF_PAIR("would_block", asio::error::basic_errors::would_block)
+    EMILUA_GPERF_END(key);
+    if (code == 0) {
+        push(L, errc::bad_index, "index", 2);
+        return lua_error(L);
+    }
+
+    push(L, make_error_code(static_cast<asio::error::basic_errors>(code)));
+    return 1;
 }
 
 static int netdb_mt_index(lua_State* L)
 {
-    using error = asio::error::netdb_errors;
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("host_not_found"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::host_not_found));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("host_not_found_try_again"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::host_not_found_try_again));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("no_data"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::no_data));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("no_recovery"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::no_recovery));
-                    return 1;
-                }
-            )
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index, "index", 2);
-            return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+    auto key = tostringview(L, 2);
+    int code = EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int action)
+        EMILUA_GPERF_DEFAULT_VALUE(0)
+        EMILUA_GPERF_PAIR(
+            "host_not_found", asio::error::netdb_errors::host_not_found)
+        EMILUA_GPERF_PAIR(
+            "host_not_found_try_again",
+            asio::error::netdb_errors::host_not_found_try_again)
+        EMILUA_GPERF_PAIR("no_data", asio::error::netdb_errors::no_data)
+        EMILUA_GPERF_PAIR("no_recovery", asio::error::netdb_errors::no_recovery)
+    EMILUA_GPERF_END(key);
+    if (code == 0) {
+        push(L, errc::bad_index, "index", 2);
+        return lua_error(L);
+    }
+
+    push(L, make_error_code(static_cast<asio::error::netdb_errors>(code)));
+    return 1;
 }
 
 static int addrinfo_mt_index(lua_State* L)
 {
-    using error = asio::error::addrinfo_errors;
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("service_not_found"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::service_not_found));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("socket_type_not_supported"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::socket_type_not_supported));
-                    return 1;
-                }
-            )
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index, "index", 2);
-            return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+    auto key = tostringview(L, 2);
+    int code = EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int action)
+        EMILUA_GPERF_DEFAULT_VALUE(0)
+        EMILUA_GPERF_PAIR(
+            "service_not_found",
+            asio::error::addrinfo_errors::service_not_found)
+        EMILUA_GPERF_PAIR(
+            "socket_type_not_supported",
+            asio::error::addrinfo_errors::socket_type_not_supported)
+    EMILUA_GPERF_END(key);
+    if (code == 0) {
+        push(L, errc::bad_index, "index", 2);
+        return lua_error(L);
+    }
+
+    push(L, make_error_code(static_cast<asio::error::addrinfo_errors>(code)));
+    return 1;
 }
 
 static int misc_mt_index(lua_State* L)
 {
-    using error = asio::error::misc_errors;
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("already_open"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::already_open));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("eof"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::eof));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("not_found"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::not_found));
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("fd_set_failure"),
-                [](lua_State* L) -> int {
-                    push(L, make_error_code(error::fd_set_failure));
-                    return 1;
-                }
-            )
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index, "index", 2);
-            return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+    auto key = tostringview(L, 2);
+    int code = EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int action)
+        EMILUA_GPERF_DEFAULT_VALUE(0)
+        EMILUA_GPERF_PAIR(
+            "already_open", asio::error::misc_errors::already_open)
+        EMILUA_GPERF_PAIR("eof", asio::error::misc_errors::eof)
+        EMILUA_GPERF_PAIR("not_found", asio::error::misc_errors::not_found)
+        EMILUA_GPERF_PAIR(
+            "fd_set_failure", asio::error::misc_errors::fd_set_failure)
+    EMILUA_GPERF_END(key);
+    if (code == 0) {
+        push(L, errc::bad_index, "index", 2);
+        return lua_error(L);
+    }
+
+    push(L, make_error_code(static_cast<asio::error::misc_errors>(code)));
+    return 1;
 }
 
 void init_asio_error(lua_State* L)

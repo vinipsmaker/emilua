@@ -3,6 +3,7 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
+EMILUA_GPERF_DECLS_BEGIN(includes)
 #include <emilua/system.hpp>
 #include <emilua/async_base.hpp>
 #include <emilua/byte_span.hpp>
@@ -20,7 +21,6 @@
 #include <boost/vmd/empty.hpp>
 
 #include <emilua/file_descriptor.hpp>
-#include <emilua/dispatch_table.hpp>
 #include <emilua/filesystem.hpp>
 
 #if BOOST_OS_WINDOWS
@@ -43,11 +43,14 @@
 #include <sys/wait.h>
 #include <grp.h>
 #endif // BOOST_OS_LINUX
+EMILUA_GPERF_DECLS_END(includes)
 
 namespace emilua {
 
 char system_key;
 
+EMILUA_GPERF_DECLS_BEGIN(system)
+EMILUA_GPERF_NAMESPACE(emilua)
 static char system_signal_key;
 static char system_signal_set_mt_key;
 static char system_signal_set_wait_key;
@@ -148,6 +151,7 @@ struct subprocess
     result<siginfo_t, void> info;
 };
 #endif // BOOST_OS_LINUX
+EMILUA_GPERF_DECLS_END(system);
 
 #if BOOST_OS_WINDOWS
 # if EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
@@ -422,6 +426,8 @@ static int system_signal_set_wait(lua_State* L)
     return lua_yield(L, 0);
 }
 
+EMILUA_GPERF_DECLS_BEGIN(signal_set)
+EMILUA_GPERF_NAMESPACE(emilua)
 static int system_signal_set_add(lua_State* L)
 {
     lua_settop(L, 2);
@@ -527,54 +533,48 @@ static int system_signal_set_cancel(lua_State* L)
     }
     return 0;
 }
+EMILUA_GPERF_DECLS_END(signal_set)
 
 static int system_signal_set_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("wait"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &system_signal_set_wait_key);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("cancel"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_signal_set_cancel);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("add"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_signal_set_add);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("remove"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_signal_set_remove);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("clear"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_signal_set_clear);
-                    return 1;
-                }
-            )
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "wait",
+            [](lua_State* L) -> int {
+                rawgetp(L, LUA_REGISTRYINDEX, &system_signal_set_wait_key);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "cancel",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, system_signal_set_cancel);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "add",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, system_signal_set_add);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "remove",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, system_signal_set_remove);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "clear",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, system_signal_set_clear);
+                return 1;
+            })
+    EMILUA_GPERF_END(key)(L);
 }
 
 static int system_signal_raise(lua_State* L)
@@ -1003,6 +1003,8 @@ static int system_err_write_some(lua_State* L)
 }
 #endif // BOOST_OS_WINDOWS
 
+EMILUA_GPERF_DECLS_BEGIN(system)
+EMILUA_GPERF_NAMESPACE(emilua)
 inline int system_arguments(lua_State* L)
 {
     auto& appctx = get_vm_context(L).appctx;
@@ -1026,6 +1028,7 @@ inline int system_environment(lua_State* L)
     }
     return 1;
 }
+EMILUA_GPERF_DECLS_END(system)
 
 #if BOOST_OS_UNIX
 template<int FD>
@@ -1084,6 +1087,8 @@ static int system_stdhandle_tcsetpgrp(lua_State* L)
 }
 #endif // BOOST_OS_UNIX
 
+EMILUA_GPERF_DECLS_BEGIN(system)
+EMILUA_GPERF_NAMESPACE(emilua)
 #if !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
 inline int system_in(lua_State* L)
 {
@@ -1373,6 +1378,7 @@ static int system_setsid(lua_State* L)
     return 1;
 }
 #endif // BOOST_OS_UNIX
+EMILUA_GPERF_DECLS_END(system)
 
 #if BOOST_OS_LINUX
 static int subprocess_wait(lua_State* L)
@@ -1456,6 +1462,9 @@ static int subprocess_wait(lua_State* L)
     return lua_yield(L, 0);
 }
 
+EMILUA_GPERF_DECLS_BEGIN(subprocess)
+EMILUA_GPERF_NAMESPACE(emilua)
+#if BOOST_OS_LINUX
 static int subprocess_kill(lua_State* L)
 {
     luaL_checktype(L, 2, LUA_TNUMBER);
@@ -1572,44 +1581,81 @@ inline int subprocess_pid(lua_State* L)
     lua_pushinteger(L, p->reaper->childpid);
     return 1;
 }
+#endif // BOOST_OS_LINUX
+EMILUA_GPERF_DECLS_END(subprocess)
 
 static int subprocess_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("wait"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &subprocess_wait_key);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("kill"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, subprocess_kill);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("cap_get"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, subprocess_cap_get);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("exit_code"), subprocess_exit_code),
-            hana::make_pair(
-                BOOST_HANA_STRING("exit_signal"), subprocess_exit_signal),
-            hana::make_pair(BOOST_HANA_STRING("pid"), subprocess_pid)
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "wait",
+#if BOOST_OS_LINUX
+            [](lua_State* L) -> int {
+                rawgetp(L, LUA_REGISTRYINDEX, &subprocess_wait_key);
+                return 1;
+            }
+#else // BOOST_OS_LINUX
+            nullptr
+#endif // BOOST_OS_LINUX
+        )
+        EMILUA_GPERF_PAIR(
+            "kill",
+#if BOOST_OS_LINUX
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, subprocess_kill);
+                return 1;
+            }
+#else // BOOST_OS_LINUX
+            nullptr
+#endif // BOOST_OS_LINUX
+        )
+        EMILUA_GPERF_PAIR(
+            "cap_get",
+#if BOOST_OS_LINUX
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, subprocess_cap_get);
+                return 1;
+            }
+#else // BOOST_OS_LINUX
+            nullptr
+#endif // BOOST_OS_LINUX
+        )
+        EMILUA_GPERF_PAIR(
+            "exit_code",
+#if BOOST_OS_LINUX
+            subprocess_exit_code
+#else // BOOST_OS_LINUX
+            nullptr
+#endif // BOOST_OS_LINUX
+        )
+        EMILUA_GPERF_PAIR(
+            "exit_signal",
+#if BOOST_OS_LINUX
+            subprocess_exit_signal
+#else // BOOST_OS_LINUX
+            nullptr
+#endif // BOOST_OS_LINUX
+        )
+        EMILUA_GPERF_PAIR(
+            "pid",
+#if BOOST_OS_LINUX
+            subprocess_pid
+#else // BOOST_OS_LINUX
+            nullptr
+#endif // BOOST_OS_LINUX
+        )
+    EMILUA_GPERF_END(key)(L);
 }
 
+EMILUA_GPERF_DECLS_BEGIN(spawn)
+EMILUA_GPERF_NAMESPACE(emilua)
+#if BOOST_OS_LINUX
 static int system_spawn_child_main(void* a)
 {
     auto args = static_cast<spawn_arguments_t*>(a);
@@ -2956,7 +3002,12 @@ static int system_spawn(lua_State* L)
 
     return 1;
 }
+#endif // BOOST_OS_LINUX
+EMILUA_GPERF_DECLS_END(spawn)
 
+EMILUA_GPERF_DECLS_BEGIN(linux_capabilities)
+EMILUA_GPERF_NAMESPACE(emilua)
+#if BOOST_OS_LINUX
 static int linux_capabilities_dup(lua_State* L)
 {
     auto caps = static_cast<cap_t*>(lua_touserdata(L, 1));
@@ -3295,89 +3346,129 @@ static int linux_capabilities_set_nsowner(lua_State* L)
     }
     return 0;
 }
+#endif // BOOST_OS_LINUX
+EMILUA_GPERF_DECLS_END(linux_capabilities)
 
 static int linux_capabilities_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("dup"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, linux_capabilities_dup);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("clear"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, linux_capabilities_clear);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("clear_flag"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, linux_capabilities_clear_flag);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("get_flag"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, linux_capabilities_get_flag);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("set_flag"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, linux_capabilities_set_flag);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("fill_flag"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, linux_capabilities_fill_flag);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("fill"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, linux_capabilities_fill);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("set_proc"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, linux_capabilities_set_proc);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("get_nsowner"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, linux_capabilities_get_nsowner);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("set_nsowner"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, linux_capabilities_set_nsowner);
-                    return 1;
-                }
-            )
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "dup",
+#if BOOST_OS_LINUX
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, linux_capabilities_dup);
+                return 1;
+            }
+#else // BOOST_OS_LINUX
+            nullptr
+#endif // BOOST_OS_LINUX
+        )
+        EMILUA_GPERF_PAIR(
+            "clear",
+#if BOOST_OS_LINUX
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, linux_capabilities_clear);
+                return 1;
+            }
+#else // BOOST_OS_LINUX
+            nullptr
+#endif // BOOST_OS_LINUX
+        )
+        EMILUA_GPERF_PAIR(
+            "clear_flag",
+#if BOOST_OS_LINUX
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, linux_capabilities_clear_flag);
+                return 1;
+            }
+#else // BOOST_OS_LINUX
+            nullptr
+#endif // BOOST_OS_LINUX
+        )
+        EMILUA_GPERF_PAIR(
+            "get_flag",
+#if BOOST_OS_LINUX
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, linux_capabilities_get_flag);
+                return 1;
+            }
+#else // BOOST_OS_LINUX
+            nullptr
+#endif // BOOST_OS_LINUX
+        )
+        EMILUA_GPERF_PAIR(
+            "set_flag",
+#if BOOST_OS_LINUX
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, linux_capabilities_set_flag);
+                return 1;
+            }
+#else // BOOST_OS_LINUX
+            nullptr
+#endif // BOOST_OS_LINUX
+        )
+        EMILUA_GPERF_PAIR(
+            "fill_flag",
+#if BOOST_OS_LINUX
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, linux_capabilities_fill_flag);
+                return 1;
+            }
+#else // BOOST_OS_LINUX
+            nullptr
+#endif // BOOST_OS_LINUX
+        )
+        EMILUA_GPERF_PAIR(
+            "fill",
+#if BOOST_OS_LINUX
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, linux_capabilities_fill);
+                return 1;
+            }
+#else // BOOST_OS_LINUX
+            nullptr
+#endif // BOOST_OS_LINUX
+        )
+        EMILUA_GPERF_PAIR(
+            "set_proc",
+#if BOOST_OS_LINUX
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, linux_capabilities_set_proc);
+                return 1;
+            }
+#else // BOOST_OS_LINUX
+            nullptr
+#endif // BOOST_OS_LINUX
+        )
+        EMILUA_GPERF_PAIR(
+            "get_nsowner",
+#if BOOST_OS_LINUX
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, linux_capabilities_get_nsowner);
+                return 1;
+            }
+#else // BOOST_OS_LINUX
+            nullptr
+#endif // BOOST_OS_LINUX
+        )
+        EMILUA_GPERF_PAIR(
+            "set_nsowner",
+#if BOOST_OS_LINUX
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, linux_capabilities_set_nsowner);
+                return 1;
+            }
+#else // BOOST_OS_LINUX
+            nullptr
+#endif // BOOST_OS_LINUX
+        )
+    EMILUA_GPERF_END(key)(L);
 }
 
 static int linux_capabilities_mt_gc(lua_State* L)
@@ -3397,6 +3488,9 @@ static int linux_capabilities_mt_tostring(lua_State* L)
     return 1;
 }
 
+EMILUA_GPERF_DECLS_BEGIN(linux_capabilities)
+EMILUA_GPERF_NAMESPACE(emilua)
+#if BOOST_OS_LINUX
 static int system_cap_get_proc(lua_State* L)
 {
     auto& caps = *static_cast<cap_t*>(lua_newuserdata(L, sizeof(cap_t)));
@@ -3558,236 +3652,369 @@ static int system_cap_set_secbits(lua_State* L)
     return 0;
 }
 #endif // BOOST_OS_LINUX
+EMILUA_GPERF_DECLS_END(linux_capabilities)
+#endif // BOOST_OS_LINUX
 
 static int system_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("environment"), system_environment),
-            hana::make_pair(BOOST_HANA_STRING("signal"), system_signal),
-            hana::make_pair(BOOST_HANA_STRING("arguments"), system_arguments),
-#if !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
-            hana::make_pair(BOOST_HANA_STRING("in_"), system_in),
-#endif // !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
-            hana::make_pair(BOOST_HANA_STRING("out"), system_out),
-            hana::make_pair(BOOST_HANA_STRING("err"), system_err),
-#if BOOST_OS_LINUX
-            hana::make_pair(
-                BOOST_HANA_STRING("spawn"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_spawn);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("cap_get_proc"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_cap_get_proc);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("cap_init"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_cap_init);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("cap_from_text"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_cap_from_text);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("cap_get_bound"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_cap_get_bound);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("cap_drop_bound"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_cap_drop_bound);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("cap_get_ambient"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_cap_get_ambient);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("cap_set_ambient"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_cap_set_ambient);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("cap_reset_ambient"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_cap_reset_ambient);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("cap_get_secbits"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_cap_get_secbits);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("cap_set_secbits"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_cap_set_secbits);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("SECBIT_NOROOT"),
-                [](lua_State* L) -> int {
-                    lua_pushinteger(L, SECBIT_NOROOT);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("SECBIT_NOROOT_LOCKED"),
-                [](lua_State* L) -> int {
-                    lua_pushinteger(L, SECBIT_NOROOT_LOCKED);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("SECBIT_NO_SETUID_FIXUP"),
-                [](lua_State* L) -> int {
-                    lua_pushinteger(L, SECBIT_NO_SETUID_FIXUP);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("SECBIT_NO_SETUID_FIXUP_LOCKED"),
-                [](lua_State* L) -> int {
-                    lua_pushinteger(L, SECBIT_NO_SETUID_FIXUP_LOCKED);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("SECBIT_KEEP_CAPS"),
-                [](lua_State* L) -> int {
-                    lua_pushinteger(L, SECBIT_KEEP_CAPS);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("SECBIT_KEEP_CAPS_LOCKED"),
-                [](lua_State* L) -> int {
-                    lua_pushinteger(L, SECBIT_KEEP_CAPS_LOCKED);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("SECBIT_NO_CAP_AMBIENT_RAISE"),
-                [](lua_State* L) -> int {
-                    lua_pushinteger(L, SECBIT_NO_CAP_AMBIENT_RAISE);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("SECBIT_NO_CAP_AMBIENT_RAISE_LOCKED"),
-                [](lua_State* L) -> int {
-                    lua_pushinteger(L, SECBIT_NO_CAP_AMBIENT_RAISE_LOCKED);
-                    return 1;
-                }),
-#endif // BOOST_OS_LINUX
-#if BOOST_OS_UNIX
-            hana::make_pair(
-                BOOST_HANA_STRING("getresuid"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_getresuid);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("getresgid"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_getresgid);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("setresuid"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_setresuid);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("setresgid"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_setresgid);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("getgroups"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_getgroups);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("setgroups"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_setgroups);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("getpid"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_getpid);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("getppid"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_getppid);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("kill"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_kill);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("getpgrp"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_getpgrp);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("getpgid"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_getpgid);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("setpgid"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_setpgid);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("getsid"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_getsid);
-                    return 1;
-                }),
-            hana::make_pair(
-                BOOST_HANA_STRING("setsid"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_setsid);
-                    return 1;
-                }),
-#endif // BOOST_OS_UNIX
-            hana::make_pair(
-                BOOST_HANA_STRING("exit"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_exit);
-                    return 1;
-                })
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR("environment", system_environment)
+        EMILUA_GPERF_PAIR("signal", system_signal)
+        EMILUA_GPERF_PAIR("arguments", system_arguments)
+        EMILUA_GPERF_PAIR(
+            "in_",
+            [](lua_State* L) -> int {
+#if !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
+                return system_in(L);
+#else // !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
+                return throw_enosys(L);
+#endif // !BOOST_OS_WINDOWS || EMILUA_CONFIG_THREAD_SUPPORT_LEVEL >= 1
+            })
+        EMILUA_GPERF_PAIR("out", system_out)
+        EMILUA_GPERF_PAIR("err", system_err)
+        EMILUA_GPERF_PAIR(
+            "spawn",
+            [](lua_State* L) -> int {
+#if BOOST_OS_LINUX
+                lua_pushcfunction(L, system_spawn);
+#else // BOOST_OS_LINUX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_LINUX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "cap_get_proc",
+            [](lua_State* L) -> int {
+#if BOOST_OS_LINUX
+                lua_pushcfunction(L, system_cap_get_proc);
+#else // BOOST_OS_LINUX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_LINUX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "cap_init",
+            [](lua_State* L) -> int {
+#if BOOST_OS_LINUX
+                lua_pushcfunction(L, system_cap_init);
+#else // BOOST_OS_LINUX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_LINUX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "cap_from_text",
+            [](lua_State* L) -> int {
+#if BOOST_OS_LINUX
+                lua_pushcfunction(L, system_cap_from_text);
+#else // BOOST_OS_LINUX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_LINUX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "cap_get_bound",
+            [](lua_State* L) -> int {
+#if BOOST_OS_LINUX
+                lua_pushcfunction(L, system_cap_get_bound);
+#else // BOOST_OS_LINUX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_LINUX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "cap_drop_bound",
+            [](lua_State* L) -> int {
+#if BOOST_OS_LINUX
+                lua_pushcfunction(L, system_cap_drop_bound);
+#else // BOOST_OS_LINUX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_LINUX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "cap_get_ambient",
+            [](lua_State* L) -> int {
+#if BOOST_OS_LINUX
+                lua_pushcfunction(L, system_cap_get_ambient);
+#else // BOOST_OS_LINUX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_LINUX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "cap_set_ambient",
+            [](lua_State* L) -> int {
+#if BOOST_OS_LINUX
+                lua_pushcfunction(L, system_cap_set_ambient);
+#else // BOOST_OS_LINUX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_LINUX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "cap_reset_ambient",
+            [](lua_State* L) -> int {
+#if BOOST_OS_LINUX
+                lua_pushcfunction(L, system_cap_reset_ambient);
+#else // BOOST_OS_LINUX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_LINUX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "cap_get_secbits",
+            [](lua_State* L) -> int {
+#if BOOST_OS_LINUX
+                lua_pushcfunction(L, system_cap_get_secbits);
+#else // BOOST_OS_LINUX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_LINUX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "cap_set_secbits",
+            [](lua_State* L) -> int {
+#if BOOST_OS_LINUX
+                lua_pushcfunction(L, system_cap_set_secbits);
+#else // BOOST_OS_LINUX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_LINUX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "SECBIT_NOROOT",
+            [](lua_State* L) -> int {
+#if BOOST_OS_LINUX
+                lua_pushinteger(L, SECBIT_NOROOT);
+                return 1;
+#else // BOOST_OS_LINUX
+                return throw_enosys(L);
+#endif // BOOST_OS_LINUX
+            })
+        EMILUA_GPERF_PAIR(
+            "SECBIT_NOROOT_LOCKED",
+            [](lua_State* L) -> int {
+#if BOOST_OS_LINUX
+                lua_pushinteger(L, SECBIT_NOROOT_LOCKED);
+                return 1;
+#else // BOOST_OS_LINUX
+                return throw_enosys(L);
+#endif // BOOST_OS_LINUX
+            })
+        EMILUA_GPERF_PAIR(
+            "SECBIT_NO_SETUID_FIXUP",
+            [](lua_State* L) -> int {
+#if BOOST_OS_LINUX
+                lua_pushinteger(L, SECBIT_NO_SETUID_FIXUP);
+                return 1;
+#else // BOOST_OS_LINUX
+                return throw_enosys(L);
+#endif // BOOST_OS_LINUX
+            })
+        EMILUA_GPERF_PAIR(
+            "SECBIT_NO_SETUID_FIXUP_LOCKED",
+            [](lua_State* L) -> int {
+#if BOOST_OS_LINUX
+                lua_pushinteger(L, SECBIT_NO_SETUID_FIXUP_LOCKED);
+                return 1;
+#else // BOOST_OS_LINUX
+                return throw_enosys(L);
+#endif // BOOST_OS_LINUX
+            })
+        EMILUA_GPERF_PAIR(
+            "SECBIT_KEEP_CAPS",
+            [](lua_State* L) -> int {
+#if BOOST_OS_LINUX
+                lua_pushinteger(L, SECBIT_KEEP_CAPS);
+                return 1;
+#else // BOOST_OS_LINUX
+                return throw_enosys(L);
+#endif // BOOST_OS_LINUX
+            })
+        EMILUA_GPERF_PAIR(
+            "SECBIT_KEEP_CAPS_LOCKED",
+            [](lua_State* L) -> int {
+#if BOOST_OS_LINUX
+                lua_pushinteger(L, SECBIT_KEEP_CAPS_LOCKED);
+                return 1;
+#else // BOOST_OS_LINUX
+                return throw_enosys(L);
+#endif // BOOST_OS_LINUX
+            })
+        EMILUA_GPERF_PAIR(
+            "SECBIT_NO_CAP_AMBIENT_RAISE",
+            [](lua_State* L) -> int {
+#if BOOST_OS_LINUX
+                lua_pushinteger(L, SECBIT_NO_CAP_AMBIENT_RAISE);
+                return 1;
+#else // BOOST_OS_LINUX
+                return throw_enosys(L);
+#endif // BOOST_OS_LINUX
+            })
+        EMILUA_GPERF_PAIR(
+            "SECBIT_NO_CAP_AMBIENT_RAISE_LOCKED",
+            [](lua_State* L) -> int {
+#if BOOST_OS_LINUX
+                lua_pushinteger(L, SECBIT_NO_CAP_AMBIENT_RAISE_LOCKED);
+                return 1;
+#else // BOOST_OS_LINUX
+                return throw_enosys(L);
+#endif // BOOST_OS_LINUX
+            })
+        EMILUA_GPERF_PAIR(
+            "getresuid",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, system_getresuid);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "getresgid",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, system_getresgid);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "setresuid",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, system_setresuid);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "setresgid",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, system_setresgid);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "getgroups",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, system_getgroups);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "setgroups",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, system_setgroups);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "getpid",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, system_getpid);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "getppid",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, system_getppid);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "kill",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, system_kill);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "getpgrp",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, system_getpgrp);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "getpgid",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, system_getpgid);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "setpgid",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, system_setpgid);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "getsid",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, system_getsid);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "setsid",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, system_setsid);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "exit",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, system_exit);
+                return 1;
+            })
+    EMILUA_GPERF_END(key)(L);
 }
 
 void init_system(lua_State* L)

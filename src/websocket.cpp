@@ -5,7 +5,6 @@
 
 #include <boost/beast/websocket.hpp>
 
-#include <emilua/dispatch_table.hpp>
 #include <emilua/async_base.hpp>
 #include <emilua/byte_span.hpp>
 #include <emilua/websocket.hpp>
@@ -20,17 +19,19 @@ char websocket_key;
 static char websocket_mt_key;
 static char websocket_tls_mt_key;
 
-template<class T>
-struct websocket_op_key
-{
-    static char close;
-    static char write;
-    static char read_some;
+EMILUA_GPERF_DECLS_BEGIN(websocket)
+EMILUA_GPERF_NAMESPACE(emilua)
+namespace websocket_op_index {
+enum {
+    close,
+    write,
+    read_some
 };
+} // namespace websocket_op_index
+EMILUA_GPERF_DECLS_END(websocket)
 
-template<class T> char websocket_op_key<T>::close;
-template<class T> char websocket_op_key<T>::write;
-template<class T> char websocket_op_key<T>::read_some;
+template<class T>
+static char websocket_op_key[3];
 
 template<class T>
 struct get_websocket_mt_key;
@@ -697,38 +698,21 @@ static int websocket_read_some(lua_State* L)
 template<class T>
 static int websocket_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("close"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &websocket_op_key<T>::close);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("write"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &websocket_op_key<T>::write);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("read_some"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX,
-                            &websocket_op_key<T>::read_some);
-                    return 1;
-                }
-            )
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index, "index", 2);
-            return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+    auto key = tostringview(L, 2);
+    auto index = EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int action)
+        EMILUA_GPERF_DEFAULT_VALUE(-1)
+        EMILUA_GPERF_PAIR("close", websocket_op_index::close)
+        EMILUA_GPERF_PAIR("write", websocket_op_index::write)
+        EMILUA_GPERF_PAIR("read_some", websocket_op_index::read_some)
+    EMILUA_GPERF_END(key);
+    if (index == -1) {
+        push(L, errc::bad_index, "index", 2);
+        return lua_error(L);
+    }
+
+    rawgetp(L, LUA_REGISTRYINDEX, &websocket_op_key<T>[index]);
+    return 1;
 }
 
 template<class T>
@@ -752,21 +736,22 @@ static void register_socket(lua_State* L)
     }
     lua_rawset(L, LUA_REGISTRYINDEX);
 
-    lua_pushlightuserdata(L, &websocket_op_key<T>::close);
+    lua_pushlightuserdata(L, &websocket_op_key<T>[websocket_op_index::close]);
     lua_pushvalue(L, -2);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, websocket_close<T>);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
-    lua_pushlightuserdata(L, &websocket_op_key<T>::write);
+    lua_pushlightuserdata(L, &websocket_op_key<T>[websocket_op_index::write]);
     lua_pushvalue(L, -2);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, websocket_write<T>);
     lua_call(L, 2, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
-    lua_pushlightuserdata(L, &websocket_op_key<T>::read_some);
+    lua_pushlightuserdata(
+        L, &websocket_op_key<T>[websocket_op_index::read_some]);
     lua_pushvalue(L, -2);
     rawgetp(L, LUA_REGISTRYINDEX, &raw_error_key);
     lua_pushcfunction(L, websocket_read_some<T>);

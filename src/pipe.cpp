@@ -3,16 +3,17 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
+EMILUA_GPERF_DECLS_BEGIN(includes)
 #include <boost/asio/readable_pipe.hpp>
 #include <boost/asio/writable_pipe.hpp>
 #include <boost/asio/connect_pipe.hpp>
 #include <boost/scope_exit.hpp>
 
 #include <emilua/file_descriptor.hpp>
-#include <emilua/dispatch_table.hpp>
 #include <emilua/async_base.hpp>
 #include <emilua/byte_span.hpp>
 #include <emilua/pipe.hpp>
+EMILUA_GPERF_DECLS_END(includes)
 
 namespace emilua {
 
@@ -20,9 +21,14 @@ char pipe_key;
 char readable_pipe_mt_key;
 char writable_pipe_mt_key;
 
+EMILUA_GPERF_DECLS_BEGIN(pipe)
+EMILUA_GPERF_NAMESPACE(emilua)
 static char readable_pipe_read_some_key;
 static char writable_pipe_write_some_key;
+EMILUA_GPERF_DECLS_END(pipe)
 
+EMILUA_GPERF_DECLS_BEGIN(read_stream)
+EMILUA_GPERF_NAMESPACE(emilua)
 static int readable_pipe_close(lua_State* L)
 {
     auto pipe = static_cast<asio::readable_pipe*>(lua_touserdata(L, 1));
@@ -152,6 +158,7 @@ static int readable_pipe_release(lua_State* L)
     return 1;
 }
 #endif // BOOST_OS_UNIX
+EMILUA_GPERF_DECLS_END(read_stream)
 
 static int readable_pipe_read_some(lua_State* L)
 {
@@ -220,63 +227,65 @@ static int readable_pipe_read_some(lua_State* L)
     return lua_yield(L, 0);
 }
 
+EMILUA_GPERF_DECLS_BEGIN(read_stream)
+EMILUA_GPERF_NAMESPACE(emilua)
 inline int readable_pipe_is_open(lua_State* L)
 {
     auto pipe = static_cast<asio::readable_pipe*>(lua_touserdata(L, 1));
     lua_pushboolean(L, pipe->is_open());
     return 1;
 }
+EMILUA_GPERF_DECLS_END(read_stream)
 
 static int readable_pipe_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("close"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, readable_pipe_close);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("cancel"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, readable_pipe_cancel);
-                    return 1;
-                }
-            ),
-#if BOOST_OS_UNIX
-            hana::make_pair(
-                BOOST_HANA_STRING("assign"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, readable_pipe_assign);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("release"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, readable_pipe_release);
-                    return 1;
-                }
-            ),
-#endif // BOOST_OS_UNIX
-            hana::make_pair(
-                BOOST_HANA_STRING("read_some"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &readable_pipe_read_some_key);
-                    return 1;
-                }
-            ),
-            hana::make_pair(BOOST_HANA_STRING("is_open"), readable_pipe_is_open)
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "close",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, readable_pipe_close);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "cancel",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, readable_pipe_cancel);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "assign",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, readable_pipe_assign);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "release",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, readable_pipe_release);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "read_some",
+            [](lua_State* L) -> int {
+                rawgetp(L, LUA_REGISTRYINDEX, &readable_pipe_read_some_key);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR("is_open", readable_pipe_is_open)
+    EMILUA_GPERF_END(key)(L);
 }
 
 static int readable_pipe_new(lua_State* L)
@@ -327,6 +336,8 @@ static int readable_pipe_new(lua_State* L)
     return 1;
 }
 
+EMILUA_GPERF_DECLS_BEGIN(write_stream)
+EMILUA_GPERF_NAMESPACE(emilua)
 static int writable_pipe_close(lua_State* L)
 {
     auto pipe = static_cast<asio::writable_pipe*>(lua_touserdata(L, 1));
@@ -456,6 +467,7 @@ static int writable_pipe_release(lua_State* L)
     return 1;
 }
 #endif // BOOST_OS_UNIX
+EMILUA_GPERF_DECLS_END(write_stream)
 
 static int writable_pipe_write_some(lua_State* L)
 {
@@ -524,64 +536,65 @@ static int writable_pipe_write_some(lua_State* L)
     return lua_yield(L, 0);
 }
 
+EMILUA_GPERF_DECLS_BEGIN(write_stream)
+EMILUA_GPERF_NAMESPACE(emilua)
 inline int writable_pipe_is_open(lua_State* L)
 {
     auto pipe = static_cast<asio::writable_pipe*>(lua_touserdata(L, 1));
     lua_pushboolean(L, pipe->is_open());
     return 1;
 }
+EMILUA_GPERF_DECLS_END(write_stream)
 
 static int writable_pipe_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("close"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, writable_pipe_close);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("cancel"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, writable_pipe_cancel);
-                    return 1;
-                }
-            ),
-#if BOOST_OS_UNIX
-            hana::make_pair(
-                BOOST_HANA_STRING("assign"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, writable_pipe_assign);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("release"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, writable_pipe_release);
-                    return 1;
-                }
-            ),
-#endif // BOOST_OS_UNIX
-            hana::make_pair(
-                BOOST_HANA_STRING("write_some"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX,
-                            &writable_pipe_write_some_key);
-                    return 1;
-                }
-            ),
-            hana::make_pair(BOOST_HANA_STRING("is_open"), writable_pipe_is_open)
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "close",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, writable_pipe_close);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "cancel",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, writable_pipe_cancel);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "assign",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, writable_pipe_assign);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "release",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, writable_pipe_release);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "write_some",
+            [](lua_State* L) -> int {
+                rawgetp(L, LUA_REGISTRYINDEX, &writable_pipe_write_some_key);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR("is_open", writable_pipe_is_open)
+    EMILUA_GPERF_END(key)(L);
 }
 
 static int writable_pipe_new(lua_State* L)

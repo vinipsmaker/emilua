@@ -3,13 +3,14 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
+EMILUA_GPERF_DECLS_BEGIN(includes)
 #include <emilua/regex.hpp>
 
 #include <locale>
 #include <regex>
 
-#include <emilua/dispatch_table.hpp>
 #include <emilua/byte_span.hpp>
+EMILUA_GPERF_DECLS_END(includes)
 
 namespace emilua {
 
@@ -514,6 +515,8 @@ int regex_patsplit(lua_State* L)
     return 1;
 }
 
+EMILUA_GPERF_DECLS_BEGIN(regex)
+EMILUA_GPERF_NAMESPACE(emilua)
 inline int regex_mark_count(lua_State* L)
 {
     auto regex = static_cast<std::regex*>(lua_touserdata(L, 1));
@@ -555,25 +558,23 @@ inline int regex_optimized(lua_State* L)
     lua_pushboolean(L, (flags & std::regex_constants::optimize) ? 1 : 0);
     return 1;
 }
+EMILUA_GPERF_DECLS_END(regex)
 
 static int regex_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(BOOST_HANA_STRING("mark_count"), regex_mark_count),
-            hana::make_pair(BOOST_HANA_STRING("grammar"), regex_grammar),
-            hana::make_pair(
-                BOOST_HANA_STRING("ignore_case"), regex_ignore_case),
-            hana::make_pair(BOOST_HANA_STRING("nosubs"), regex_nosubs),
-            hana::make_pair(BOOST_HANA_STRING("optimized"), regex_optimized)
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR("mark_count", regex_mark_count)
+        EMILUA_GPERF_PAIR("grammar", regex_grammar)
+        EMILUA_GPERF_PAIR("ignore_case", regex_ignore_case)
+        EMILUA_GPERF_PAIR("nosubs", regex_nosubs)
+        EMILUA_GPERF_PAIR("optimized", regex_optimized)
+    EMILUA_GPERF_END(key)(L);
 }
 
 void init_regex(lua_State* L)

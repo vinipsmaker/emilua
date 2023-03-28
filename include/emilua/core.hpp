@@ -41,6 +41,7 @@
 #include <string_view>
 #include <filesystem>
 #include <optional>
+#include <utility>
 #include <variant>
 #include <atomic>
 #include <deque>
@@ -60,6 +61,15 @@ extern "C" {
 #if EMILUA_CONFIG_ENABLE_PLUGINS
 #include <boost/shared_ptr.hpp>
 #endif // EMILUA_CONFIG_ENABLE_PLUGINS
+
+#define EMILUA_GPERF_BEGIN(ID)
+#define EMILUA_GPERF_END(ID) {}
+#define EMILUA_GPERF_PARAM(...)
+#define EMILUA_GPERF_DEFAULT_VALUE(...)
+#define EMILUA_GPERF_PAIR(ID, ...)
+#define EMILUA_GPERF_DECLS_BEGIN(ID)
+#define EMILUA_GPERF_DECLS_END(ID)
+#define EMILUA_GPERF_NAMESPACE(ID)
 
 #define EMILUA_IMPL_INITIAL_FIBER_DATA_CAPACITY 11
 #define EMILUA_IMPL_INITIAL_MODULE_FIBER_DATA_CAPACITY 8
@@ -89,6 +99,25 @@ namespace boost::http {}
 namespace boost::nowide {}
 
 namespace emilua {
+
+namespace gperf::detail {
+template<class T>
+auto value_or(const T* p, decltype(std::declval<T>().action) default_value)
+    -> decltype(default_value)
+{
+    return p ? p->action : default_value;
+}
+
+template<class T>
+auto make_optional(const T* p)
+    -> std::optional<decltype(std::declval<T>().action)>
+{
+    if (p)
+        return p->action;
+    else
+        return std::nullopt;
+}
+} // namespace gperf::detail
 
 using namespace std::literals::string_view_literals;
 namespace outcome = BOOST_OUTCOME_V2_NAMESPACE;
@@ -802,6 +831,8 @@ inline int finalizer(lua_State* L)
     finalize<T>(L);
     return 0;
 }
+
+int throw_enosys(lua_State* L);
 
 enum class lua_errc
 {

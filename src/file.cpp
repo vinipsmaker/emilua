@@ -3,16 +3,17 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
+EMILUA_GPERF_DECLS_BEGIN(includes)
 #include <boost/asio/random_access_file.hpp>
 #include <boost/asio/stream_file.hpp>
 #include <boost/scope_exit.hpp>
 
 #include <emilua/file_descriptor.hpp>
-#include <emilua/dispatch_table.hpp>
 #include <emilua/async_base.hpp>
 #include <emilua/filesystem.hpp>
 #include <emilua/byte_span.hpp>
 #include <emilua/unix.hpp>
+EMILUA_GPERF_DECLS_END(includes)
 
 namespace emilua {
 
@@ -25,6 +26,8 @@ extern std::size_t read_all_at_bytecode_size;
 extern unsigned char read_at_least_at_bytecode[];
 extern std::size_t read_at_least_at_bytecode_size;
 
+EMILUA_GPERF_DECLS_BEGIN(file)
+EMILUA_GPERF_NAMESPACE(emilua)
 char file_key;
 char file_stream_mt_key;
 char file_random_access_mt_key;
@@ -33,9 +36,12 @@ static char stream_read_some_key;
 static char stream_write_some_key;
 static char random_access_read_some_at_key;
 static char random_access_write_some_at_key;
+EMILUA_GPERF_DECLS_END(file)
 
 int byte_span_non_member_append(lua_State* L);
 
+EMILUA_GPERF_DECLS_BEGIN(stream)
+EMILUA_GPERF_NAMESPACE(emilua)
 static int stream_open(lua_State* L)
 {
     luaL_checktype(L, 3, LUA_TNUMBER);
@@ -274,6 +280,7 @@ static int stream_seek(lua_State* L)
     lua_pushnumber(L, ret);
     return 1;
 }
+EMILUA_GPERF_DECLS_END(stream)
 
 static int stream_read_some(lua_State* L)
 {
@@ -383,6 +390,8 @@ static int stream_write_some(lua_State* L)
     return lua_yield(L, 0);
 }
 
+EMILUA_GPERF_DECLS_BEGIN(stream)
+EMILUA_GPERF_NAMESPACE(emilua)
 inline int stream_is_open(lua_State* L)
 {
     auto file = static_cast<asio::stream_file*>(lua_touserdata(L, 1));
@@ -402,86 +411,82 @@ inline int stream_size(lua_State* L)
     lua_pushnumber(L, ret);
     return 1;
 }
+EMILUA_GPERF_DECLS_END(stream)
 
 static int stream_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("open"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, stream_open);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("close"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, stream_close);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("cancel"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, stream_cancel);
-                    return 1;
-                }
-            ),
-#if BOOST_OS_UNIX
-            hana::make_pair(
-                BOOST_HANA_STRING("assign"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, stream_assign);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("release"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, stream_release);
-                    return 1;
-                }
-            ),
-#endif // BOOST_OS_UNIX
-            hana::make_pair(
-                BOOST_HANA_STRING("resize"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, stream_resize);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("seek"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, stream_seek);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("read_some"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &stream_read_some_key);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("write_some"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &stream_write_some_key);
-                    return 1;
-                }
-            ),
-            hana::make_pair(BOOST_HANA_STRING("is_open"), stream_is_open),
-            hana::make_pair(BOOST_HANA_STRING("size"), stream_size)
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "open",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, stream_open);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "close",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, stream_close);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "cancel",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, stream_cancel);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "assign",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, stream_assign);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "release",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, stream_release);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "resize",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, stream_resize);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "seek",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, stream_seek);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "read_some",
+            [](lua_State* L) -> int {
+                rawgetp(L, LUA_REGISTRYINDEX, &stream_read_some_key);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "write_some",
+            [](lua_State* L) -> int {
+                rawgetp(L, LUA_REGISTRYINDEX, &stream_write_some_key);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR("is_open", stream_is_open)
+        EMILUA_GPERF_PAIR("size", stream_size)
+    EMILUA_GPERF_END(key)(L);
 }
 
 static int stream_new(lua_State* L)
@@ -537,6 +542,8 @@ static int stream_new(lua_State* L)
 #endif // BOOST_OS_UNIX
 }
 
+EMILUA_GPERF_DECLS_BEGIN(random_access)
+EMILUA_GPERF_NAMESPACE(emilua)
 static int random_access_open(lua_State* L)
 {
     luaL_checktype(L, 3, LUA_TNUMBER);
@@ -736,6 +743,7 @@ static int random_access_resize(lua_State* L)
     }
     return 0;
 }
+EMILUA_GPERF_DECLS_END(random_access)
 
 static int random_access_read_some_at(lua_State* L)
 {
@@ -851,6 +859,8 @@ static int random_access_write_some_at(lua_State* L)
     return lua_yield(L, 0);
 }
 
+EMILUA_GPERF_DECLS_BEGIN(random_access)
+EMILUA_GPERF_NAMESPACE(emilua)
 inline int random_access_is_open(lua_State* L)
 {
     auto file = static_cast<asio::random_access_file*>(lua_touserdata(L, 1));
@@ -870,83 +880,76 @@ inline int random_access_size(lua_State* L)
     lua_pushnumber(L, ret);
     return 1;
 }
+EMILUA_GPERF_DECLS_END(random_access)
 
 static int random_access_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("open"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, random_access_open);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("close"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, random_access_close);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("cancel"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, random_access_cancel);
-                    return 1;
-                }
-            ),
-#if BOOST_OS_UNIX
-            hana::make_pair(
-                BOOST_HANA_STRING("assign"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, random_access_assign);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("release"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, random_access_release);
-                    return 1;
-                }
-            ),
-#endif // BOOST_OS_UNIX
-            hana::make_pair(
-                BOOST_HANA_STRING("resize"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, random_access_resize);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("read_some_at"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX,
-                            &random_access_read_some_at_key);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("write_some_at"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX,
-                            &random_access_write_some_at_key);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("is_open"), random_access_is_open),
-            hana::make_pair(
-                BOOST_HANA_STRING("size"), random_access_size)
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "open",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, random_access_open);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "close",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, random_access_close);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "cancel",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, random_access_cancel);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "assign",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, random_access_assign);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "release",
+            [](lua_State* L) -> int {
+#if BOOST_OS_UNIX
+                lua_pushcfunction(L, random_access_release);
+#else // BOOST_OS_UNIX
+                lua_pushcfunction(L, throw_enosys);
+#endif // BOOST_OS_UNIX
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "resize",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, random_access_resize);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "read_some_at",
+            [](lua_State* L) -> int {
+                rawgetp(L, LUA_REGISTRYINDEX, &random_access_read_some_at_key);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "write_some_at",
+            [](lua_State* L) -> int {
+                rawgetp(L, LUA_REGISTRYINDEX, &random_access_write_some_at_key);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR("is_open", random_access_is_open)
+        EMILUA_GPERF_PAIR("size", random_access_size)
+    EMILUA_GPERF_END(key)(L);
 }
 
 static int random_access_new(lua_State* L)

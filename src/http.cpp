@@ -3,6 +3,7 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
+EMILUA_GPERF_DECLS_BEGIN(includes)
 #include <type_traits>
 
 #include <boost/beast/core/stream_traits.hpp>
@@ -11,7 +12,6 @@
 
 #include <boost/http/algorithm/query.hpp>
 
-#include <emilua/dispatch_table.hpp>
 #include <emilua/async_base.hpp>
 #include <emilua/http.hpp>
 #include <emilua/tls.hpp>
@@ -20,11 +20,14 @@
 #if !BOOST_OS_WINDOWS
 #include <emilua/unix.hpp>
 #endif // !BOOST_OS_WINDOWS
+EMILUA_GPERF_DECLS_END(includes)
 
 namespace emilua {
 
 using boost::beast::get_lowest_layer;
 
+EMILUA_GPERF_DECLS_BEGIN(http)
+EMILUA_GPERF_NAMESPACE(emilua)
 enum class headers_origin
 {
     request_headers,
@@ -32,6 +35,7 @@ enum class headers_origin
     response_headers,
     response_trailers,
 };
+EMILUA_GPERF_DECLS_END(http)
 
 char http_key;
 char http_request_mt_key;
@@ -43,7 +47,32 @@ char https_socket_mt_key;
 char http_unix_socket_mt_key;
 #endif // !BOOST_OS_WINDOWS
 
+EMILUA_GPERF_DECLS_BEGIN(http)
+EMILUA_GPERF_NAMESPACE(emilua)
 static char headers_mt_key;
+
+namespace http_op_index {
+enum {
+    close,
+    lock_client_to_http10,
+    read_request,
+    write_response,
+    write_response_continue,
+    write_response_metadata,
+    write,
+    write_trailers,
+    write_end_of_message,
+    write_request,
+    write_request_metadata,
+    read_response,
+    read_some,
+    is_open,
+    read_state,
+    write_state,
+    is_write_response_native_stream
+};
+} // namespace http_op_index
+EMILUA_GPERF_DECLS_END(http)
 
 template<class T>
 struct http_op_key
@@ -234,6 +263,8 @@ static int socket_new(lua_State* L)
     return 1;
 }
 
+EMILUA_GPERF_DECLS_BEGIN(message)
+EMILUA_GPERF_NAMESPACE(emilua)
 inline int request_method(lua_State* L)
 {
     auto& r = *static_cast<std::shared_ptr<Request>*>(lua_touserdata(L, 1));
@@ -273,6 +304,7 @@ inline int message_body(lua_State* L)
                     r->body().size());
     return 1;
 }
+EMILUA_GPERF_DECLS_END(message)
 
 static int request_mt_index(lua_State* L)
 {
@@ -282,27 +314,25 @@ static int request_mt_index(lua_State* L)
         return lua_error(L);
     }
 
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(BOOST_HANA_STRING("method"), request_method),
-            hana::make_pair(BOOST_HANA_STRING("target"), request_target),
-            hana::make_pair(
-                BOOST_HANA_STRING("headers"),
-                message_headers<headers_origin::request_headers>),
-            hana::make_pair(BOOST_HANA_STRING("body"), message_body<Request>),
-            hana::make_pair(
-                BOOST_HANA_STRING("trailers"),
-                message_headers<headers_origin::request_trailers>)
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR("method", request_method)
+        EMILUA_GPERF_PAIR("target", request_target)
+        EMILUA_GPERF_PAIR(
+            "headers", message_headers<headers_origin::request_headers>)
+        EMILUA_GPERF_PAIR("body", message_body<Request>)
+        EMILUA_GPERF_PAIR(
+            "trailers", message_headers<headers_origin::request_trailers>)
+    EMILUA_GPERF_END(key)(L);
 }
 
+EMILUA_GPERF_DECLS_BEGIN(message)
+EMILUA_GPERF_NAMESPACE(emilua)
 inline int request_newmethod(lua_State* L)
 {
     luaL_checktype(L, 3, LUA_TSTRING);
@@ -434,6 +464,7 @@ inline int message_newbody(lua_State* L)
     }
     }
 }
+EMILUA_GPERF_DECLS_END(message)
 
 static int request_mt_newindex(lua_State* L)
 {
@@ -443,28 +474,25 @@ static int request_mt_newindex(lua_State* L)
         return lua_error(L);
     }
 
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(BOOST_HANA_STRING("method"), request_newmethod),
-            hana::make_pair(BOOST_HANA_STRING("target"), request_newtarget),
-            hana::make_pair(
-                BOOST_HANA_STRING("headers"),
-                message_newheaders<headers_origin::request_headers>),
-            hana::make_pair(
-                BOOST_HANA_STRING("body"), message_newbody<Request>),
-            hana::make_pair(
-                BOOST_HANA_STRING("trailers"),
-                message_newheaders<headers_origin::request_trailers>)
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR("method", request_newmethod)
+        EMILUA_GPERF_PAIR("target", request_newtarget)
+        EMILUA_GPERF_PAIR(
+            "headers", message_newheaders<headers_origin::request_headers>)
+        EMILUA_GPERF_PAIR("body", message_newbody<Request>)
+        EMILUA_GPERF_PAIR(
+            "trailers", message_newheaders<headers_origin::request_trailers>)
+    EMILUA_GPERF_END(key)(L);
 }
 
+EMILUA_GPERF_DECLS_BEGIN(message)
+EMILUA_GPERF_NAMESPACE(emilua)
 inline int response_status(lua_State* L)
 {
     auto& r = *static_cast<std::shared_ptr<Response>*>(lua_touserdata(L, 1));
@@ -478,6 +506,7 @@ inline int response_reason(lua_State* L)
     push(L, r->reason_phrase());
     return 1;
 }
+EMILUA_GPERF_DECLS_END(message)
 
 static int response_mt_index(lua_State* L)
 {
@@ -487,27 +516,25 @@ static int response_mt_index(lua_State* L)
         return lua_error(L);
     }
 
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(BOOST_HANA_STRING("status"), response_status),
-            hana::make_pair(BOOST_HANA_STRING("reason"), response_reason),
-            hana::make_pair(
-                BOOST_HANA_STRING("headers"),
-                message_headers<headers_origin::response_headers>),
-            hana::make_pair(BOOST_HANA_STRING("body"), message_body<Response>),
-            hana::make_pair(
-                BOOST_HANA_STRING("trailers"),
-                message_headers<headers_origin::response_trailers>)
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR("status", response_status)
+        EMILUA_GPERF_PAIR("reason", response_reason)
+        EMILUA_GPERF_PAIR(
+            "headers", message_headers<headers_origin::response_headers>)
+        EMILUA_GPERF_PAIR("body", message_body<Response>)
+        EMILUA_GPERF_PAIR(
+            "trailers", message_headers<headers_origin::response_trailers>)
+    EMILUA_GPERF_END(key)(L);
 }
 
+EMILUA_GPERF_DECLS_BEGIN(message)
+EMILUA_GPERF_NAMESPACE(emilua)
 inline int response_newstatus(lua_State* L)
 {
     luaL_checktype(L, 3, LUA_TNUMBER);
@@ -523,6 +550,7 @@ inline int response_newreason(lua_State* L)
     r->reason_phrase() = tostringview(L, 3);
     return 0;
 }
+EMILUA_GPERF_DECLS_END(message)
 
 static int response_mt_newindex(lua_State* L)
 {
@@ -532,26 +560,21 @@ static int response_mt_newindex(lua_State* L)
         return lua_error(L);
     }
 
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(BOOST_HANA_STRING("status"), response_newstatus),
-            hana::make_pair(BOOST_HANA_STRING("reason"), response_newreason),
-            hana::make_pair(
-                BOOST_HANA_STRING("headers"),
-                message_newheaders<headers_origin::response_headers>),
-            hana::make_pair(
-                BOOST_HANA_STRING("body"), message_newbody<Response>),
-            hana::make_pair(
-                BOOST_HANA_STRING("trailers"),
-                message_newheaders<headers_origin::response_trailers>)
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR("status", response_newstatus)
+        EMILUA_GPERF_PAIR("reason", response_newreason)
+        EMILUA_GPERF_PAIR(
+            "headers", message_newheaders<headers_origin::response_headers>)
+        EMILUA_GPERF_PAIR("body", message_newbody<Response>)
+        EMILUA_GPERF_PAIR(
+            "trailers", message_newheaders<headers_origin::response_trailers>)
+    EMILUA_GPERF_END(key)(L);
 }
 
 static int headers_mt_index(lua_State* L)
@@ -1862,125 +1885,103 @@ inline int socket_is_write_response_native_stream(lua_State* L)
 template<class T>
 static int socket_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("close"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &http_op_key<T>::close);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("lock_client_to_http10"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, socket_lock_client_to_http10<T>);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("read_request"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX,
-                            &http_op_key<T>::read_request);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("write_response"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX,
-                            &http_op_key<T>::write_response);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("write_response_continue"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX,
-                            &http_op_key<T>::write_response_continue);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("write_response_metadata"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX,
-                            &http_op_key<T>::write_response_metadata);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("write"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &http_op_key<T>::write);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("write_trailers"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX,
-                            &http_op_key<T>::write_trailers);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("write_end_of_message"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX,
-                            &http_op_key<T>::write_end_of_message);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("write_request"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX,
-                            &http_op_key<T>::write_request);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("write_request_metadata"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX,
-                            &http_op_key<T>::write_request_metadata);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("read_response"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX,
-                            &http_op_key<T>::read_response);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("read_some"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &http_op_key<T>::read_some);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("is_open"), socket_is_open<T>),
-            hana::make_pair(
-                BOOST_HANA_STRING("read_state"), socket_read_state<T>),
-            hana::make_pair(
-                BOOST_HANA_STRING("write_state"), socket_write_state<T>),
-            hana::make_pair(
-                BOOST_HANA_STRING("is_write_response_native_stream"),
-                socket_is_write_response_native_stream<T>)
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
-            push(L, errc::bad_index, "index", 2);
-            return lua_error(L);
+    static int (*values[17])(lua_State*) = {
+        [](lua_State* L) -> int {
+            rawgetp(L, LUA_REGISTRYINDEX, &http_op_key<T>::close);
+            return 1;
         },
-        tostringview(L, 2),
-        L
-    );
+        [](lua_State* L) -> int {
+            lua_pushcfunction(L, socket_lock_client_to_http10<T>);
+            return 1;
+        },
+        [](lua_State* L) -> int {
+            rawgetp(L, LUA_REGISTRYINDEX, &http_op_key<T>::read_request);
+            return 1;
+        },
+        [](lua_State* L) -> int {
+            rawgetp(L, LUA_REGISTRYINDEX, &http_op_key<T>::write_response);
+            return 1;
+        },
+        [](lua_State* L) -> int {
+            rawgetp(L, LUA_REGISTRYINDEX,
+                    &http_op_key<T>::write_response_continue);
+            return 1;
+        },
+        [](lua_State* L) -> int {
+            rawgetp(L, LUA_REGISTRYINDEX,
+                    &http_op_key<T>::write_response_metadata);
+            return 1;
+        },
+        [](lua_State* L) -> int {
+            rawgetp(L, LUA_REGISTRYINDEX, &http_op_key<T>::write);
+            return 1;
+        },
+        [](lua_State* L) -> int {
+            rawgetp(L, LUA_REGISTRYINDEX, &http_op_key<T>::write_trailers);
+            return 1;
+        },
+        [](lua_State* L) -> int {
+            rawgetp(L, LUA_REGISTRYINDEX,
+                    &http_op_key<T>::write_end_of_message);
+            return 1;
+        },
+        [](lua_State* L) -> int {
+            rawgetp(L, LUA_REGISTRYINDEX, &http_op_key<T>::write_request);
+            return 1;
+        },
+        [](lua_State* L) -> int {
+            rawgetp(L, LUA_REGISTRYINDEX,
+                    &http_op_key<T>::write_request_metadata);
+            return 1;
+        },
+        [](lua_State* L) -> int {
+            rawgetp(L, LUA_REGISTRYINDEX, &http_op_key<T>::read_response);
+            return 1;
+        },
+        [](lua_State* L) -> int {
+            rawgetp(L, LUA_REGISTRYINDEX, &http_op_key<T>::read_some);
+            return 1;
+        },
+        socket_is_open<T>,
+        socket_read_state<T>,
+        socket_write_state<T>,
+        socket_is_write_response_native_stream<T>
+    };
+
+    auto key = tostringview(L, 2);
+    auto index = EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int action)
+        EMILUA_GPERF_DEFAULT_VALUE(-1)
+        EMILUA_GPERF_PAIR("close", http_op_index::close)
+        EMILUA_GPERF_PAIR(
+            "lock_client_to_http10", http_op_index::lock_client_to_http10)
+        EMILUA_GPERF_PAIR("read_request", http_op_index::read_request)
+        EMILUA_GPERF_PAIR("write_response", http_op_index::write_response)
+        EMILUA_GPERF_PAIR(
+            "write_response_continue", http_op_index::write_response_continue)
+        EMILUA_GPERF_PAIR(
+            "write_response_metadata", http_op_index::write_response_metadata)
+        EMILUA_GPERF_PAIR("write", http_op_index::write)
+        EMILUA_GPERF_PAIR("write_trailers", http_op_index::write_trailers)
+        EMILUA_GPERF_PAIR(
+            "write_end_of_message", http_op_index::write_end_of_message)
+        EMILUA_GPERF_PAIR("write_request", http_op_index::write_request)
+        EMILUA_GPERF_PAIR(
+            "write_request_metadata", http_op_index::write_request_metadata)
+        EMILUA_GPERF_PAIR("read_response", http_op_index::read_response)
+        EMILUA_GPERF_PAIR("read_some", http_op_index::read_some)
+        EMILUA_GPERF_PAIR("is_open", http_op_index::is_open)
+        EMILUA_GPERF_PAIR("read_state", http_op_index::read_state)
+        EMILUA_GPERF_PAIR("write_state", http_op_index::write_state)
+        EMILUA_GPERF_PAIR(
+            "is_write_response_native_stream",
+            http_op_index::is_write_response_native_stream)
+    EMILUA_GPERF_END(key);
+    if (index == -1) {
+        push(L, errc::bad_index, "index", 2);
+        return lua_error(L);
+    }
+    return values[index](L);
 }
 
 void init_http(lua_State* L)

@@ -3,7 +3,7 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
-#include <emilua/dispatch_table.hpp>
+EMILUA_GPERF_DECLS_BEGIN(includes)
 #include <emilua/filesystem.hpp>
 #include <emilua/windows.hpp>
 #include <emilua/system.hpp>
@@ -14,22 +14,19 @@
 #if BOOST_OS_LINUX
 #include <sys/capability.h>
 #endif // BOOST_OS_LINUX
+EMILUA_GPERF_DECLS_END(includes)
 
 namespace emilua {
 
+EMILUA_GPERF_DECLS_BEGIN(filesystem)
+EMILUA_GPERF_NAMESPACE(emilua)
 namespace fs = std::filesystem;
+EMILUA_GPERF_DECLS_END(filesystem)
 
 char filesystem_key;
 char filesystem_path_mt_key;
-static char filesystem_path_iterator_mt_key;
-static char file_clock_time_point_mt_key;
 static char space_info_mt_key;
-static char file_status_mt_key;
-static char directory_entry_mt_key;
 static char directory_iterator_mt_key;
-static char recursive_directory_iterator_mt_key;
-
-using lua_Seconds = std::chrono::duration<lua_Number>;
 
 struct directory_iterator
 {
@@ -44,6 +41,16 @@ struct directory_iterator
     static int next(lua_State* L);
     static int make(lua_State* L);
 };
+
+EMILUA_GPERF_DECLS_BEGIN(filesystem)
+EMILUA_GPERF_NAMESPACE(emilua)
+static char filesystem_path_iterator_mt_key;
+static char file_clock_time_point_mt_key;
+static char file_status_mt_key;
+static char directory_entry_mt_key;
+static char recursive_directory_iterator_mt_key;
+
+using lua_Seconds = std::chrono::duration<lua_Number>;
 
 struct recursive_directory_iterator
 {
@@ -62,7 +69,10 @@ struct recursive_directory_iterator
     static int next(lua_State* L);
     static int make(lua_State* L);
 };
+EMILUA_GPERF_DECLS_END(filesystem)
 
+EMILUA_GPERF_DECLS_BEGIN(path)
+EMILUA_GPERF_NAMESPACE(emilua)
 static int path_to_generic(lua_State* L)
 {
     auto path = static_cast<fs::path*>(lua_touserdata(L, 1));
@@ -876,157 +886,131 @@ inline int path_is_relative(lua_State* L)
         return lua_error(L);
     }
 }
+EMILUA_GPERF_DECLS_END(path)
 
 static int path_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("to_generic"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, path_to_generic);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("iterator"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, path_iterator);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("make_preferred"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, path_make_preferred);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("remove_filename"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, path_remove_filename);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("replace_filename"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, path_replace_filename);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("replace_extension"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, path_replace_extension);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("lexically_normal"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, path_lexically_normal);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("lexically_relative"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, path_lexically_relative);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("lexically_proximate"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, path_lexically_proximate);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("root_name"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, path_root_name);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("root_directory"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, path_root_directory);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("root_path"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, path_root_path);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("relative_path"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, path_relative_path);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("parent_path"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, path_parent_path);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("filename"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, path_filename);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("stem"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, path_stem);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("extension"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, path_extension);
-                    return 1;
-                }
-            ),
-            hana::make_pair(BOOST_HANA_STRING("empty"), path_empty),
-            hana::make_pair(
-                BOOST_HANA_STRING("has_root_path"), path_has_root_path),
-            hana::make_pair(
-                BOOST_HANA_STRING("has_root_name"), path_has_root_name),
-            hana::make_pair(
-                BOOST_HANA_STRING("has_root_directory"),
-                path_has_root_directory),
-            hana::make_pair(
-                BOOST_HANA_STRING("has_relative_path"), path_has_relative_path),
-            hana::make_pair(
-                BOOST_HANA_STRING("has_parent_path"), path_has_parent_path),
-            hana::make_pair(
-                BOOST_HANA_STRING("has_filename"), path_has_filename),
-            hana::make_pair(BOOST_HANA_STRING("has_stem"), path_has_stem),
-            hana::make_pair(
-                BOOST_HANA_STRING("has_extension"), path_has_extension),
-            hana::make_pair(BOOST_HANA_STRING("is_absolute"), path_is_absolute),
-            hana::make_pair(BOOST_HANA_STRING("is_relative"), path_is_relative)
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "to_generic",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, path_to_generic);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "iterator",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, path_iterator);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "make_preferred",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, path_make_preferred);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "remove_filename",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, path_remove_filename);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "replace_filename",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, path_replace_filename);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "replace_extension",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, path_replace_extension);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "lexically_normal",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, path_lexically_normal);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "lexically_relative",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, path_lexically_relative);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "lexically_proximate",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, path_lexically_proximate);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "root_name",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, path_root_name);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "root_directory",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, path_root_directory);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "root_path",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, path_root_path);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "relative_path",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, path_relative_path);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "parent_path",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, path_parent_path);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "filename",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, path_filename);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "stem",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, path_stem);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "extension",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, path_extension);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR("empty", path_empty)
+        EMILUA_GPERF_PAIR("has_root_path", path_has_root_path)
+        EMILUA_GPERF_PAIR("has_root_name", path_has_root_name)
+        EMILUA_GPERF_PAIR("has_root_directory", path_has_root_directory)
+        EMILUA_GPERF_PAIR("has_relative_path", path_has_relative_path)
+        EMILUA_GPERF_PAIR("has_parent_path", path_has_parent_path)
+        EMILUA_GPERF_PAIR("has_filename", path_has_filename)
+        EMILUA_GPERF_PAIR("has_stem", path_has_stem)
+        EMILUA_GPERF_PAIR("has_extension", path_has_extension)
+        EMILUA_GPERF_PAIR("is_absolute", path_is_absolute)
+        EMILUA_GPERF_PAIR("is_relative", path_is_relative)
+    EMILUA_GPERF_END(key)(L);
 }
 
 static int path_mt_tostring(lua_State* L)
@@ -1421,6 +1405,8 @@ static int path_from_generic(lua_State* L)
     }
 }
 
+EMILUA_GPERF_DECLS_BEGIN(clock)
+EMILUA_GPERF_NAMESPACE(emilua)
 static int file_clock_time_point_add(lua_State* L)
 {
     lua_settop(L, 2);
@@ -1540,44 +1526,38 @@ inline int file_clock_time_point_seconds_since_epoch(lua_State* L)
     lua_pushnumber(L, lua_Seconds{tp->time_since_epoch()}.count());
     return 1;
 }
+EMILUA_GPERF_DECLS_END(clock)
 
 static int file_clock_time_point_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("add"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, file_clock_time_point_add);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("sub"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, file_clock_time_point_sub);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("to_system"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, file_clock_time_point_to_system);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("seconds_since_epoch"),
-                file_clock_time_point_seconds_since_epoch
-            )
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "add",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, file_clock_time_point_add);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "sub",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, file_clock_time_point_sub);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "to_system",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, file_clock_time_point_to_system);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "seconds_since_epoch", file_clock_time_point_seconds_since_epoch)
+    EMILUA_GPERF_END(key)(L);
 }
 
 static int file_clock_time_point_mt_eq(lua_State* L)
@@ -1779,6 +1759,8 @@ static int file_clock_time_point_mt_sub(lua_State* L)
     }
 }
 
+EMILUA_GPERF_DECLS_BEGIN(space_info)
+EMILUA_GPERF_NAMESPACE(emilua)
 inline int space_info_capacity(lua_State* L)
 {
     auto space = static_cast<fs::space_info*>(lua_touserdata(L, 1));
@@ -1799,23 +1781,21 @@ inline int space_info_available(lua_State* L)
     lua_pushinteger(L, space->available);
     return 1;
 }
+EMILUA_GPERF_DECLS_END(space_info)
 
 static int space_info_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(BOOST_HANA_STRING("capacity"), space_info_capacity),
-            hana::make_pair(BOOST_HANA_STRING("free"), space_info_free),
-            hana::make_pair(
-                BOOST_HANA_STRING("available"), space_info_available)
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR("capacity", space_info_capacity)
+        EMILUA_GPERF_PAIR("free", space_info_free)
+        EMILUA_GPERF_PAIR("available", space_info_available)
+    EMILUA_GPERF_END(key)(L);
 }
 
 static int space_info_mt_eq(lua_State* L)
@@ -1826,6 +1806,8 @@ static int space_info_mt_eq(lua_State* L)
     return 1;
 }
 
+EMILUA_GPERF_DECLS_BEGIN(file_status)
+EMILUA_GPERF_NAMESPACE(emilua)
 inline int file_status_type(lua_State* L)
 {
     auto st = static_cast<fs::file_status*>(lua_touserdata(L, 1));
@@ -1883,21 +1865,20 @@ inline int file_status_mode(lua_State* L)
     lua_pushinteger(L, p);
     return 1;
 }
+EMILUA_GPERF_DECLS_END(file_status)
 
 static int file_status_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(BOOST_HANA_STRING("type"), file_status_type),
-            hana::make_pair(BOOST_HANA_STRING("mode"), file_status_mode)
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR("type", file_status_type)
+        EMILUA_GPERF_PAIR("mode", file_status_mode)
+    EMILUA_GPERF_END(key)(L);
 }
 
 static int file_status_mt_eq(lua_State* L)
@@ -1908,6 +1889,8 @@ static int file_status_mt_eq(lua_State* L)
     return 1;
 }
 
+EMILUA_GPERF_DECLS_BEGIN(directory_entry)
+EMILUA_GPERF_NAMESPACE(emilua)
 static int directory_entry_refresh(lua_State* L)
 {
     auto entry = static_cast<fs::directory_entry*>(lua_touserdata(L, 1));
@@ -2100,40 +2083,30 @@ inline int directory_entry_symlink_status(lua_State* L)
     new (st) fs::file_status{ret};
     return 1;
 }
+EMILUA_GPERF_DECLS_END(directory_entry)
 
 static int directory_entry_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("refresh"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, directory_entry_refresh);
-                    return 1;
-                }
-            ),
-            hana::make_pair(BOOST_HANA_STRING("path"), directory_entry_path),
-            hana::make_pair(
-                BOOST_HANA_STRING("file_size"), directory_entry_file_size),
-            hana::make_pair(
-                BOOST_HANA_STRING("hard_link_count"),
-                directory_entry_hard_link_count),
-            hana::make_pair(
-                BOOST_HANA_STRING("last_write_time"),
-                directory_entry_last_write_time),
-            hana::make_pair(
-                BOOST_HANA_STRING("status"), directory_entry_status),
-            hana::make_pair(
-                BOOST_HANA_STRING("symlink_status"),
-                directory_entry_symlink_status)
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "refresh",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, directory_entry_refresh);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR("path", directory_entry_path)
+        EMILUA_GPERF_PAIR("file_size", directory_entry_file_size)
+        EMILUA_GPERF_PAIR("hard_link_count", directory_entry_hard_link_count)
+        EMILUA_GPERF_PAIR("last_write_time", directory_entry_last_write_time)
+        EMILUA_GPERF_PAIR("status", directory_entry_status)
+        EMILUA_GPERF_PAIR("symlink_status", directory_entry_symlink_status)
+    EMILUA_GPERF_END(key)(L);
 }
 
 int directory_iterator::next(lua_State* L)
@@ -2227,6 +2200,8 @@ int directory_iterator::make(lua_State* L)
     return 1;
 }
 
+EMILUA_GPERF_DECLS_BEGIN(recursive_directory_iterator)
+EMILUA_GPERF_NAMESPACE(emilua)
 int recursive_directory_iterator::pop(lua_State* L)
 {
     auto self = static_cast<recursive_directory_iterator*>(
@@ -2293,36 +2268,34 @@ int recursive_directory_iterator::recursion_pending(lua_State* L)
     lua_pushboolean(L, self->iterator.recursion_pending());
     return 1;
 }
+EMILUA_GPERF_DECLS_END(recursive_directory_iterator)
 
 int recursive_directory_iterator::mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("pop"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, pop);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("disable_recursion_pending"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, disable_recursion_pending);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("recursion_pending"), recursion_pending
-            )
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "pop",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, recursive_directory_iterator::pop);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "disable_recursion_pending",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(
+                    L, recursive_directory_iterator::disable_recursion_pending);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "recursion_pending",
+            recursive_directory_iterator::recursion_pending)
+    EMILUA_GPERF_END(key)(L);
 }
 
 int recursive_directory_iterator::next(lua_State* L)

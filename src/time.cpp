@@ -3,6 +3,7 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
+EMILUA_GPERF_DECLS_BEGIN(includes)
 // workaround for Boost.Asio bug
 #if defined(BOOST_ASIO_HAS_IO_URING) && defined(BOOST_ASIO_DISABLE_EPOLL)
 #include <boost/asio/detail/scheduler.hpp>
@@ -10,14 +11,17 @@
 
 #include <boost/asio/steady_timer.hpp>
 
-#include <emilua/dispatch_table.hpp>
 #include <emilua/async_base.hpp>
 #include <emilua/time.hpp>
+EMILUA_GPERF_DECLS_END(includes)
 
 namespace emilua {
 
 char time_key;
 char system_clock_time_point_mt_key;
+
+EMILUA_GPERF_DECLS_BEGIN(time)
+EMILUA_GPERF_NAMESPACE(emilua)
 static char system_timer_mt_key;
 static char system_timer_wait_key;
 static char steady_clock_time_point_mt_key;
@@ -26,6 +30,7 @@ static char steady_timer_mt_key;
 static char steady_timer_wait_key;
 
 using lua_Seconds = std::chrono::duration<lua_Number>;
+EMILUA_GPERF_DECLS_END(time)
 
 struct sleep_for_operation: public pending_operation
 {
@@ -44,6 +49,8 @@ struct sleep_for_operation: public pending_operation
     asio::steady_timer timer;
 };
 
+EMILUA_GPERF_DECLS_BEGIN(time)
+EMILUA_GPERF_NAMESPACE(emilua)
 template<class Clock>
 struct handle_type
 {
@@ -53,6 +60,7 @@ struct handle_type
 
     asio::basic_waitable_timer<Clock> timer;
 };
+EMILUA_GPERF_DECLS_END(time)
 
 static int sleep_for(lua_State* L)
 {
@@ -113,6 +121,8 @@ static int sleep_for(lua_State* L)
     return lua_yield(L, 0);
 }
 
+EMILUA_GPERF_DECLS_BEGIN(steady_clock_time_point)
+EMILUA_GPERF_NAMESPACE(emilua)
 static int steady_clock_time_point_add(lua_State* L)
 {
     lua_settop(L, 2);
@@ -206,37 +216,32 @@ inline int steady_clock_time_point_seconds_since_epoch(lua_State* L)
     lua_pushnumber(L, lua_Seconds{tp->time_since_epoch()}.count());
     return 1;
 }
+EMILUA_GPERF_DECLS_END(steady_clock_time_point)
 
 static int steady_clock_time_point_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("add"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, steady_clock_time_point_add);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("sub"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, steady_clock_time_point_sub);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("seconds_since_epoch"),
-                steady_clock_time_point_seconds_since_epoch
-            )
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "add",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, steady_clock_time_point_add);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "sub",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, steady_clock_time_point_sub);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "seconds_since_epoch", steady_clock_time_point_seconds_since_epoch)
+    EMILUA_GPERF_END(key)(L);
 }
 
 static int steady_clock_time_point_mt_eq(lua_State* L)
@@ -461,6 +466,8 @@ static int steady_clock_now(lua_State* L)
     return 1;
 }
 
+EMILUA_GPERF_DECLS_BEGIN(high_resolution_clock_time_point)
+EMILUA_GPERF_NAMESPACE(emilua)
 inline int high_resolution_clock_time_point_seconds_since_epoch(lua_State* L)
 {
     auto tp = static_cast<std::chrono::high_resolution_clock::time_point*>(
@@ -468,23 +475,21 @@ inline int high_resolution_clock_time_point_seconds_since_epoch(lua_State* L)
     lua_pushnumber(L, lua_Seconds{tp->time_since_epoch()}.count());
     return 1;
 }
+EMILUA_GPERF_DECLS_END(high_resolution_clock_time_point)
 
 static int high_resolution_clock_time_point_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("seconds_since_epoch"),
-                high_resolution_clock_time_point_seconds_since_epoch
-            )
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "seconds_since_epoch",
+            high_resolution_clock_time_point_seconds_since_epoch)
+    EMILUA_GPERF_END(key)(L);
 }
 
 static int high_resolution_clock_time_point_mt_eq(lua_State* L)
@@ -659,6 +664,8 @@ static int steady_timer_wait(lua_State* L)
     return lua_yield(L, 0);
 }
 
+EMILUA_GPERF_DECLS_BEGIN(steady_timer)
+EMILUA_GPERF_NAMESPACE(emilua)
 static int steady_timer_expires_at(lua_State* L)
 {
     auto handle = static_cast<handle_type<std::chrono::steady_clock>*>(
@@ -771,48 +778,43 @@ inline int steady_timer_expiry(lua_State* L)
     *tp = handle->timer.expiry();
     return 1;
 }
+EMILUA_GPERF_DECLS_END(steady_timer)
 
 static int steady_timer_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("wait"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &steady_timer_wait_key);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("expires_at"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, steady_timer_expires_at);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("expires_after"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, steady_timer_expires_after);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("cancel"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, steady_timer_cancel);
-                    return 1;
-                }
-            ),
-            hana::make_pair(BOOST_HANA_STRING("expiry"), steady_timer_expiry)
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "wait",
+            [](lua_State* L) -> int {
+                rawgetp(L, LUA_REGISTRYINDEX, &steady_timer_wait_key);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "expires_at",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, steady_timer_expires_at);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "expires_after",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, steady_timer_expires_after);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "cancel",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, steady_timer_cancel);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR("expiry", steady_timer_expiry)
+    EMILUA_GPERF_END(key)(L);
 }
 
 static int steady_timer_new(lua_State* L)
@@ -827,6 +829,8 @@ static int steady_timer_new(lua_State* L)
     return 1;
 }
 
+EMILUA_GPERF_DECLS_BEGIN(system_clock_time_point)
+EMILUA_GPERF_NAMESPACE(emilua)
 static int system_clock_time_point_add(lua_State* L)
 {
     lua_settop(L, 2);
@@ -920,37 +924,32 @@ inline int system_clock_time_point_seconds_since_epoch(lua_State* L)
     lua_pushnumber(L, lua_Seconds{tp->time_since_epoch()}.count());
     return 1;
 }
+EMILUA_GPERF_DECLS_END(system_clock_time_point)
 
 static int system_clock_time_point_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("add"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_clock_time_point_add);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("sub"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_clock_time_point_sub);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("seconds_since_epoch"),
-                system_clock_time_point_seconds_since_epoch
-            )
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "add",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, system_clock_time_point_add);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "sub",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, system_clock_time_point_sub);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "seconds_since_epoch", system_clock_time_point_seconds_since_epoch)
+    EMILUA_GPERF_END(key)(L);
 }
 
 static int system_clock_time_point_mt_eq(lua_State* L)
@@ -1212,6 +1211,8 @@ static int system_timer_wait(lua_State* L)
     return lua_yield(L, 0);
 }
 
+EMILUA_GPERF_DECLS_BEGIN(system_timer)
+EMILUA_GPERF_NAMESPACE(emilua)
 static int system_timer_expires_at(lua_State* L)
 {
     auto handle = static_cast<handle_type<std::chrono::system_clock>*>(
@@ -1286,41 +1287,37 @@ inline int system_timer_expiry(lua_State* L)
     *tp = handle->timer.expiry();
     return 1;
 }
+EMILUA_GPERF_DECLS_END(system_timer)
 
 static int system_timer_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("wait"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &system_timer_wait_key);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("expires_at"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_timer_expires_at);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("cancel"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, system_timer_cancel);
-                    return 1;
-                }
-            ),
-            hana::make_pair(BOOST_HANA_STRING("expiry"), system_timer_expiry)
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "wait",
+            [](lua_State* L) -> int {
+                rawgetp(L, LUA_REGISTRYINDEX, &system_timer_wait_key);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "expires_at",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, system_timer_expires_at);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "cancel",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, system_timer_cancel);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR("expiry", system_timer_expiry)
+    EMILUA_GPERF_END(key)(L);
 }
 
 static int system_timer_new(lua_State* L)

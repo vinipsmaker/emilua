@@ -660,6 +660,12 @@ set_default_interrupter(lua_State* L, vm_context& vm_ctx)
     return cancel_signal->slot();
 }
 
+int throw_enosys(lua_State* L)
+{
+    push(L, std::errc::function_not_supported);
+    return lua_error(L);
+}
+
 class lua_category_impl: public std::error_category
 {
 public:

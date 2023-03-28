@@ -3,9 +3,10 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
+EMILUA_GPERF_DECLS_BEGIN(includes)
 #include <emilua/condition_variable.hpp>
-#include <emilua/dispatch_table.hpp>
 #include <emilua/mutex.hpp>
+EMILUA_GPERF_DECLS_END(includes)
 
 namespace emilua {
 
@@ -13,6 +14,9 @@ extern unsigned char cond_wait_bytecode[];
 extern std::size_t cond_wait_bytecode_size;
 
 char condition_variable_key;
+
+EMILUA_GPERF_DECLS_BEGIN(condition_variable)
+EMILUA_GPERF_NAMESPACE(emilua)
 static char cond_mt_key;
 static char cond_wait_key;
 
@@ -20,6 +24,7 @@ struct cond_handle
 {
     std::deque<lua_State*> pending;
 };
+EMILUA_GPERF_DECLS_END(condition_variable)
 
 static int cond_wait(lua_State* L)
 {
@@ -107,6 +112,8 @@ static int cond_wait(lua_State* L)
     return lua_yield(L, 0);
 }
 
+EMILUA_GPERF_DECLS_BEGIN(condition_variable)
+EMILUA_GPERF_NAMESPACE(emilua)
 static int cond_notify_one(lua_State* L)
 {
     auto handle = static_cast<cond_handle*>(lua_touserdata(L, 1));
@@ -154,40 +161,36 @@ static int cond_notify_all(lua_State* L)
     handle->pending.clear();
     return 0;
 }
+EMILUA_GPERF_DECLS_END(condition_variable)
 
 static int cond_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("notify_all"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, cond_notify_all);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("wait"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &cond_wait_key);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("notify_one"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, cond_notify_one);
-                    return 1;
-                }
-            )
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "notify_all",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, cond_notify_all);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "wait",
+            [](lua_State* L) -> int {
+                rawgetp(L, LUA_REGISTRYINDEX, &cond_wait_key);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "notify_one",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, cond_notify_one);
+                return 1;
+            })
+    EMILUA_GPERF_END(key)(L);
 }
 
 static int cond_new(lua_State* L)

@@ -1,7 +1,7 @@
 project(
     'emilua', 'cpp',
     default_options : ['cpp_std=c++20'],
-    meson_version : '>=0.57.0',
+    meson_version : '>=0.62.0',
     license : 'BSL-1.0',
     version : '0.3.2',
 )
@@ -38,6 +38,7 @@ serd = dependency('serd-0')
 sord = dependency('sord-0')
 trial_protocol = dependency('trial-protocol')
 libdl = meson.get_compiler('cpp').find_library('dl', required : false)
+gawk = find_program('gawk')
 find_program('xxd')
 
 add_project_arguments(
@@ -134,6 +135,23 @@ else
     )
 endif
 
+emilua_gperf = find_program(
+    'emilua_gperf.awk',
+    dirs : [meson.current_source_dir() / 'src'],
+)
+
+gperf_gen = generator(
+    emilua_gperf,
+    output : 'bc2_@BASENAME@.cpp',
+    arguments: [
+        '--assign', 'GPERF_BIN=' + find_program('gperf').full_path(),
+        '@INPUT@', '@OUTPUT@',
+    ],
+)
+install_data(
+    'src' / 'emilua_gperf.awk',
+    install_dir : get_option('datadir') / 'emilua',
+)
 
 if get_option('enable_manpages')
     asciidoctor = find_program('asciidoctor', native : true)
@@ -173,7 +191,6 @@ if get_option('enable_tests')
         # GNU Coreutils binaries are not specified explicitly, but expected too
         shell = find_program('bash', 'ksh')
     endif
-    gawk = find_program('gawk')
 endif
 
 incdir = [
@@ -219,7 +236,6 @@ bytecode_src = [
 
 re2c_src = [
     'src/actor.ypp',
-    'src/state.ypp',
     'src/main.ypp',
 ]
 
@@ -255,11 +271,27 @@ if get_option('enable_linux_namespaces')
     src += 'src/linux_namespaces.cpp'
 endif
 
+# Meson doesn't have the ability to chain generators, so instead of
+# just calling gperf_gen.process(re2c_gen.process(re2c_src)), we have
+# to manually write each target that needs a pipeline of generators
+# https://github.com/mesonbuild/meson/issues/1141
+pp_state = custom_target(
+    'bc2_state.cpp',
+    output : 'bc2_state.cpp',
+    input : re2c_gen.process('src/state.ypp'),
+    command : [
+        emilua_gperf,
+        '--assign', 'GPERF_BIN=' + find_program('gperf').full_path(),
+        '@INPUT@', '@OUTPUT@',
+    ],
+)
+
 emilua_bin = executable(
     'emilua',
-    src,
+    gperf_gen.process(src),
     bytecode_gen.process(bytecode_src),
     re2c_gen.process(re2c_src),
+    pp_state,
     cpp_pch : 'pch/pchheader.hpp',
     dependencies : [
         thread_dep,
@@ -325,6 +357,7 @@ import('pkgconfig').generate(
         'thread_support_level=' +
         get_option('thread_support_level').to_string(),
         'file_io_enabled=' + get_option('enable_file_io').to_string(),
+        'emilua_gperf=${datadir}' / 'emilua' / 'emilua_gperf.awk',
     ],
     extra_cflags : pc_extra_cflags,
 )

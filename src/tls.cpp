@@ -3,18 +3,17 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
-#include <optional>
-
+EMILUA_GPERF_DECLS_BEGIN(includes)
 #include <boost/smart_ptr/local_shared_ptr.hpp>
 #include <boost/scope_exit.hpp>
 #include <boost/asio/ssl.hpp>
 
-#include <emilua/dispatch_table.hpp>
 #include <emilua/async_base.hpp>
 #include <emilua/filesystem.hpp>
 #include <emilua/byte_span.hpp>
 #include <emilua/tls.hpp>
 #include <emilua/ip.hpp>
+EMILUA_GPERF_DECLS_END(includes)
 
 namespace emilua {
 
@@ -22,6 +21,8 @@ char tls_key;
 char tls_context_mt_key;
 char tls_socket_mt_key;
 
+EMILUA_GPERF_DECLS_BEGIN(tls)
+EMILUA_GPERF_NAMESPACE(emilua)
 static char socket_client_handshake_key;
 static char socket_server_handshake_key;
 static char tls_socket_read_some_key;
@@ -110,49 +111,39 @@ struct context_password_callback
 
     boost::local_shared_ptr<resource> shared_resource;
 };
+EMILUA_GPERF_DECLS_END(tls)
 
 static int tls_context_new(lua_State* L)
 {
     luaL_checktype(L, 1, LUA_TSTRING);
-    std::optional<asio::ssl::context::method> method;
-    dispatch_table::dispatch(
-        hana::make_tuple(
-#define EMILUA_DEFINE_METHOD_FLAG(M)                \
-            hana::make_pair(                        \
-                BOOST_HANA_STRING(#M),              \
-                [&method]() {                       \
-                    method = asio::ssl::context::M; \
-                }                                   \
-            )
-            EMILUA_DEFINE_METHOD_FLAG(sslv2),
-            EMILUA_DEFINE_METHOD_FLAG(sslv2_client),
-            EMILUA_DEFINE_METHOD_FLAG(sslv2_server),
-            EMILUA_DEFINE_METHOD_FLAG(sslv3),
-            EMILUA_DEFINE_METHOD_FLAG(sslv3_client),
-            EMILUA_DEFINE_METHOD_FLAG(sslv3_server),
-            EMILUA_DEFINE_METHOD_FLAG(tlsv1),
-            EMILUA_DEFINE_METHOD_FLAG(tlsv1_client),
-            EMILUA_DEFINE_METHOD_FLAG(tlsv1_server),
-            EMILUA_DEFINE_METHOD_FLAG(sslv23),
-            EMILUA_DEFINE_METHOD_FLAG(sslv23_client),
-            EMILUA_DEFINE_METHOD_FLAG(sslv23_server),
-            EMILUA_DEFINE_METHOD_FLAG(tlsv11),
-            EMILUA_DEFINE_METHOD_FLAG(tlsv11_client),
-            EMILUA_DEFINE_METHOD_FLAG(tlsv11_server),
-            EMILUA_DEFINE_METHOD_FLAG(tlsv12),
-            EMILUA_DEFINE_METHOD_FLAG(tlsv12_client),
-            EMILUA_DEFINE_METHOD_FLAG(tlsv12_server),
-            EMILUA_DEFINE_METHOD_FLAG(tlsv13),
-            EMILUA_DEFINE_METHOD_FLAG(tlsv13_client),
-            EMILUA_DEFINE_METHOD_FLAG(tlsv13_server),
-            EMILUA_DEFINE_METHOD_FLAG(tls),
-            EMILUA_DEFINE_METHOD_FLAG(tls_client),
-            EMILUA_DEFINE_METHOD_FLAG(tls_server)
-#undef EMILUA_DEFINE_METHOD_FLAG
-        ),
-        [](std::string_view /*key*/) {},
-        tostringview(L, 1)
-    );
+    auto key = tostringview(L, 1);
+    auto method = EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(asio::ssl::context::method action)
+        EMILUA_GPERF_PAIR("sslv2", asio::ssl::context::sslv2)
+        EMILUA_GPERF_PAIR("sslv2_client", asio::ssl::context::sslv2_client)
+        EMILUA_GPERF_PAIR("sslv2_server", asio::ssl::context::sslv2_server)
+        EMILUA_GPERF_PAIR("sslv3", asio::ssl::context::sslv3)
+        EMILUA_GPERF_PAIR("sslv3_client", asio::ssl::context::sslv3_client)
+        EMILUA_GPERF_PAIR("sslv3_server", asio::ssl::context::sslv3_server)
+        EMILUA_GPERF_PAIR("tlsv1", asio::ssl::context::tlsv1)
+        EMILUA_GPERF_PAIR("tlsv1_client", asio::ssl::context::tlsv1_client)
+        EMILUA_GPERF_PAIR("tlsv1_server", asio::ssl::context::tlsv1_server)
+        EMILUA_GPERF_PAIR("sslv23", asio::ssl::context::sslv23)
+        EMILUA_GPERF_PAIR("sslv23_client", asio::ssl::context::sslv23_client)
+        EMILUA_GPERF_PAIR("sslv23_server", asio::ssl::context::sslv23_server)
+        EMILUA_GPERF_PAIR("tlsv11", asio::ssl::context::tlsv11)
+        EMILUA_GPERF_PAIR("tlsv11_client", asio::ssl::context::tlsv11_client)
+        EMILUA_GPERF_PAIR("tlsv11_server", asio::ssl::context::tlsv11_server)
+        EMILUA_GPERF_PAIR("tlsv12", asio::ssl::context::tlsv12)
+        EMILUA_GPERF_PAIR("tlsv12_client", asio::ssl::context::tlsv12_client)
+        EMILUA_GPERF_PAIR("tlsv12_server", asio::ssl::context::tlsv12_server)
+        EMILUA_GPERF_PAIR("tlsv13", asio::ssl::context::tlsv13)
+        EMILUA_GPERF_PAIR("tlsv13_client", asio::ssl::context::tlsv13_client)
+        EMILUA_GPERF_PAIR("tlsv13_server", asio::ssl::context::tlsv13_server)
+        EMILUA_GPERF_PAIR("tls", asio::ssl::context::tls)
+        EMILUA_GPERF_PAIR("tls_client", asio::ssl::context::tls_client)
+        EMILUA_GPERF_PAIR("tls_server", asio::ssl::context::tls_server)
+    EMILUA_GPERF_END(key);
     if (!method) {
         push(L, std::errc::invalid_argument, "arg", 1);
         return lua_error(L);
@@ -173,6 +164,8 @@ static int tls_context_new(lua_State* L)
     }
 }
 
+EMILUA_GPERF_DECLS_BEGIN(context)
+EMILUA_GPERF_NAMESPACE(emilua)
 static int context_add_certificate_authority(lua_State* L)
 {
     auto ctx = static_cast<std::shared_ptr<asio::ssl::context>*>(
@@ -430,31 +423,30 @@ static int context_set_verify_callback(lua_State* L)
         return lua_error(L);
     }
 
-    boost::system::error_code ec;
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("host_name_verification"),
-                [&]() -> int {
-                    luaL_checktype(L, 3, LUA_TSTRING);
-                    asio::ssl::host_name_verification o{
-                        static_cast<std::string>(tostringview(L, 3))};
-                    (*ctx)->set_verify_callback(std::move(o), ec);
-                    if (ec) {
-                        push(L, static_cast<std::error_code>(ec));
-                        return lua_error(L);
-                    }
-                    return 0;
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(
+            int (*action)(lua_State*, std::shared_ptr<asio::ssl::context>*))
+        EMILUA_GPERF_DEFAULT_VALUE(
+            [](lua_State* L, std::shared_ptr<asio::ssl::context>*) -> int {
+                push(L, std::errc::not_supported);
+                return lua_error(L);
+            })
+        EMILUA_GPERF_PAIR(
+            "host_name_verification",
+            [](lua_State* L, std::shared_ptr<asio::ssl::context>* ctx) -> int {
+                luaL_checktype(L, 3, LUA_TSTRING);
+                asio::ssl::host_name_verification o{
+                    static_cast<std::string>(tostringview(L, 3))};
+                boost::system::error_code ec;
+                (*ctx)->set_verify_callback(std::move(o), ec);
+                if (ec) {
+                    push(L, static_cast<std::error_code>(ec));
+                    return lua_error(L);
                 }
-            )
-        ),
-        [L](std::string_view /*key*/) -> int {
-            push(L, std::errc::not_supported);
-            return lua_error(L);
-        },
-        tostringview(L, 2)
-    );
-    return 0;
+                return 0;
+            })
+    EMILUA_GPERF_END(key)(L, ctx);
 }
 
 static int context_set_verify_depth(lua_State* L)
@@ -500,62 +492,61 @@ static int context_set_verify_mode(lua_State* L)
         return lua_error(L);
     }
 
-    boost::system::error_code ec;
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("none"),
-                [&]() -> int {
-                    (*ctx)->set_verify_mode(asio::ssl::verify_none, ec);
-                    if (ec) {
-                        push(L, static_cast<std::error_code>(ec));
-                        return lua_error(L);
-                    }
-                    return 0;
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(
+            int (*action)(lua_State*, std::shared_ptr<asio::ssl::context>*))
+        EMILUA_GPERF_DEFAULT_VALUE(
+            [](lua_State* L, std::shared_ptr<asio::ssl::context>*) -> int {
+                push(L, std::errc::invalid_argument, "arg", 2);
+                return lua_error(L);
+            })
+        EMILUA_GPERF_PAIR(
+            "none",
+            [](lua_State* L, std::shared_ptr<asio::ssl::context>* ctx) -> int {
+                boost::system::error_code ec;
+                (*ctx)->set_verify_mode(asio::ssl::verify_none, ec);
+                if (ec) {
+                    push(L, static_cast<std::error_code>(ec));
+                    return lua_error(L);
                 }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("peer"),
-                [&]() -> int {
-                    (*ctx)->set_verify_mode(asio::ssl::verify_peer, ec);
-                    if (ec) {
-                        push(L, static_cast<std::error_code>(ec));
-                        return lua_error(L);
-                    }
-                    return 0;
+                return 0;
+            })
+        EMILUA_GPERF_PAIR(
+            "peer",
+            [](lua_State* L, std::shared_ptr<asio::ssl::context>* ctx) -> int {
+                boost::system::error_code ec;
+                (*ctx)->set_verify_mode(asio::ssl::verify_peer, ec);
+                if (ec) {
+                    push(L, static_cast<std::error_code>(ec));
+                    return lua_error(L);
                 }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("fail_if_no_peer_cert"),
-                [&]() -> int {
-                    (*ctx)->set_verify_mode(
-                        asio::ssl::verify_fail_if_no_peer_cert, ec);
-                    if (ec) {
-                        push(L, static_cast<std::error_code>(ec));
-                        return lua_error(L);
-                    }
-                    return 0;
+                return 0;
+            })
+        EMILUA_GPERF_PAIR(
+            "fail_if_no_peer_cert",
+            [](lua_State* L, std::shared_ptr<asio::ssl::context>* ctx) -> int {
+                boost::system::error_code ec;
+                (*ctx)->set_verify_mode(
+                    asio::ssl::verify_fail_if_no_peer_cert, ec);
+                if (ec) {
+                    push(L, static_cast<std::error_code>(ec));
+                    return lua_error(L);
                 }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("client_once"),
-                [&]() -> int {
-                    (*ctx)->set_verify_mode(asio::ssl::verify_client_once, ec);
-                    if (ec) {
-                        push(L, static_cast<std::error_code>(ec));
-                        return lua_error(L);
-                    }
-                    return 0;
+                return 0;
+            })
+        EMILUA_GPERF_PAIR(
+            "client_once",
+            [](lua_State* L, std::shared_ptr<asio::ssl::context>* ctx) -> int {
+                boost::system::error_code ec;
+                (*ctx)->set_verify_mode(asio::ssl::verify_client_once, ec);
+                if (ec) {
+                    push(L, static_cast<std::error_code>(ec));
+                    return lua_error(L);
                 }
-            )
-        ),
-        [L](std::string_view /*key*/) -> int {
-            push(L, std::errc::invalid_argument);
-            return lua_error(L);
-        },
-        tostringview(L, 2)
-    );
-    return 0;
+                return 0;
+            })
+    EMILUA_GPERF_END(key)(L, ctx);
 }
 
 static int context_use_certificate(lua_State* L)
@@ -1045,159 +1036,138 @@ static int context_use_tmp_dh_file(lua_State* L)
     }
     return 0;
 }
+EMILUA_GPERF_DECLS_END(context)
 
 static int tls_context_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("add_certificate_authority"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, context_add_certificate_authority);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("add_verify_path"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, context_add_verify_path);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("clear_options"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, context_clear_options);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("load_verify_file"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, context_load_verify_file);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("set_default_verify_paths"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, context_set_default_verify_paths);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("set_options"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, context_set_options);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("set_password_callback"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, context_set_password_callback);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("set_verify_callback"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, context_set_verify_callback);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("set_verify_depth"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, context_set_verify_depth);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("set_verify_mode"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, context_set_verify_mode);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("use_certificate"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, context_use_certificate);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("use_certificate_chain"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, context_use_certificate_chain);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("use_certificate_chain_file"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, context_use_certificate_chain_file);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("use_certificate_file"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, context_use_certificate_file);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("use_private_key"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, context_use_private_key);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("use_private_key_file"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, context_use_private_key_file);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("use_rsa_private_key"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, context_use_rsa_private_key);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("use_rsa_private_key_file"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, context_use_rsa_private_key_file);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("use_tmp_dh"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, context_use_tmp_dh);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("use_tmp_dh_file"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, context_use_tmp_dh_file);
-                    return 1;
-                }
-            )
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "add_certificate_authority",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, context_add_certificate_authority);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "add_verify_path",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, context_add_verify_path);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "clear_options",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, context_clear_options);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "load_verify_file",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, context_load_verify_file);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "set_default_verify_paths",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, context_set_default_verify_paths);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "set_options",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, context_set_options);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "set_password_callback",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, context_set_password_callback);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "set_verify_callback",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, context_set_verify_callback);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "set_verify_depth",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, context_set_verify_depth);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "set_verify_mode",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, context_set_verify_mode);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "use_certificate",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, context_use_certificate);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "use_certificate_chain",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, context_use_certificate_chain);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "use_certificate_chain_file",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, context_use_certificate_chain_file);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "use_certificate_file",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, context_use_certificate_file);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "use_private_key",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, context_use_private_key);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "use_private_key_file",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, context_use_private_key_file);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "use_rsa_private_key",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, context_use_rsa_private_key);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "use_rsa_private_key_file",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, context_use_rsa_private_key_file);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "use_tmp_dh",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, context_use_tmp_dh);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "use_tmp_dh_file",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, context_use_tmp_dh_file);
+                return 1;
+            })
+    EMILUA_GPERF_END(key)(L);
 }
 
 static int tls_socket_new(lua_State* L)
@@ -1418,6 +1388,8 @@ static int tls_socket_write_some(lua_State* L)
     return lua_yield(L, 0);
 }
 
+EMILUA_GPERF_DECLS_BEGIN(socket)
+EMILUA_GPERF_NAMESPACE(emilua)
 #ifndef BOOST_ASIO_USE_WOLFSSL
 static int tls_socket_set_server_name(lua_State* L)
 {
@@ -1462,31 +1434,28 @@ static int tls_socket_set_verify_callback(lua_State* L)
         return lua_error(L);
     }
 
-    boost::system::error_code ec;
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("host_name_verification"),
-                [&]() -> int {
-                    luaL_checktype(L, 3, LUA_TSTRING);
-                    asio::ssl::host_name_verification o{
-                        static_cast<std::string>(tostringview(L, 3))};
-                    s->set_verify_callback(std::move(o), ec);
-                    if (ec) {
-                        push(L, static_cast<std::error_code>(ec));
-                        return lua_error(L);
-                    }
-                    return 0;
-                }
-            )
-        ),
-        [L](std::string_view /*key*/) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*, TlsSocket*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L, TlsSocket*) -> int {
             push(L, std::errc::not_supported);
             return lua_error(L);
-        },
-        tostringview(L, 2)
-    );
-    return 0;
+        })
+        EMILUA_GPERF_PAIR(
+            "host_name_verification",
+            [](lua_State* L, TlsSocket* s) -> int {
+                luaL_checktype(L, 3, LUA_TSTRING);
+                asio::ssl::host_name_verification o{
+                    static_cast<std::string>(tostringview(L, 3))};
+                boost::system::error_code ec;
+                s->set_verify_callback(std::move(o), ec);
+                if (ec) {
+                    push(L, static_cast<std::error_code>(ec));
+                    return lua_error(L);
+                }
+                return 0;
+            })
+    EMILUA_GPERF_END(key)(L, s);
 }
 
 static int tls_socket_set_verify_depth(lua_State* L)
@@ -1528,134 +1497,123 @@ static int tls_socket_set_verify_mode(lua_State* L)
         return lua_error(L);
     }
 
-    boost::system::error_code ec;
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("none"),
-                [&]() -> int {
-                    s->set_verify_mode(asio::ssl::verify_none, ec);
-                    if (ec) {
-                        push(L, static_cast<std::error_code>(ec));
-                        return lua_error(L);
-                    }
-                    return 0;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("peer"),
-                [&]() -> int {
-                    s->set_verify_mode(asio::ssl::verify_peer, ec);
-                    if (ec) {
-                        push(L, static_cast<std::error_code>(ec));
-                        return lua_error(L);
-                    }
-                    return 0;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("fail_if_no_peer_cert"),
-                [&]() -> int {
-                    s->set_verify_mode(
-                        asio::ssl::verify_fail_if_no_peer_cert, ec);
-                    if (ec) {
-                        push(L, static_cast<std::error_code>(ec));
-                        return lua_error(L);
-                    }
-                    return 0;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("client_once"),
-                [&]() -> int {
-                    s->set_verify_mode(asio::ssl::verify_client_once, ec);
-                    if (ec) {
-                        push(L, static_cast<std::error_code>(ec));
-                        return lua_error(L);
-                    }
-                    return 0;
-                }
-            )
-        ),
-        [L](std::string_view /*key*/) -> int {
-            push(L, std::errc::invalid_argument);
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*, TlsSocket*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L, TlsSocket*) -> int {
+            push(L, std::errc::invalid_argument, "arg", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2)
-    );
-    return 0;
+        })
+        EMILUA_GPERF_PAIR(
+            "none",
+            [](lua_State* L, TlsSocket* s) -> int {
+                boost::system::error_code ec;
+                s->set_verify_mode(asio::ssl::verify_none, ec);
+                if (ec) {
+                    push(L, static_cast<std::error_code>(ec));
+                    return lua_error(L);
+                }
+                return 0;
+            })
+        EMILUA_GPERF_PAIR(
+            "peer",
+            [](lua_State* L, TlsSocket* s) -> int {
+                boost::system::error_code ec;
+                s->set_verify_mode(asio::ssl::verify_peer, ec);
+                if (ec) {
+                    push(L, static_cast<std::error_code>(ec));
+                    return lua_error(L);
+                }
+                return 0;
+            })
+        EMILUA_GPERF_PAIR(
+            "fail_if_no_peer_cert",
+            [](lua_State* L, TlsSocket* s) -> int {
+                boost::system::error_code ec;
+                s->set_verify_mode(asio::ssl::verify_fail_if_no_peer_cert, ec);
+                if (ec) {
+                    push(L, static_cast<std::error_code>(ec));
+                    return lua_error(L);
+                }
+                return 0;
+            })
+        EMILUA_GPERF_PAIR(
+            "client_once",
+            [](lua_State* L, TlsSocket* s) -> int {
+                boost::system::error_code ec;
+                s->set_verify_mode(asio::ssl::verify_client_once, ec);
+                if (ec) {
+                    push(L, static_cast<std::error_code>(ec));
+                    return lua_error(L);
+                }
+                return 0;
+            })
+    EMILUA_GPERF_END(key)(L, s);
 }
+EMILUA_GPERF_DECLS_END(socket)
 
 static int tls_socket_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("client_handshake"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &socket_client_handshake_key);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("server_handshake"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &socket_server_handshake_key);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("read_some"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &tls_socket_read_some_key);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("write_some"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &tls_socket_write_some_key);
-                    return 1;
-                }
-            ),
-#ifndef BOOST_ASIO_USE_WOLFSSL
-            hana::make_pair(
-                BOOST_HANA_STRING("set_server_name"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, tls_socket_set_server_name);
-                    return 1;
-                }
-            ),
-#endif // !defined(BOOST_ASIO_USE_WOLFSSL)
-            hana::make_pair(
-                BOOST_HANA_STRING("set_verify_callback"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, tls_socket_set_verify_callback);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("set_verify_depth"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, tls_socket_set_verify_depth);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("set_verify_mode"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, tls_socket_set_verify_mode);
-                    return 1;
-                }
-            )
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "client_handshake",
+            [](lua_State* L) -> int {
+                rawgetp(L, LUA_REGISTRYINDEX, &socket_client_handshake_key);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "server_handshake",
+            [](lua_State* L) -> int {
+                rawgetp(L, LUA_REGISTRYINDEX, &socket_server_handshake_key);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "read_some",
+            [](lua_State* L) -> int {
+                rawgetp(L, LUA_REGISTRYINDEX, &tls_socket_read_some_key);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "write_some",
+            [](lua_State* L) -> int {
+                rawgetp(L, LUA_REGISTRYINDEX, &tls_socket_write_some_key);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "set_server_name",
+            [](lua_State* L) -> int {
+#ifndef BOOST_ASIO_USE_WOLFSSL
+                lua_pushcfunction(L, tls_socket_set_server_name);
+#else // !defined(BOOST_ASIO_USE_WOLFSSL)
+                lua_pushcfunction(L, throw_enosys);
+#endif // !defined(BOOST_ASIO_USE_WOLFSSL)
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "set_verify_callback",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, tls_socket_set_verify_callback);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "set_verify_depth",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, tls_socket_set_verify_depth);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "set_verify_mode",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, tls_socket_set_verify_mode);
+                return 1;
+            })
+    EMILUA_GPERF_END(key)(L);
 }
 
 void init_tls(lua_State* L)

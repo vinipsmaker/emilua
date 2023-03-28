@@ -3,9 +3,9 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
+EMILUA_GPERF_DECLS_BEGIN(includes)
 #include <emilua/json.hpp>
 
-#include <emilua/dispatch_table.hpp>
 #include <emilua/detail/core.hpp>
 
 #include <boost/hana/functional/overload.hpp>
@@ -13,11 +13,15 @@
 #include <trial/protocol/buffer/string.hpp>
 #include <trial/protocol/json/reader.hpp>
 #include <trial/protocol/json/writer.hpp>
+EMILUA_GPERF_DECLS_END(includes)
 
 namespace emilua {
 
+EMILUA_GPERF_DECLS_BEGIN(writer)
+EMILUA_GPERF_NAMESPACE(emilua)
 namespace json = trial::protocol::json;
 namespace token = trial::protocol::json::token;
+EMILUA_GPERF_DECLS_END(writer)
 
 class json_category_impl: public std::error_category
 {
@@ -26,6 +30,8 @@ public:
     std::string message(int value) const noexcept override;
 };
 
+EMILUA_GPERF_DECLS_BEGIN(writer)
+EMILUA_GPERF_NAMESPACE(emilua)
 struct json_writer
 {
     json_writer()
@@ -36,13 +42,15 @@ struct json_writer
     json::writer writer;
 };
 
+static char json_array_mt_key;
+static char json_null_key;
+static char writer_mt_key;
+EMILUA_GPERF_DECLS_END(writer)
+
 extern unsigned char json_encode_bytecode[];
 extern std::size_t json_encode_bytecode_size;
 
 char json_key;
-static char json_array_mt_key;
-static char json_null_key;
-static char writer_mt_key;
 
 const char* json_category_impl::name() const noexcept
 {
@@ -363,6 +371,8 @@ static int get_tojson(lua_State* L)
     return 1;
 }
 
+EMILUA_GPERF_DECLS_BEGIN(writer)
+EMILUA_GPERF_NAMESPACE(emilua)
 static int writer_value(lua_State* L)
 {
     lua_settop(L, 2);
@@ -507,73 +517,61 @@ inline int writer_level(lua_State* L)
     lua_pushnumber(L, jw->writer.level());
     return 1;
 }
+EMILUA_GPERF_DECLS_END(writer)
 
 static int writer_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("value"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, writer_value);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("begin_object"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(
-                        L, writer_token<json::token::begin_object>);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("end_object"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(
-                        L, writer_token<json::token::end_object>);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("begin_array"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(
-                        L, writer_token<json::token::begin_array>);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("end_array"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(
-                        L, writer_token<json::token::end_array>);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("literal"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, writer_literal);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("generate"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, writer_generate);
-                    return 1;
-                }
-            ),
-            hana::make_pair(BOOST_HANA_STRING("level"), writer_level)
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "value",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, writer_value);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "begin_object",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, writer_token<json::token::begin_object>);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "end_object",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, writer_token<json::token::end_object>);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "begin_array",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, writer_token<json::token::begin_array>);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "end_array",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, writer_token<json::token::end_array>);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "literal",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, writer_literal);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "generate",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, writer_generate);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR("level", writer_level)
+    EMILUA_GPERF_END(key)(L);
 }
 
 static int writer_new(lua_State* L)

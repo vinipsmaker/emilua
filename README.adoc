@@ -35,6 +35,7 @@ Features:
 * C/{cpp} source code under Boost Software License.
 * Lua code (including snippets scattered through the documentation) distributed
   in this repo is released as public domain.
+* The file `src/emilua_gperf.awk` is released as public domain.
 * Documentation (except for the source code samples contained within) is
   licensed under the Creative Commons Attribution 4.0 International License.
 * Submodules and dependencies have their own licensing terms.
@@ -51,12 +52,14 @@ section will be prefixed by "emilua-".
 
 == Dependencies
 
-* Meson 0.57.0 or later.
+* Meson 0.62.0 or later.
 * {cpp}20 compiler (GCC 12.1 or newer should work).
 * LuaJIT.
 * Boost.Asio (and other Boost libraries as well).
 * https://fmt.dev/[fmt] 8.0 or later.
 * `re2c` 1.3 or later.
+* `gperf` 3.1 or later (maybe it'll work on older versions as well).
+* GNU AWK 5.1 or later.
 * `xxd`.
 
 == Optional dependencies
@@ -65,7 +68,6 @@ section will be prefixed by "emilua-".
 * asciidoctor: manpages.
 * asciidoctor-diagram: ascii-art diagrams for manpages.
 * PlantUML: ascii-art diagrams for manpages.
-* GNU AWK: tests.
 
 == BUILD
 

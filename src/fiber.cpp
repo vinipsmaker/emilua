@@ -3,8 +3,8 @@
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) */
 
+EMILUA_GPERF_DECLS_BEGIN(includes)
 #include <emilua/fiber.hpp>
-#include <emilua/dispatch_table.hpp>
 #include <emilua/scope_cleanup.hpp>
 
 #include <fmt/ostream.h>
@@ -14,6 +14,7 @@
 #include <boost/hana/maximum.hpp>
 #include <boost/hana/tuple.hpp>
 #include <boost/hana/plus.hpp>
+EMILUA_GPERF_DECLS_END(includes)
 
 namespace emilua {
 
@@ -25,9 +26,13 @@ extern std::size_t spawn_start_fn_bytecode_size;
 char fiber_list_key;
 char yield_reason_is_native_key;
 static char spawn_start_fn_key;
+static char asio_cancellation_signal_mt_key;
+
+EMILUA_GPERF_DECLS_BEGIN(fiber)
+EMILUA_GPERF_NAMESPACE(emilua)
 static char fiber_mt_key;
 static char fiber_join_key;
-static char asio_cancellation_signal_mt_key;
+EMILUA_GPERF_DECLS_END(fiber)
 
 static int fiber_join(lua_State* L)
 {
@@ -163,6 +168,8 @@ static int fiber_join(lua_State* L)
     return 0;
 }
 
+EMILUA_GPERF_DECLS_BEGIN(fiber)
+EMILUA_GPERF_NAMESPACE(emilua)
 static int fiber_detach(lua_State* L)
 {
     auto handle = static_cast<fiber_handle*>(lua_touserdata(L, 1));
@@ -274,45 +281,38 @@ inline int fiber_joinable(lua_State* L)
     lua_pushboolean(L, handle->fiber != nullptr && !handle->join_in_progress);
     return 1;
 }
+EMILUA_GPERF_DECLS_END(fiber)
 
 static int fiber_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("join"),
-                [](lua_State* L) -> int {
-                    rawgetp(L, LUA_REGISTRYINDEX, &fiber_join_key);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("detach"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, fiber_detach);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("interrupt"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, fiber_interrupt);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("interruption_caught"),
-                fiber_interruption_caught
-            ),
-            hana::make_pair(BOOST_HANA_STRING("joinable"), fiber_joinable)
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "join",
+            [](lua_State* L) -> int {
+                rawgetp(L, LUA_REGISTRYINDEX, &fiber_join_key);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "detach",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, fiber_detach);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "interrupt",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, fiber_interrupt);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR("interruption_caught", fiber_interruption_caught)
+        EMILUA_GPERF_PAIR("joinable", fiber_joinable)
+    EMILUA_GPERF_END(key)(L);
 }
 
 static int fiber_mt_gc(lua_State* L)
@@ -442,6 +442,8 @@ static int spawn(lua_State* L)
     return 1;
 }
 
+EMILUA_GPERF_DECLS_BEGIN(this_fiber)
+EMILUA_GPERF_NAMESPACE(emilua)
 static int this_fiber_yield(lua_State* L)
 {
     auto vm_ctx = get_vm_context(L).shared_from_this();
@@ -597,57 +599,51 @@ inline int this_fiber_id(lua_State* L)
     lua_pushfstring(L, "%p", id);
     return 1;
 }
+EMILUA_GPERF_DECLS_END(this_fiber)
 
 static int this_fiber_mt_index(lua_State* L)
 {
-    return dispatch_table::dispatch(
-        hana::make_tuple(
-            hana::make_pair(
-                BOOST_HANA_STRING("yield"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, this_fiber_yield);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("restore_interruption"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, this_fiber_restore_interruption);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("disable_interruption"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, this_fiber_disable_interruption);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("allow_suspend"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, this_fiber_allow_suspend);
-                    return 1;
-                }
-            ),
-            hana::make_pair(
-                BOOST_HANA_STRING("forbid_suspend"),
-                [](lua_State* L) -> int {
-                    lua_pushcfunction(L, this_fiber_forbid_suspend);
-                    return 1;
-                }
-            ),
-            hana::make_pair(BOOST_HANA_STRING("local_"), this_fiber_local),
-            hana::make_pair(BOOST_HANA_STRING("is_main"), this_fiber_is_main),
-            hana::make_pair(BOOST_HANA_STRING("id"), this_fiber_id)
-        ),
-        [](std::string_view /*key*/, lua_State* L) -> int {
+    auto key = tostringview(L, 2);
+    return EMILUA_GPERF_BEGIN(key)
+        EMILUA_GPERF_PARAM(int (*action)(lua_State*))
+        EMILUA_GPERF_DEFAULT_VALUE([](lua_State* L) -> int {
             push(L, errc::bad_index, "index", 2);
             return lua_error(L);
-        },
-        tostringview(L, 2),
-        L
-    );
+        })
+        EMILUA_GPERF_PAIR(
+            "yield",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, this_fiber_yield);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "restore_interruption",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, this_fiber_restore_interruption);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "disable_interruption",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, this_fiber_disable_interruption);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "allow_suspend",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, this_fiber_allow_suspend);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR(
+            "forbid_suspend",
+            [](lua_State* L) -> int {
+                lua_pushcfunction(L, this_fiber_forbid_suspend);
+                return 1;
+            })
+        EMILUA_GPERF_PAIR("local_", this_fiber_local)
+        EMILUA_GPERF_PAIR("is_main", this_fiber_is_main)
+        EMILUA_GPERF_PAIR("id", this_fiber_id)
+    EMILUA_GPERF_END(key)(L);
 }
 
 void init_fiber_module(lua_State* L)
