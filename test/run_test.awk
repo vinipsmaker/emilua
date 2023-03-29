@@ -1,11 +1,16 @@
 BEGIN {
     FS = "\n"
 
-    printf "%s", TEST |& ENVIRON["NORMALIZE_PATH_BIN"]
-    close(ENVIRON["NORMALIZE_PATH_BIN"], "to")
+    normalize_path_bin = ENVIRON["NORMALIZE_PATH_BIN"]
+    if (PROCINFO["platform"] == "mingw") {
+        gsub(/\\/, "/", normalize_path_bin)
+    }
+
+    printf "%s", TEST |& normalize_path_bin
+    close(normalize_path_bin, "to")
     RS = "\0"
-    ENVIRON["NORMALIZE_PATH_BIN"] |& getline printed_path[1]
-    ENVIRON["NORMALIZE_PATH_BIN"] |& getline printed_path[2]
+    normalize_path_bin |& getline printed_path[1]
+    normalize_path_bin |& getline printed_path[2]
     RS = "\n"
 
     if (printed_path[1] == "") {
