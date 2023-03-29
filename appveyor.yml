@@ -1,0 +1,49 @@
+shallow_clone: true
+
+platform:
+  - x64
+
+configuration:
+  - Release
+
+image: Visual Studio 2022
+
+environment:
+  PKG_CONFIG_PATH: C:/pkgconfig;C:/Tools/vcpkg/packages/luajit_x64-windows-static-release/lib/pkgconfig;C:/Tools/vcpkg/packages/fmt_x64-windows-release/lib/pkgconfig
+
+install:
+  - call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+  - md C:\pkgconfig
+  - ps: >-
+      Set-Content -Path 'C:\pkgconfig\openssl.pc' -Value 'Name: openssl
+
+      Description: Secure Sockets Layer and cryptography libraries and tools
+
+      Version: 1.1.1
+
+      Libs: -LC:/OpenSSL-v111-Win64/lib -llibssl_static -llibcrypto_static
+
+      Cflags: -IC:/OpenSSL-v111-Win64/include'
+  - vcpkg install --triplet x64-windows-static-release luajit
+  - vcpkg install --triplet x64-windows-release fmt
+  - set PATH=%PATH%;C:\Tools\vcpkg\packages\luajit_x64-windows-static-release\tools
+  - choco install pkgconfiglite xxd re2c gperf gawk
+  - choco install boost-msvc-14.3 --version=1.81.0
+
+build_script:
+  - md build
+  - cd build
+  - meson setup -Dbackend=ninja -Denable_file_io=true -Denable_http=true -Denable_manpages=false -Ddisable_color=true -Dcpp_args=['-DFMT_HEADER_ONLY','-D_WIN32_WINNT=0x0602'] -Dcpp_eh=a -Db_pch=false -Dbuildtype=release -Ddefault_library=static -Db_ndebug=true ..
+  - meson compile
+  - copy C:\local\boost_1_81_0\lib64-msvc-14.3\boost_nowide-vc143-mt-x64-1_81.dll .
+
+test_script:
+  - cd "%APPVEYOR_BUILD_FOLDER%\build"
+  - meson test --print-errorlogs "emilua:"
+
+on_finish:
+  - curl -F "file=@%APPVEYOR_BUILD_FOLDER%\build\meson-logs\testlog.junit.xml" "https://ci.appveyor.com/api/testresults/junit/%APPVEYOR_JOB_ID%"
+
+artifacts:
+  - path: build\emilua.exe
+  - path: build\boost_nowide-vc143-mt-x64-1_81.dll
