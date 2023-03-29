@@ -1,0 +1,3 @@
+BEGIN {
+    PROCINFO["platform"] = "mingw"
+}

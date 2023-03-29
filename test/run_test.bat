@@ -5,7 +5,7 @@
 MKDIR "%TEMP%\emilua-test" 2> NUL
 ECHO > "%TEMP%\emilua-test\%~n3"
 
-( "%EMILUA_BIN%" "%3.lua" 2>&1 && DEL "%TEMP%\emilua-test\%~n3" ) | "%AWK_BIN%" -v "TEST=%3" -f "%2"
+( "%EMILUA_BIN%" "%3.lua" 2>&1 && DEL "%TEMP%\emilua-test\%~n3" ) | "%AWK_BIN%" -v "TEST=%3" -f "%APPVEYOR_FIXUP%" -f "%2"
 
 IF ERRORLEVEL 1 (
     EXIT /B %ERRORLEVEL%

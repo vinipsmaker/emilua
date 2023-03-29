@@ -388,6 +388,11 @@ if get_option('enable_tests')
         'LC_MESSAGES=',
     ]
 
+    if host_machine.system() == 'windows'
+        tests_env += ('APPVEYOR_FIXUP=' +
+            meson.current_source_dir() / 'test' / 'force_windows.awk')
+    endif
+
     tests = {
         'fiber' : [
             'detach1',
