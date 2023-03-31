@@ -750,3 +750,27 @@ if get_option('enable_tests')
         endforeach
     endforeach
 endif
+
+if get_option('enable_gperf_tests')
+    gperf_tests = [
+        'gperf_basic',
+        'gperf_nested',
+        'gperf_nested2',
+        'gperf_nested3',
+    ]
+    foreach t : gperf_tests
+        test(
+            t, executable(
+                t,
+                gperf_gen.process('test' / t + '.cpp'),
+                dependencies : [ fmt ],
+                include_directories : include_directories(
+                    'test', #< https://github.com/mesonbuild/meson/issues/9219
+                ),
+                implicit_include_directories : false,
+            ),
+            suite : 'gperf',
+            protocol : 'tap',
+        )
+    endforeach
+endif

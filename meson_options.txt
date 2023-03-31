@@ -19,6 +19,10 @@ option(
     description : 'Whether to build tests (will require more dependencies).'
 )
 option(
+    'enable_gperf_tests', type : 'boolean', value : false,
+    description : 'Whether to build tests for emilua_gperf.awk.'
+)
+option(
     'enable_http', type : 'boolean', value : false,
     description : 'Whether to build the HTTP module.'
 )
