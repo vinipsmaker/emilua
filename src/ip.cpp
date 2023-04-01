@@ -1408,7 +1408,6 @@ static int tcp_socket_send_file(lua_State* L)
     lua_settop(L, 7);
     luaL_checktype(L, 3, LUA_TNUMBER);
     luaL_checktype(L, 4, LUA_TNUMBER);
-    luaL_checktype(L, 5, LUA_TNUMBER);
 
     auto vm_ctx = get_vm_context(L).shared_from_this();
     auto current_fiber = vm_ctx->current_fiber();
@@ -1439,6 +1438,26 @@ static int tcp_socket_send_file(lua_State* L)
 
     TRANSMIT_FILE_BUFFERS transmitBuffers;
     std::shared_ptr<unsigned char[]> buf1, buf2;
+    lua_Integer n_number_of_bytes_per_send;
+
+    if (lua_type(L, 5) != LUA_TNIL) {
+        auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 5));
+        if (!bs || !lua_getmetatable(L, 5)) {
+            push(L, std::errc::invalid_argument, "arg", 5);
+            return lua_error(L);
+        }
+        rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
+        if (!lua_rawequal(L, -1, -2)) {
+            push(L, std::errc::invalid_argument, "arg", 5);
+            return lua_error(L);
+        }
+        buf1 = bs->data;
+        transmitBuffers.Head = bs->data.get();
+        transmitBuffers.HeadLength = bs->size;
+    } else {
+        transmitBuffers.Head = NULL;
+        transmitBuffers.HeadLength = 0;
+    }
 
     if (lua_type(L, 6) != LUA_TNIL) {
         auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 6));
@@ -1451,31 +1470,23 @@ static int tcp_socket_send_file(lua_State* L)
             push(L, std::errc::invalid_argument, "arg", 6);
             return lua_error(L);
         }
-        buf1 = bs->data;
-        transmitBuffers.Head = bs->data.get();
-        transmitBuffers.HeadLength = bs->size;
-    } else {
-        transmitBuffers.Head = NULL;
-        transmitBuffers.HeadLength = 0;
-    }
-
-    if (lua_type(L, 7) != LUA_TNIL) {
-        auto bs = static_cast<byte_span_handle*>(lua_touserdata(L, 7));
-        if (!bs || !lua_getmetatable(L, 7)) {
-            push(L, std::errc::invalid_argument, "arg", 7);
-            return lua_error(L);
-        }
-        rawgetp(L, LUA_REGISTRYINDEX, &byte_span_mt_key);
-        if (!lua_rawequal(L, -1, -2)) {
-            push(L, std::errc::invalid_argument, "arg", 7);
-            return lua_error(L);
-        }
         buf2 = bs->data;
         transmitBuffers.Tail = bs->data.get();
         transmitBuffers.TailLength = bs->size;
     } else {
         transmitBuffers.Tail = NULL;
         transmitBuffers.TailLength = 0;
+    }
+
+    switch (lua_type(L, 7)) {
+    default:
+        push(L, std::errc::invalid_argument, "arg", 7);
+        return lua_error(L);
+    case LUA_TNUMBER:
+        n_number_of_bytes_per_send = lua_tointeger(L, 7);
+        break;
+    case LUA_TNIL:
+        n_number_of_bytes_per_send = 0;
     }
 
     asio::windows::overlapped_ptr overlapped{
@@ -1523,7 +1534,7 @@ static int tcp_socket_send_file(lua_State* L)
     ++sock->nbusy;
     BOOL ok = TransmitFile(sock->socket.native_handle(), file->native_handle(),
                            /*nNumberOfBytesToWrite=*/lua_tointeger(L, 4),
-                           /*nNumberOfBytesPerSend=*/lua_tointeger(L, 5),
+                           n_number_of_bytes_per_send,
                            overlapped.get(), &transmitBuffers,
                            /*dwReserved=*/0);
     DWORD last_error = GetLastError();

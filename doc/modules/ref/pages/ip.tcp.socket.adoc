@@ -159,7 +159,7 @@ Returns the number of bytes written.
 `flags` is `0` or an or-combination of values from
 xref:ip.message_flag.adoc[ip.message_flag(3em)].
 
-=== `send_file(self, file: file.random_access, offset: integer, size_in_bytes: integer, n_number_of_bytes_per_send: integer[, head: byte_span[, tail: byte_span]]) -> integer`
+=== `send_file(self, file: file.random_access, offset: integer, size_in_bytes: integer[, head: byte_span[, tail: byte_span[, n_number_of_bytes_per_send: integer]]]) -> integer`
 
 A wrapper for the
 https://docs.microsoft.com/en-us/windows/win32/api/mswsock/nf-mswsock-transmitfile[`TransmitFile()`
