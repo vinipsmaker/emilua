@@ -269,6 +269,7 @@ endif
 
 if get_option('enable_linux_namespaces')
     src += 'src/linux_namespaces.cpp'
+    src += 'src/linux_namespaces/sys_bindings.cpp'
 endif
 
 # Meson doesn't have the ability to chain generators, so instead of

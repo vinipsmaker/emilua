@@ -1,13 +1,9 @@
 #include <emilua/linux_namespaces.hpp>
 
-#include <sys/capability.h>
-#include <sys/mount.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
 
 #include <linux/close_range.h>
-#include <linux/securebits.h>
-#include <grp.h>
 
 #include <iostream>
 #include <charconv>
@@ -27,14 +23,14 @@
 #include <emilua/actor.hpp>
 #include <emilua/state.hpp>
 
-#include "linux_namespaces/sys_bindings.ipp"
-
 #define EMILUA_LUA_HOOK_BUFFER_SIZE (1024 * 1024)
 static_assert(EMILUA_LUA_HOOK_BUFFER_SIZE % alignof(std::max_align_t) == 0);
 
 namespace emilua {
 
 namespace fs = std::filesystem;
+
+int posix_mt_index(lua_State* L);
 
 static int inboxfd;
 static int proc_stdin;
