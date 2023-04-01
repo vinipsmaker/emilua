@@ -899,7 +899,9 @@ static int child_main(void*)
                 error_string += prefix;
                 error_string += from_lua;
                 error_string += '\n';
-                std::cerr << error_string;
+                try {
+                    std::cerr << error_string;
+                } catch (const std::ios_base::failure&) {}
             }
             return 1;
         }
@@ -1049,10 +1051,12 @@ static int child_main(void*)
         std::cerr.imbue(native_locale);
         std::clog.imbue(native_locale);
     } catch (const std::exception& e) {
-        fmt::print(
-            boost::nowide::cerr,
-            FMT_STRING("<4>Failed to set the native locale: `{}`\n"),
-            e.what());
+        try {
+            fmt::print(
+                boost::nowide::cerr,
+                FMT_STRING("<4>Failed to set the native locale: `{}`\n"),
+                e.what());
+        } catch (const std::ios_base::failure&) {}
     }
 
     emilua::stdout_has_color = [&tmp_env]() {
@@ -1062,8 +1066,10 @@ static int child_main(void*)
             } else if (it->second == "0") {
                 return false;
             } else if (it->second.size() > 0) {
-                std::cerr <<
-                    "<4>Ignoring unrecognized value for EMILUA_COLORS\n";
+                try {
+                    std::cerr <<
+                        "<4>Ignoring unrecognized value for EMILUA_COLORS\n";
+                } catch (const std::ios_base::failure&) {}
             }
         }
 
@@ -1117,7 +1123,9 @@ static int child_main(void*)
                 hana::make_set(vm_context::options::skip_clear_interrupter));
         }, std::allocator<void>{});
     } catch (const std::exception& e) {
-        std::cerr << "Error starting the lua VM: " << e.what() << std::endl;
+        try {
+            std::cerr << "Error starting the lua VM: " << e.what() << std::endl;
+        } catch (const std::ios_base::failure&) {}
         return 1;
     }
 
@@ -1129,8 +1137,11 @@ static int child_main(void*)
             appctx.extra_threads_count_empty_cond.wait(lk);
     }
 
-    // for some reason the C runtime won't flush `stdout` on clone()d processes
-    std::cout << std::flush;
+    try {
+        // for some reason the C runtime won't flush `stdout` on clone()d
+        // processes
+        std::cout << std::flush;
+    } catch (const std::ios_base::failure&) {}
 
     return appctx.exit_code;
 }

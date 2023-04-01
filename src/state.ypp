@@ -118,7 +118,13 @@ static int lua_print(lua_State* L)
         lua_pop(L, 1);
     }
 
-    nowide::cout << buf << std::endl;
+    try {
+        nowide::cout << buf << std::endl;
+    } catch (const std::ios_base::failure& e) {
+        push(L, e.code());
+        return lua_error(L);
+    }
+
     return 0;
 }
 #endif // BOOST_OS_WINDOWS

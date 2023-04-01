@@ -167,7 +167,9 @@ void app_context::log(int priority, std::string_view domain,
         buf.resize(buf.size() + 1);
         buf.data()[buf.size() - 1] = '\n';
     }
-    nowide::cerr.write(buf.data(), buf.size());
+    try {
+        nowide::cerr.write(buf.data(), buf.size());
+    } catch (const std::ios_base::failure&) {}
 }
 
 properties_service::properties_service(asio::execution_context& ctx,
@@ -223,13 +225,15 @@ void vm_context::close()
             red = underline = reset_red = reset_underline = {};
 
         if (/*LOG_ERR=*/3 <= log_domain<default_log_domain>::log_level) {
-            fmt::print(
-                nowide::cerr,
-                spec,
-                red,
-                static_cast<const void*>(L_),
-                underline, reset_underline,
-                reset_red);
+            try {
+                fmt::print(
+                    nowide::cerr,
+                    spec,
+                    red,
+                    static_cast<const void*>(L_),
+                    underline, reset_underline,
+                    reset_red);
+            } catch (const std::ios_base::failure&) {}
         }
 
         suppress_tail_errors = true;
@@ -254,11 +258,13 @@ void vm_context::close()
             errors.push_back('\n');
         }
         if (/*LOG_ERR=*/3 <= log_domain<default_log_domain>::log_level) {
-            fmt::print(
-                nowide::cerr,
-                spec,
-                red, static_cast<void*>(L_), failed_cleanup_handler_coro,
-                reset_red);
+            try {
+                fmt::print(
+                    nowide::cerr,
+                    spec,
+                    red, static_cast<void*>(L_), failed_cleanup_handler_coro,
+                    reset_red);
+            } catch (const std::ios_base::failure&) {}
         }
         suppress_tail_errors = true;
     }
@@ -282,11 +288,13 @@ void vm_context::close()
             errors.push_back('\n');
         }
         if (/*LOG_ERR=*/3 <= log_domain<default_log_domain>::log_level) {
-            fmt::print(
-                nowide::cerr,
-                spec,
-                red, static_cast<void*>(L_), reset_red,
-                dim, errors, reset_dim);
+            try {
+                fmt::print(
+                    nowide::cerr,
+                    spec,
+                    red, static_cast<void*>(L_), reset_red,
+                    dim, errors, reset_dim);
+            } catch (const std::ios_base::failure&) {}
         }
     }
 

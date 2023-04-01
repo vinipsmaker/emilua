@@ -161,19 +161,23 @@ int main(int argc, char *argv[], char *envp[])
         boost::nowide::cerr.imbue(native_locale);
         boost::nowide::clog.imbue(native_locale);
     } catch (const std::exception& e) {
-        fmt::print(
-            boost::nowide::cerr,
-            FMT_STRING("<4>Failed to set the native locale: `{}`\n"),
-            e.what());
+        try {
+            fmt::print(
+                boost::nowide::cerr,
+                FMT_STRING("<4>Failed to set the native locale: `{}`\n"),
+                e.what());
+        } catch (const std::ios_base::failure&) {}
     }
     std::optional<boost::nowide::args> args = std::nullopt;
     try {
         args.emplace(argc, argv, envp);
     } catch (const std::exception& e) {
-        fmt::print(
-            boost::nowide::cerr,
-            FMT_STRING("Failed to read args/envp: `{}`\n"),
-            e.what());
+        try {
+            fmt::print(
+                boost::nowide::cerr,
+                FMT_STRING("Failed to read args/envp: `{}`\n"),
+                e.what());
+        } catch (const std::ios_base::failure&) {}
         return 2;
     }
 
@@ -194,8 +198,10 @@ int main(int argc, char *argv[], char *envp[])
             } else if (it->second == "0") {
                 return false;
             } else if (it->second.size() > 0) {
-                boost::nowide::cerr <<
-                    "<4>Ignoring unrecognized value for EMILUA_COLORS\n";
+                try {
+                    boost::nowide::cerr <<
+                        "<4>Ignoring unrecognized value for EMILUA_COLORS\n";
+                } catch (const std::ios_base::failure&) {}
             }
         }
 
@@ -234,22 +240,28 @@ int main(int argc, char *argv[], char *envp[])
     appctx.linux_namespaces_service_sockfd = linux_namespaces_service_pipe[1];
 #endif // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
 
-#define NEXT_ARG(OPTION, LABEL) do {                                          \
-        if (YYCURSOR = *++cur_arg ; YYCURSOR != nullptr) {                    \
-            goto LABEL;                                                       \
-        } else {                                                              \
-            boost::nowide::cerr << "missing value for option `" OPTION "`\n"; \
-            return 2;                                                         \
-        }                                                                     \
+#define NEXT_ARG(OPTION, LABEL) do {                           \
+        if (YYCURSOR = *++cur_arg ; YYCURSOR != nullptr) {     \
+            goto LABEL;                                        \
+        } else {                                               \
+            try {                                              \
+                boost::nowide::cerr <<                         \
+                    "missing value for option `" OPTION "`\n"; \
+            } catch (const std::ios_base::failure&) {}         \
+            return 2;                                          \
+        }                                                      \
     } while(0)
 
-#define ERRARG(OPTION)                                                        \
-    do {                                                                      \
-        fmt::print(                                                           \
-            boost::nowide::cerr,                                              \
-            FMT_STRING("value `{}` not supported for option `" OPTION "`\n"), \
-            *cur_arg);                                                        \
-        return 2;                                                             \
+#define ERRARG(OPTION)                                                     \
+    do {                                                                   \
+        try {                                                              \
+            fmt::print(                                                    \
+                boost::nowide::cerr,                                       \
+                FMT_STRING(                                                \
+                    "value `{}` not supported for option `" OPTION "`\n"), \
+                *cur_arg);                                                 \
+        } catch (const std::ios_base::failure&) {}                         \
+        return 2;                                                          \
     } while(0)
 
     /*!re2c
@@ -268,8 +280,10 @@ opt:
     if (YYCURSOR == nullptr) goto end;
     %{
     * {
-        fmt::print(boost::nowide::cerr, FMT_STRING("bad option: `{}`\n"),
-                   *cur_arg);
+        try {
+            fmt::print(boost::nowide::cerr, FMT_STRING("bad option: `{}`\n"),
+                       *cur_arg);
+        } catch (const std::ios_base::failure&) {}
         return 2;
     }
     "--" {end} {
@@ -282,13 +296,17 @@ opt:
         goto end;
     }
     "-" {end} {
-        boost::nowide::cerr << "stdin not supported as input file\n";
+        try {
+            boost::nowide::cerr << "stdin not supported as input file\n";
+        } catch (const std::ios_base::failure&) {}
         return 2;
     }
     {filename} {end} {
         if (filename.size() > 0) {
-            boost::nowide::cerr <<
-                "emilua doesn't support more than one input file\n";
+            try {
+                boost::nowide::cerr <<
+                    "emilua doesn't support more than one input file\n";
+            } catch (const std::ios_base::failure&) {}
             return 2;
         }
         filename = *cur_arg;
@@ -301,13 +319,17 @@ opt:
 opt_short:
     %{
     * {
-        fmt::print(boost::nowide::cerr, FMT_STRING("bad short option: {}\n"),
-                   *cur_arg);
+        try {
+            fmt::print(boost::nowide::cerr, FMT_STRING("bad short option: {}\n"),
+                       *cur_arg);
+        } catch (const std::ios_base::failure&) {}
         return 2;
     }
     {end} { goto opt; }
     "h" {
-        fmt::print(boost::nowide::cout, help_text, *argv);
+        try {
+            fmt::print(boost::nowide::cout, help_text, *argv);
+        } catch (const std::ios_base::failure&) {}
         return 0;
     }
     %}
@@ -315,20 +337,26 @@ opt_short:
 opt_long:
     %{
     * {
-        fmt::print(boost::nowide::cerr, FMT_STRING("bad long option: {}\n"),
-                   *cur_arg);
+        try {
+            fmt::print(boost::nowide::cerr, FMT_STRING("bad long option: {}\n"),
+                       *cur_arg);
+        } catch (const std::ios_base::failure&) {}
         return 2;
     }
     "help" {end} {
-        fmt::print(boost::nowide::cout, help_text, *argv);
+        try {
+            fmt::print(boost::nowide::cout, help_text, *argv);
+        } catch (const std::ios_base::failure&) {}
         return 0;
     }
     "version" {end} {
-        boost::nowide::cout << "Emilua " EMILUA_CONFIG_VERSION_STRING <<
-            std::endl << LUAJIT_VERSION << std::endl <<
-            "Boost " << (BOOST_VERSION / 100000) << '.' <<
-            (BOOST_VERSION / 100 % 1000) << '.' << (BOOST_VERSION % 100) <<
-            std::endl;
+        try {
+            boost::nowide::cout << "Emilua " EMILUA_CONFIG_VERSION_STRING <<
+                std::endl << LUAJIT_VERSION << std::endl <<
+                "Boost " << (BOOST_VERSION / 100000) << '.' <<
+                (BOOST_VERSION / 100 % 1000) << '.' << (BOOST_VERSION % 100) <<
+                std::endl;
+        } catch (const std::ios_base::failure&) {}
         return 0;
     }
     "main-context-concurrency-hint=" {
@@ -360,7 +388,9 @@ opt_main_context_concurrency_hint:
 end:
 
     if (filename.size() == 0) {
-        boost::nowide::cerr << "missing filename\n";
+        try {
+            boost::nowide::cerr << "missing filename\n";
+        } catch (const std::ios_base::failure&) {}
         return 2;
     }
 
@@ -434,8 +464,10 @@ end:
                     emilua::vm_context::options::skip_clear_interrupter));
         }, std::allocator<void>{});
     } catch (std::exception& e) {
-        boost::nowide::cerr << "Error starting the lua VM: " << e.what() <<
-            std::endl;
+        try {
+            boost::nowide::cerr << "Error starting the lua VM: " << e.what() <<
+                std::endl;
+        } catch (const std::ios_base::failure&) {}
         return 1;
     }
 

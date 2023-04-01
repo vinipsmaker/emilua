@@ -756,15 +756,17 @@ void print_panic(const lua_State* fiber, bool is_main, std::string_view error,
     if (!stdout_has_color)
         red = dim = underline = reset_red = reset_dim = reset_underline = {};
 
-    fmt::print(
-        nowide::cerr,
-        spec,
-        red,
-        (is_main ? "Main fiber from VM"sv : "Fiber"sv),
-        static_cast<const void*>(fiber),
-        underline, error, reset_underline,
-        reset_red,
-        dim, stacktrace, reset_dim);
+    try {
+        fmt::print(
+            nowide::cerr,
+            spec,
+            red,
+            (is_main ? "Main fiber from VM"sv : "Fiber"sv),
+            static_cast<const void*>(fiber),
+            underline, error, reset_underline,
+            reset_red,
+            dim, stacktrace, reset_dim);
+    } catch (const std::ios_base::failure&) {}
 }
 
 int set_current_traceback(lua_State* L)
