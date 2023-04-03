@@ -390,6 +390,10 @@ public:
     std::mutex extra_threads_count_mtx;
     std::condition_variable extra_threads_count_empty_cond;
 
+    // What we actually want is unlock_at_thread_exit(), but that doesn't exist:
+    // <https://lists.isocpp.org/std-proposals/2021/07/2809.php>.
+    std::condition_variable extra_threads_count_dummy_cond;
+
 #if EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES
     int linux_namespaces_service_sockfd = -1;
 #endif // EMILUA_CONFIG_ENABLE_LINUX_NAMESPACES

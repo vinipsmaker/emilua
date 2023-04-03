@@ -1786,8 +1786,13 @@ static int spawn_vm(lua_State* L)
 
             std::unique_lock<std::mutex> lk{appctx.extra_threads_count_mtx};
             --appctx.extra_threads_count;
-            if (appctx.extra_threads_count == 0)
-                appctx.extra_threads_count_empty_cond.notify_all();
+            if (appctx.extra_threads_count == 0) {
+                std::notify_all_at_thread_exit(
+                    appctx.extra_threads_count_empty_cond, std::move(lk));
+            } else {
+                std::notify_all_at_thread_exit(
+                    appctx.extra_threads_count_dummy_cond, std::move(lk));
+            }
         }}.detach();
     }
 #else
@@ -1878,8 +1883,13 @@ static int spawn_context_threads(lua_State* L)
 
                 std::unique_lock<std::mutex> lk{appctx.extra_threads_count_mtx};
                 --appctx.extra_threads_count;
-                if (appctx.extra_threads_count == 0)
-                    appctx.extra_threads_count_empty_cond.notify_all();
+                if (appctx.extra_threads_count == 0) {
+                    std::notify_all_at_thread_exit(
+                        appctx.extra_threads_count_empty_cond, std::move(lk));
+                } else {
+                    std::notify_all_at_thread_exit(
+                        appctx.extra_threads_count_dummy_cond, std::move(lk));
+                }
             }
         }.detach();
     }
