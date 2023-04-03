@@ -3,7 +3,7 @@ project(
     default_options : ['cpp_std=c++20'],
     meson_version : '>=0.62.0',
     license : 'BSL-1.0',
-    version : '0.3.2',
+    version : '0.4.0',
 )
 
 # https://github.com/mesonbuild/meson/issues/2320
